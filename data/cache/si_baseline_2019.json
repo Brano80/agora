@@ -1,0 +1,140 @@
+{
+  "_meta": {
+    "geo": "SI",
+    "year": 2019,
+    "description": "Auto-built SI 2019 baseline snapshot (snapshot_builder, live DBnomics pull). Every value carries provenance; review flagged defaults before trusting.",
+    "currency_unit": "MEUR (current prices)",
+    "note": "Generated 2026-06-16. Imports reconciled to the expenditure identity unless pulled live. 'default_review' series need manual sourcing."
+  },
+  "series": {
+    "gdp": {
+      "value": 48156.5,
+      "unit": "MEUR",
+      "provider": "Eurostat",
+      "provider_code": "A.CP_MEUR.B1GQ.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/nama_10_gdp",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "hh_consumption": {
+      "value": 25049.0,
+      "unit": "MEUR",
+      "provider": "Eurostat",
+      "provider_code": "A.CP_MEUR.P31_S14_S15.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/nama_10_gdp",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "gov_consumption": {
+      "value": 8899.2,
+      "unit": "MEUR",
+      "provider": "Eurostat",
+      "provider_code": "A.CP_MEUR.P3_S13.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/nama_10_gdp",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "gfcf": {
+      "value": 9514.9,
+      "unit": "MEUR",
+      "provider": "Eurostat",
+      "provider_code": "A.CP_MEUR.P51G.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/nama_10_gdp",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "gcf": {
+      "value": 10033.2,
+      "unit": "MEUR",
+      "provider": "Eurostat",
+      "provider_code": "A.CP_MEUR.P5G.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/nama_10_gdp",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "exports": {
+      "value": 40623.4,
+      "unit": "MEUR",
+      "provider": "Eurostat",
+      "provider_code": "A.CP_MEUR.P6.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/nama_10_gdp",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "imports": {
+      "value": 36448.3,
+      "unit": "MEUR",
+      "provider": "Eurostat",
+      "provider_code": "A.CP_MEUR.P7.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/nama_10_gdp",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "hh_debt_gdp": {
+      "value": 50.0,
+      "unit": "PC_GDP",
+      "provider": "BIS",
+      "provider_code": "BIS/WS_TC[freq=A,borrowers=H,geo=SI]",
+      "source_url": "https://www.bis.org/statistics/totcredit.htm",
+      "note": "From bundled snapshot.",
+      "source": "snapshot"
+    },
+    "top10_wealth_share": {
+      "value": 0.44471706390380905,
+      "unit": "SHARE",
+      "provider": "OECD",
+      "provider_code": "SVN.A.SH_TOP10.PT_B90_S14._Z._Z",
+      "source_url": "https://www.oecd.org/social/wealth-distribution-database.htm",
+      "note": "Live DBnomics pull (2026-06-16). \u26a0 value observed in 2021, not 2019 (requested year missing live).",
+      "source": "live",
+      "obs_year": 2021
+    },
+    "gov_debt_gdp": {
+      "value": 66.0,
+      "unit": "PC_GDP",
+      "provider": "Eurostat",
+      "provider_code": "A.PC_GDP.S13.GD.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/gov_10dd_edpt1",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "gini_disp_income": {
+      "value": 23.9,
+      "unit": "IDX",
+      "provider": "Eurostat",
+      "provider_code": "A.TOTAL.GINI_HND.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/ilc_di12",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "population": {
+      "value": 2088385.0,
+      "unit": "PERSONS",
+      "provider": "Eurostat",
+      "provider_code": "A.AVG.SI",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/product/view/demo_gind",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    },
+    "labour_share": {
+      "value": 71.75329,
+      "unit": "PC_GDP",
+      "provider": "AMECO",
+      "provider_code": "SVN.1.0.0.0.ALCD2",
+      "source_url": "https://economy-finance.ec.europa.eu/economic-research-and-databases/economic-databases/ameco-database_en",
+      "note": "Live DBnomics pull (2026-06-16).",
+      "source": "live",
+      "obs_year": 2019
+    }
+  }
+}

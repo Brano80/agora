@@ -1,0 +1,126 @@
+{
+  "_meta": {
+    "scope": "per-country income inequality (OECD Income & Wealth Distribution Database, IDD)",
+    "description": "OECD IDD inequality anchors: Gini of MARKET income (before taxes and transfers) and DISPOSABLE income (after taxes and transfers), plus the relative income poverty rate. The market-vs-disposable pair is the high-value addition: it gives the model a PRE-redistribution inequality anchor (the post-tax-only Eurostat Gini cannot identify the market capital-share elasticity beta - see STATE.md F12). Validation/identification anchor; does NOT enter core SFC calibration (mirrors the Epoch connector's role).",
+    "source": "snapshot",
+    "as_of": "circa 2019-2021",
+    "verify_live": "Values are best-available published OECD IDD figures, rounded; confirm exact vintage and dimensions on the live DBnomics pull (provider OECD, IDD dataset) before trusting absolute levels. The market>disposable ordering is the robust, used invariant.",
+    "live_path": "OECD IDD via DBnomics provider 'OECD' (dataset IDD): GINIB = Gini before taxes/transfers, GINI = Gini after, PVT5A/PR_INC = poverty rate. Dimensions firewalled from this sandbox; --probe on a networked machine to resolve, like the AMECO lowercase-geo fix.",
+    "live_query": {
+      "provider": "OECD",
+      "observations_param": true,
+      "geo_iso3": {
+        "DE": "DEU",
+        "FR": "FRA",
+        "IT": "ITA",
+        "ES": "ESP",
+        "NL": "NLD",
+        "PL": "POL",
+        "BE": "BEL",
+        "AT": "AUT",
+        "SE": "SWE",
+        "DK": "DNK",
+        "FI": "FIN",
+        "PT": "PRT",
+        "EL": "GRC",
+        "IE": "IRL",
+        "CZ": "CZE",
+        "HU": "HUN",
+        "SK": "SVK",
+        "SI": "SVN",
+        "EE": "EST",
+        "LV": "LVA",
+        "LT": "LTU",
+        "LU": "LUX"
+      },
+      "candidates": [
+        {
+          "dataset": "DSD_WISE_IDD@DF_IDD",
+          "geo_dim": "REF_AREA",
+          "dims": {
+            "REF_AREA": "{geo3}",
+            "MEASURE": "INC_MRKT_GINI",
+            "AGE": "_T",
+            "DEFINITION": "D_CUR",
+            "METHODOLOGY": "METH2012",
+            "POVERTY_LINE": "_Z",
+            "FREQ": "A"
+          },
+          "relax_dims": {
+            "REF_AREA": "{geo3}",
+            "MEASURE": "INC_MRKT_GINI",
+            "AGE": "_T"
+          },
+          "note": "CONFIRMED via --probe-dims 2026-06-14. INC_MRKT_GINI = Gini of MARKET income (before taxes & transfers); AGE=_T total population; DEFINITION D_CUR + METHODOLOGY METH2012 = current series (~2012+). relax_dims is the minimal fallback (REF_AREA+MEASURE+AGE) the connector auto-tries if the full filter returns nothing; the best-populated doc is then chosen and 0-100 values normalised to 0-1."
+        }
+      ],
+      "probe_url": "https://api.db.nomics.world/v22/series/OECD/{dataset}?observations=0&limit=1",
+      "help": "Run estimate_beta.py --probe-idd on a networked machine; it prints the dataset's real dimensions. Edit the matching candidate's 'dataset', 'geo_dim' and 'dims' (esp. the before-tax MEASURE code) here, then re-run --years to estimate the live within-country market-Gini beta.",
+      "dataset_confirmed": "OECD/DSD_WISE_IDD@DF_IDD (probe 2026-06-14)"
+    }
+  },
+  "series_defs": {
+    "gini_market_oecd": {
+      "label": "Gini of market income (before taxes & transfers)",
+      "unit": "IDX",
+      "provider": "OECD",
+      "provider_code": "OECD/IDD/GINIB",
+      "source_url": "https://www.oecd.org/social/income-distribution-database.htm",
+      "note": "Pre-tax-pre-transfer Gini, total population. PRE-redistribution inequality anchor for beta identification + the distribution module's gini_market output."
+    },
+    "gini_disp_oecd": {
+      "label": "Gini of disposable income (after taxes & transfers)",
+      "unit": "IDX",
+      "provider": "OECD",
+      "provider_code": "OECD/IDD/GINI",
+      "source_url": "https://www.oecd.org/social/income-distribution-database.htm",
+      "note": "Post-tax-post-transfer Gini, total population. Cross-checks the Eurostat ilc_di12 gini_disp_income series from an independent source."
+    },
+    "poverty_rate_oecd": {
+      "label": "Relative income poverty rate (50% of median)",
+      "unit": "SHARE",
+      "provider": "OECD",
+      "provider_code": "OECD/IDD/PVT5A",
+      "source_url": "https://www.oecd.org/social/income-distribution-database.htm",
+      "note": "Share below 50% of median equivalised disposable income. Independent anchor for the distribution module's poverty floor."
+    }
+  },
+  "data": {
+    "DE": {
+      "gini_market_oecd": 0.5,
+      "gini_disp_oecd": 0.296,
+      "poverty_rate_oecd": 0.107,
+      "as_of": 2020
+    },
+    "FR": {
+      "gini_market_oecd": 0.519,
+      "gini_disp_oecd": 0.292,
+      "poverty_rate_oecd": 0.089,
+      "as_of": 2019
+    },
+    "IT": {
+      "gini_market_oecd": 0.49,
+      "gini_disp_oecd": 0.33,
+      "poverty_rate_oecd": 0.14,
+      "as_of": 2019
+    },
+    "ES": {
+      "gini_market_oecd": 0.491,
+      "gini_disp_oecd": 0.33,
+      "poverty_rate_oecd": 0.146,
+      "as_of": 2019
+    },
+    "NL": {
+      "gini_market_oecd": 0.449,
+      "gini_disp_oecd": 0.295,
+      "poverty_rate_oecd": 0.082,
+      "as_of": 2019
+    },
+    "PL": {
+      "gini_market_oecd": 0.452,
+      "gini_disp_oecd": 0.288,
+      "poverty_rate_oecd": 0.102,
+      "as_of": 2019
+    }
+  }
+}

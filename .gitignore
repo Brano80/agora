@@ -1,0 +1,22 @@
+# --- private / business (never publish) ---
+AGORA_Outreach_Tracker.xlsx
+AGORA_Anthropic_EconFutures_Application.md
+LAUNCH_PLAN.md
+AGORA_Launch_Metrics.xlsx
+GITHUB_README.md
+AUTOMATION.md
+CLAUDE.md
+STATE.md
+proposals/
+social_2_frontier.png
+social_3_decoupling.png
+dashboard_src.html
+# --- dev clutter ---
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.bak
+*_pdfcheck*.png
+_check_*.png
+# kept public: engine code, docs/, data/cache, tests/, AGORA_Manifesto.pdf, social_1_wealth.png

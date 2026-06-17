@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "scope": "global (geo-agnostic)",
+    "description": "Sourced global AI-compute metrics (Epoch AI / Stanford AI Index). Geo-agnostic frontier-technology trends that GROUND the AI-shock driver's assumptions; not country macro data. Snapshot now; live download path documented in the connector.",
+    "source": "snapshot",
+    "as_of": "2024"
+  },
+  "series": {
+    "frontier_training_compute_growth_x": {
+      "value": 4.2, "unit": "x_per_year", "provider": "Epoch AI",
+      "provider_code": "EpochAI/notable_models/training_compute_growth",
+      "source_url": "https://epoch.ai/data",
+      "note": "Training compute of notable ML models has grown ~4.2x/year (~0.6 OOM/yr) over ~2010-2024 (Epoch AI). AGORA's macro capex-growth lever (~6%/yr) is a deliberately conservative INVESTMENT proxy, not raw compute growth."
+    },
+    "compute_doubling_months": {
+      "value": 6.0, "unit": "months", "provider": "Epoch AI",
+      "provider_code": "EpochAI/notable_models/doubling_time",
+      "source_url": "https://epoch.ai/data",
+      "note": "Frontier training compute doubling time ~6 months (Epoch AI)."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+# AGORA Phase 1 — skeleton.
+# The engine itself uses only the Python standard library (no numpy needed).
+duckdb>=1.0        # local store + canonical schema tables (optional at runtime)
+streamlit>=1.49   # dashboard (width="stretch" API)
+pandas>=2.0        # dashboard tables / charts
+pytest>=7.0        # tests / consistency gate
