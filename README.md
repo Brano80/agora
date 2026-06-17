@@ -17,6 +17,7 @@ live data and validated against history.
 > in the accounts) before any result is reported.
 
 📄 **Read the study:** *Owning the Machine — A Governance of Abundance for Europe* (12 pp) → [`AGORA_Manifesto.pdf`](AGORA_Manifesto.pdf) · permanent copy: https://doi.org/10.5281/zenodo.20726928 · SSRN: (forthcoming)
+🔗 **Live dashboard:** https://brano80.github.io/agora/
 
 ---
 
