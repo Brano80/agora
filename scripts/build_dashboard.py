@@ -79,7 +79,8 @@ def geo_data(geo):
                           "expo": [round(m["automation_exposure"][s], 2) for s in m["sectors"]],
                           "ls_start": [round(b.get(f"lshare_{i+1}", 0)*100, 1) for i in range(ns)],
                           "ls_end": [round(e.get(f"lshare_{i+1}", 0)*100, 1) for i in range(ns)],
-                          "real": m.get("matrix_source") == "real", "src": notes.get("source", "")}
+                          "real": m.get("matrix_source") == "real", "src": notes.get("source", ""),
+                          "expo_src": m.get("ai_exposure_source", ""), "expo_url": m.get("ai_exposure_url", "")}
     else:
         res["sectors"] = None
     fr = []
@@ -123,17 +124,24 @@ def q2_data(geos):
     return out
 
 
-def mc_de(n=15):
-    random.seed(1); cg=[]; ug=[]; cp=[]; up=[]
-    for _ in range(n):
-        b = random.uniform(0.1, 1.0)
-        mods = [SFCCore(base_year=2019), DistributionModule(base_year=2019, beta=b), InputOutputModule(base_year=2019)]
-        o = AgoraOrchestrator(geo="DE", year=2019, modules=mods, allow_live=False, strict=True); o.load_data()
-        r = {x.scenario: x for x in o.run_ubc_experiment(horizon=H)}
-        c = r["AI + Cash UBI"].dist.periods[-1].reported; u = r["AI + Universal Basic Capital"].dist.periods[-1].reported
-        cg.append(c["gini_personal"]); ug.append(u["gini_personal"]); cp.append(c["poverty_rate"]); up.append(u["poverty_rate"])
-    rng = lambda x: [round(min(x), 3), round(max(x), 3)]
-    return {"n": n, "cash_gini": rng(cg), "ubc_gini": rng(ug), "cash_pov": rng(cp), "ubc_pov": rng(up)}
+def mc_de():
+    """Joint-prior Monte-Carlo (all 6 assumptions sampled together) + first-order
+    sensitivity ranking, for DE as the reference economy."""
+    import uncertainty as U
+    cb, _, _ = U.monte_carlo("DE", "cash_ubi", n=200, seed=1)
+    ub, _, _ = U.monte_carlo("DE", "ubc", n=200, seed=1)
+    sg = U.sensitivity("DE", "ubc", n=400, seed=1, metric="gini")
+    pretty = {"labour_share_end": "AI labour-share floor", "capex_growth": "AI capex growth",
+              "inv_elasticity": "Investment response (C1)", "beta": "Income elasticity β",
+              "omega": "Wealth elasticity ω", "a1_w": "Consumption propensity"}
+    band = lambda b, k: [round(b[k].p5, 3), round(b[k].p95, 3)]
+    return {"n": cb["gini"].n, "ndraws": sg["n"],
+            "cash_gini": band(cb, "gini"), "ubc_gini": band(ub, "gini"),
+            "cash_pov": band(cb, "poverty"), "ubc_pov": band(ub, "poverty"),
+            "drivers": [{"name": pretty.get(d["param"], d["param"]),
+                         "share": round(d["share"] * 100, 1), "corr": round(d["corr"], 2)}
+                        for d in sg["drivers"] if d["share"] >= 0.005],
+            "linear_r2": round(sg["linear_r2"], 2)}
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--geos", nargs="+", default=None); a = ap.parse_args()
@@ -155,7 +163,7 @@ def main():
             ["AI capex growth", "~6%/yr", "Damped from Epoch frontier-compute growth (~4.2×/yr)."],
             ["Fund reinvestment (headline)", "0 (pay-out)", "C1: with reinvestment UBC ends a larger economy (F14)."],
             ["Horizon", "30 years", "Scenario comparison, not a forecast."],
-            ["AI exposure by sector", "0.30 / 0.70 / 0.20 / 0.50 / 0.90 / 0.40", "Assumption (Agri / Industry / Constr / Distrib / ICT-finance / Public). The FIGARO matrix &amp; sector labour shares are REAL; the exposure weights are assumed."],
+            ["AI exposure by sector", "0.25 / 0.45 / 0.25 / 0.45 / 0.80 / 0.55", "SOURCED: OECD (2024) Sectoral Taxonomy of AI Intensity (NACE A38 High/Med/Low) + Felten-Raj-Seamans (2021) AIIE, mapped to the 6 sectors. AI exposure is cognitive - services high, manufacturing mid, agri/construction low (corrects the old robot-automation guess)."],
             ["Per-sector labour-share floor", "2%", "No sector's labour share falls below 2% under the AI shift (why high-exposure sectors bottom out rather than hit zero)."],
             ["Wealth-ownership dynamics", "fixed unless UBC acts", "No-policy &amp; cash hold the top-10% wealth share constant; only an ownership transfer (UBC) moves it. Conservative for UBC."],
             ["Input-output tables", "FIGARO cp1700 ×17, cp1750 ×10", "Per-country Eurostat symmetric IO table (product×product or industry×industry, whichever Eurostat publishes). Cross-country sector structure mixes both constructs."],
@@ -300,10 +308,10 @@ function render(){
     else{const s=g.sectors;
       box.innerHTML=`<h3>Sectoral labour share — baseline vs AI horizon ${s.real?'<span class="pill">real Eurostat FIGARO</span>':''}</h3>
         <div class="chartbox"><canvas id="c1"></canvas></div>
-        <h3>Output multipliers &amp; AI exposure</h3>
+        <h3>Output multipliers &amp; AI exposure ${s.expo_url?`<a class="srcbadge" href="${s.expo_url}" target="_blank" rel="noopener" title="${s.expo_src}">sourced ↗</a>`:''}</h3>
         <table><tr><th>Sector</th><th>Multiplier</th><th>AI exposure</th></tr>
         ${s.names.map((nm,k)=>`<tr><td>${nm}</td><td>${s.mult[k].toFixed(2)}</td><td>${s.expo[k].toFixed(2)}</td></tr>`).join("")}</table>
-        <div class="note">High-exposure sectors (ICT/finance, industry) shed labour share fastest; low-exposure (construction, agriculture) barely move. ${s.src?('Source: '+s.src):''}</div>`;
+        <div class="note">AI exposure is <b>cognitive</b>, not robotic: services (ICT/finance, public) are most exposed, manufacturing is mid, agriculture &amp; construction low. Multipliers from real FIGARO; exposure from the OECD Sectoral Taxonomy of AI Intensity + Felten-Raj-Seamans AIIE (click <b>sourced ↗</b>). ${s.src?('I-O matrix source: '+s.src):''}</div>`;
       bar("c1",s.names,[{l:"Baseline",d:s.ls_start,c:C.grey},{l:"After AI shift",d:s.ls_end,c:C.nopol}],"Sector labour share (%)");
     }
   } else if(cur.tab==="frontier"){
@@ -327,11 +335,15 @@ function render(){
     bar("c1",["Cash UBI","Universal Basic Capital"],[{l:"National dividend",d:[q.cash_nat,q.ubc_nat],c:C.grey},{l:"Pooled EU dividend",d:[q.cash_pool,q.ubc_pool],c:C.ubc}],"Between-country Gini");}
   } else if(cur.tab==="uncert"){
     const m=DATA.global.mc;
-    if(!m){box.innerHTML=`<div class="note">Uncertainty band computed for DE (representative).</div>`;}
-    else{box.innerHTML=`<h3>Robustness to the key assumption (β), Germany — ${m.n} draws across the full prior 0.1–1.0</h3>
+    if(!m){box.innerHTML=`<div class="note">Uncertainty needs the full multi-country build (Germany reference).</div>`;}
+    else{box.innerHTML=`<h3>Robustness across the JOINT assumption space — Germany, ${m.n} gated draws over 6 priors</h3>
       <div class="chartbox"><canvas id="c1"></canvas></div>
-      <div class="note">Even across the entire plausible range of the capital-share→inequality elasticity, UBC's outcome band sits below cash UBI's on both Gini and poverty at the horizon — the "owning beats receiving" verdict does not hinge on β. Bars show min–max across draws. Robustness is computed for Germany as the reference economy and does not change with the country selector above.</div>`;
-      bar("c1",["Cash UBI","UBC"],[{l:"Gini (min)",d:[m.cash_gini[0],m.ubc_gini[0]],c:C.grey},{l:"Gini (max)",d:[m.cash_gini[1],m.ubc_gini[1]],c:C.ubc}],"Personal Gini at horizon (range)");
+      <div class="note">Sampling all six uncertain assumptions <b>together</b> (labour-share floor, capex growth, investment response, income elasticity β, wealth elasticity ω, consumption propensity), UBC's Gini and poverty bands (p5–p95) sit entirely below cash UBI's — so "owning beats receiving" survives the <b>full joint space</b>, not just β. Computed for Germany as the reference economy; not affected by the country selector.</div>
+      <h3>What drives the result — first-order sensitivity (UBC Gini, ${m.ndraws} draws)</h3>
+      <table><tr><th>Assumption</th><th>Share of variance</th><th>Direction</th></tr>
+      ${m.drivers.map(d=>`<tr><td>${d.name}</td><td>${d.share}%</td><td>${d.corr>0?'↑ raises Gini':(d.corr<0?'↓ lowers Gini':'—')}</td></tr>`).join("")}</table>
+      <div class="note">The investment response (C1) and the AI capex boom move the outcome most; β matters less and ω barely touches the <i>income</i> Gini — it acts on the <i>wealth</i> stock instead (see UBC vs cash). First-order explains ${(m.linear_r2*100).toFixed(0)}% of the variance; the rest is interactions. These are the levers worth pinning down first.</div>`;
+      bar("c1",["Cash UBI","UBC"],[{l:"Gini p5",d:[m.cash_gini[0],m.ubc_gini[0]],c:C.grey},{l:"Gini p95",d:[m.cash_gini[1],m.ubc_gini[1]],c:C.ubc}],"Personal Gini at horizon (p5–p95)");
     }
   } else if(cur.tab==="assume"){
     box.innerHTML=`<h3>Key assumptions — all inspectable &amp; swappable</h3>

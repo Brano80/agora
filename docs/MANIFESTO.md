@@ -197,6 +197,8 @@ consistency, never a forecast.*
 
 ## Changelog
 
+- **2026-06-17 (engine credibility upgrades A/B/C)** — Three additions hardening the data. (A) **Endogenous wealth accumulation** (`omega`, default 0.15): no-policy & cash top-10% wealth share now CONCENTRATES with the rising capital share instead of staying flat (DE 55.5→60.7% over 30y) — removes the "flat baseline" objection and makes the UBC comparison conservative. The cross-section was uninformative (R² .06, wrong sign), so the default is a documented r>g value with a wide MC prior. (B) **Joint uncertainty + sensitivity**: the Monte-Carlo now samples all six assumptions together and the UBC-beats-cash verdict survives the FULL joint prior (UBC Gini p5–p95 0.01–0.20 vs cash 0.25–0.39, non-overlapping); a first-order sensitivity ranking shows the investment response (C1) drives ~50% of outcome variance, capex ~28%, β ~11%, ω ~0% on income (it acts on wealth). (C) **Sourced AI exposure**: sector exposure now from the OECD (2024) Sectoral Taxonomy of AI Intensity (NACE A38) + Felten-Raj-Seamans (2021) AIIE — exposure is *cognitive*, so Industry falls 0.70→0.45 and services rise. 196 tests, gate exact (~7e-9). Findings **F17–F19**. Dashboard regenerated.
+
 - **2026-06-07 (fiscal fix, post-backtest)** — Re-calibrated theta to the fiscal balance (debt-stabilising) instead of the Gini, fixing the debt-crash F9 flagged. Government debt now bounded/realistic; personal Gini still anchored by the distribution module. Policy frontier now UBC-dominated across intensities. 127 tests.
 
 - **2026-06-07 (first live backtest)** — Ran the model against real 2010-2019 history (DE, FR). GDP reproduced to ~1%; government debt off ~30% (theta over-loaded onto the Gini anchor). Added finding **F9**; flagged F2 (fiscal) as directional-only pending a proper government block. Demand/distribution findings hold.
@@ -330,6 +332,41 @@ observed disposable Gini via the measured wedge; OFF by default (headline-
 affecting), gate-clean.
 
 ---
+
+## F19 (2026-06-17) — AI exposure is cognitive, not robotic: grounding it moves the shock from factories to offices
+
+Replacing the round-number sectoral exposure guess [0.30/0.70/0.20/0.50/0.90/0.40]
+with sourced values from the OECD (2024) *Sectoral Taxonomy of AI Intensity* (NACE
+A38 High/Medium/Low) cross-referenced with Felten-Raj-Seamans (2021) AIIE gives
+[0.25/0.45/0.25/0.45/0.80/0.55]. The substantive correction: **Industry/manufacturing
+falls 0.70→0.45 and cognitive services rise** — AI/ML exposure hits information,
+finance, professional and public-service work, not the assembly line (that is robot
+automation, a different measure). The sectoral decoupling story is now data-grounded
+and the exposure column links to its source. Swappable; gate unaffected.
+
+## F18 (2026-06-17) — the verdict survives the FULL joint assumption space, and we can name what drives it
+
+Sampling all six uncertain assumptions JOINTLY (labour-share floor, capex growth,
+investment response, β, ω, consumption propensity), UBC's Gini band (p5–p95 ≈
+0.01–0.20) sits entirely below cash UBI's (≈ 0.25–0.39) — "owning beats receiving"
+is not an artifact of any one prior. A first-order (correlation-based) sensitivity
+decomposition ranks the drivers of the UBC outcome: the **investment response (C1)
+~50%**, AI capex growth ~28%, β ~11%, labour-share floor ~10%; ω is ~0% on the
+*income* Gini because it acts on the *wealth* stock. The single most important
+parameter to pin down empirically is therefore the capex-dilution elasticity, not β.
+
+## F17 (2026-06-17) — endogenising wealth concentration removes the "flat baseline" and strengthens UBC
+
+The old model held the top-10% WEALTH share constant unless UBC acted, so no-policy
+and cash were flat lines — a fair criticism ("why is the baseline conveniently
+flat?"). Adding ω (capital-share → wealth-concentration, mirroring β on the stock,
+default 0.15) makes wealth CONCENTRATE on its own as the capital share rises: DE
+no-policy top-10% wealth share now drifts 55.5→60.7% over 30y, cash tracks it, and
+only UBC collapses it (to ~20%). This makes the counterfactual *worse* without
+policy, so it is conservative for UBC — the "only ownership touches wealth" result
+is now shown against a deteriorating, not static, baseline. The cross-section is
+uninformative (slope −0.26, R² .06, confounded like β), so ω is a documented r>g
+default with a wide Monte-Carlo prior, not a spurious point estimate.
 
 ## F16 (2026-06-14) — grounding beta refines the headline: ownership is the durable UBC win, income compression is conditional
 

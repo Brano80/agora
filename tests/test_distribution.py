@@ -91,11 +91,42 @@ def test_wealth_distribution_only_ubc_compresses_it():
     cash_end = runs["AI + Cash UBI"].dist.periods[-1].reported["top10_wealth_share"]
     nopol_end = runs["AI shift, no policy"].dist.periods[-1].reported["top10_wealth_share"]
     ubc_end = runs["AI + Universal Basic Capital"].dist.periods[-1].reported["top10_wealth_share"]
-    assert abs(cash_end - w0) < 0.02           # cash UBI doesn't move wealth concentration
-    assert abs(nopol_end - w0) < 0.02          # nor does doing nothing
-    assert ubc_end < w0 - 0.2                  # UBC collapses top-wealth share
+    # With the endogenous wealth channel (omega>0), the capital-share rise
+    # concentrates wealth EQUALLY across no-policy and cash (flows don't touch
+    # ownership), so cash TRACKS no-policy - it does not socialise capital.
+    assert abs(cash_end - nopol_end) < 0.01    # cash UBI tracks no-policy on WEALTH
+    assert cash_end >= w0 - 0.01               # cash does NOT reduce concentration (rises with capital share)
+    assert ubc_end < nopol_end - 0.2           # only UBC collapses the top-wealth share
+    assert ubc_end < w0 - 0.2                  # UBC ends far below baseline
     assert (runs["AI + Universal Basic Capital"].dist.periods[-1].reported["wealth_gini"]
             < runs["AI + Cash UBI"].dist.periods[-1].reported["wealth_gini"])
+
+
+def test_omega_endogenous_wealth_concentration():
+    """omega=0 freezes no-policy wealth (legacy); omega>0 makes it concentrate as
+    the capital share rises - even with no policy - which is what makes the flat
+    baseline defensible and strengthens the UBC comparison."""
+    from orchestrator import AgoraOrchestrator
+    from modules.sfc_core import SFCCore
+    from modules.distribution import DistributionModule
+    from modules.input_output import InputOutputModule
+
+    def nopol_wealth(omega):
+        mods = [SFCCore(base_year=2019),
+                DistributionModule(base_year=2019, omega=omega),
+                InputOutputModule(base_year=2019)]
+        o = AgoraOrchestrator(geo="DE", year=2019, modules=mods,
+                              allow_live=False, strict=True)
+        o.load_data()
+        runs = {r.scenario: r for r in o.run_ubc_experiment(horizon=30)}
+        d = runs["AI shift, no policy"].dist.periods
+        return d[0].reported["top10_wealth_share"], d[-1].reported["top10_wealth_share"]
+
+    w0_off, wend_off = nopol_wealth(0.0)
+    assert abs(wend_off - w0_off) < 1e-9               # omega=0 -> frozen (backward-compatible)
+    w0_on, wend_on = nopol_wealth(0.15)
+    assert wend_on > w0_on + 0.02                      # omega>0 -> concentrates
+    assert 0.10 <= wend_on <= 0.99                     # stays in bounds
 
 
 # --- optional true MARKET-Gini anchor (OECD IDD), default OFF --------------- #

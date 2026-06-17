@@ -113,7 +113,8 @@ class DistributionModule(Module):
 
     def __init__(self, beta: float = 0.13, gamma: float = 0.5,
                  base_year: int = 2019, sfc: Optional[SFCCore] = None,
-                 gini_market_anchor: Optional[float] = None):
+                 gini_market_anchor: Optional[float] = None,
+                 omega: float = 0.15):
         # beta default 0.13 = the live OECD/IDD market-Gini within-country FE
         # estimate (2026-06-14, F15) - the conceptually-correct (pre-tax)
         # anchor. It is WEAK (R^2~0.02: the capital share barely moves market
@@ -133,6 +134,20 @@ class DistributionModule(Module):
         # reproduces the observed disposable Gini exactly. Headline-affecting, so
         # OFF by default until explicitly enabled and re-reviewed.
         self.gini_market_anchor = gini_market_anchor
+        # omega = capital-share -> WEALTH-concentration elasticity. beta drifts
+        # MARKET INCOME inequality with the capital share; omega mirrors it on the
+        # STOCK: as the capital share rises, wealth concentrates (differential
+        # saving / r>g) even with NO policy. omega=0 reproduces the legacy
+        # behaviour (no-policy wealth share frozen).
+        #   GROUNDING: the cross-section (top-10 wealth share vs capital share, 27
+        #   EU members) is UNINFORMATIVE - slope -0.26, R^2 0.06, wrong sign for
+        #   the within-country mechanism (national wealth institutions confound it,
+        #   exactly as for beta, F9/F15). So omega is NOT set from the cross-
+        #   section; the default 0.15 is a CONSERVATIVE r>g / differential-saving
+        #   value (DE no-policy top-10 share +~5pp over the 30y shock - modest vs
+        #   observed historical wealth-concentration trends). Swappable; the
+        #   Monte-Carlo prior spans 0.0-0.40 so the verdict is robust across it.
+        self.omega = omega
 
     def declares_inputs(self) -> List[str]:
         return ["hh_disposable", "net_wages", "net_profits", "ubi",
@@ -212,7 +227,12 @@ class DistributionModule(Module):
             }
             # WEALTH (stock) distribution — the dimension UBC actually targets.
             phi = rep.get("swf_share", 0.0)
-            w10 = w10_0 - (w10_0 - 0.10) * phi        # socialised capital is equal-held
+            # (1) ENDOGENOUS concentration: wealth concentrates as the capital
+            #     share rises (omega) - happens even with no policy. (2) SOCIAL-
+            #     ISATION: the citizens' fund moves capital into equal hands (phi).
+            w10_market = w10_0 + self.omega * (kappa - kappa0)
+            w10_market = min(max(w10_market, 0.10), 0.99)
+            w10 = w10_market - (w10_market - 0.10) * phi   # socialised capital is equal-held
             w10 = min(max(w10, 0.10), 0.99)
             # 2-group (top 10% vs bottom 90%) wealth Gini from the top share
             top_pc, rest_pc = w10 / 0.10, (1.0 - w10) / 0.90

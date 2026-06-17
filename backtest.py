@@ -25,6 +25,8 @@ the OLS, the grounding, and the harness mechanics.
 """
 from __future__ import annotations
 
+import os
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -151,6 +153,31 @@ def estimate_beta_cross_section(geos: List[str], year: int = 2019,
         if "labour_share" in v and "gini_disp_income" in v:
             xs.append(1.0 - v["labour_share"] / 100.0)   # capital share
             ys.append(v["gini_disp_income"] / 100.0)      # Gini (0-1)
+    return (*_ols(xs, ys), len(xs))
+
+
+def estimate_omega_cross_section(geos: List[str], year: int = 2019
+                                 ) -> Tuple[float, float, float, int]:
+    """Fit omega: regress the observed top-10% WEALTH share on the capital share
+    across countries (from the calibrated snapshots). Grounds the wealth-
+    concentration elasticity the way estimate_beta does for income.
+    Returns (omega, intercept, R^2, n)."""
+    import json
+    cache = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "cache")
+    xs, ys = [], []
+    for g in geos:
+        fp = os.path.join(cache, f"{g.lower()}_baseline_{year}.json")
+        if not os.path.exists(fp):
+            continue
+        try:
+            ser = json.load(open(fp, encoding="utf-8")).get("series", {})
+        except Exception:
+            continue
+        if "labour_share" in ser and "top10_wealth_share" in ser:
+            ls = ser["labour_share"]["value"]
+            w10 = ser["top10_wealth_share"]["value"]
+            xs.append(1.0 - ls / 100.0)   # capital share
+            ys.append(w10)                # top-10 wealth share (already 0-1)
     return (*_ols(xs, ys), len(xs))
 
 

@@ -1,0 +1,19 @@
+{
+  "sectors": ["Agriculture", "Industry", "Construction", "Distribution & transport", "ICT, finance & business", "Public & other services"],
+  "exposure": [0.25, 0.45, 0.25, 0.45, 0.80, 0.55],
+  "scale": "0-1 relative AI-exposure index",
+  "source": "OECD (2024), A Sectoral Taxonomy of AI Intensity, OECD Artificial Intelligence Papers No.30 - NACE A38 'AI intensity summary indicator' (High/Medium/Low); cross-referenced with Felten, Raj & Seamans (2021), AI Industry Exposure (AIIE), Strategic Management Journal 42(12):2195-2217.",
+  "source_url": "https://www.oecd.org/content/dam/oecd/en/publications/reports/2024/12/a-sectoral-taxonomy-of-ai-intensity_c2baae71/1f6377b5-en.pdf",
+  "method": "OECD A38 AI-intensity classes scored High=0.90 / Medium=0.55 / Low=0.25 and averaged across the A38 sub-sectors falling in each of the 6 NACE-aggregated sectors. Manufacturing (Industry) is mostly Low/Medium with only Computer & electronics High -> 0.45 (AI exposure is cognitive, not robotic). Agriculture and public/education/health sit outside the OECD paper's manufacturing+business-services scope; assigned Low / Medium respectively from the Felten et al. AIOE/AIIE consensus.",
+  "mapping": {
+    "Agriculture": "NACE A (outside OECD scope; Low per AIOE) = 0.25",
+    "Industry": "NACE B-E A38 manuf: 5 Low, 6 Medium, 1 High (Computer&electronics) -> avg 0.45",
+    "Construction": "NACE F 41-43: Low -> 0.25",
+    "Distribution & transport": "NACE G-I: Wholesale&retail M, Transport M, Hotels L -> avg 0.45",
+    "ICT, finance & business": "NACE J-N: Media/Telecom/IT/Finance/Legal/R&D High, RealEstate/Other/Admin Medium -> avg 0.80",
+    "Public & other services": "NACE O-S (outside OECD scope; Medium per AIOE) = 0.55"
+  },
+  "supersedes": "legacy hardcoded [0.30, 0.70, 0.20, 0.50, 0.90, 0.40] (round-number assumption)",
+  "pulled": "2026-06-17",
+  "vintage": "OECD Dec 2024 (No.30); Felten et al. 2021 (SMJ)"
+}

@@ -59,3 +59,19 @@ def test_ai_shock_concentrates_in_exposed_sectors(runs):
         f"{geo}: AI shock should hit ICT harder than construction"
     # the exposed-sector VA share is reported and in (0, 1)
     assert 0.0 < nopol["ai_exposed_va_share"] < 1.0
+
+
+def test_ai_exposure_is_sourced_not_assumed():
+    """Phase C: sector AI exposure comes from the OECD/Felten data file (cognitive
+    exposure - manufacturing mid, services high), not the legacy robot-automation guess."""
+    from orchestrator import AgoraOrchestrator
+    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    o.load_data()
+    ai = {r.scenario: r for r in o.run_triad(horizon=10)}["AI shift, no policy"]
+    m = ai.io.meta
+    expo = m["automation_exposure"]
+    # the data-grounded values (not the old 0.30/0.70/0.20/0.50/0.90/0.40)
+    assert abs(expo["Industry"] - 0.45) < 1e-9          # AI != robots: manufacturing mid
+    assert abs(expo["ICT, finance & business"] - 0.80) < 1e-9
+    assert expo["ICT, finance & business"] > expo["Industry"] > expo["Construction"]
+    assert "OECD" in m["ai_exposure_source"] and m["ai_exposure_url"].startswith("http")

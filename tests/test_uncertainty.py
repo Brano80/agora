@@ -39,3 +39,27 @@ def test_ubc_beats_cash_across_the_whole_uncertainty_range():
     # and only UBC builds citizen wealth, under every draw
     assert ubc["citizen_wealth_pc"].p5 > 0
     assert cash["citizen_wealth_pc"].p95 == 0
+
+
+def test_omega_is_a_sampled_prior():
+    """Phase A's wealth elasticity is part of the joint uncertainty space."""
+    from uncertainty import PRIORS
+    assert "omega" in PRIORS
+    lo, hi = PRIORS["omega"]
+    assert lo == 0.0 and hi > lo                        # prior includes 'no concentration'
+
+
+def test_sensitivity_ranks_drivers_and_shares_sum_to_one():
+    """The sensitivity analysis names WHICH assumption drives the verdict."""
+    from uncertainty import sensitivity
+    s = sensitivity("DE", form="ubc", horizon=20, n=150, seed=2, metric="gini")
+    drivers = s["drivers"]
+    assert {d["param"] for d in drivers} >= {"beta", "omega", "inv_elasticity",
+                                             "capex_growth", "labour_share_end", "a1_w"}
+    # ranked descending by explained variance
+    r2s = [d["r2"] for d in drivers]
+    assert r2s == sorted(r2s, reverse=True)
+    # normalised shares sum to ~1
+    assert abs(sum(d["share"] for d in drivers) - 1.0) < 1e-6
+    # the model is mostly first-order explainable
+    assert 0.3 <= s["linear_r2"] <= 1.0

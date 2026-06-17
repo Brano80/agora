@@ -66,6 +66,16 @@ def load_io(geo: str) -> Optional[dict]:
         return json.load(fh)
 
 
+def load_sector_exposure() -> Optional[dict]:
+    """Sourced AI-exposure-by-sector (OECD A38 taxonomy + Felten AIIE), shared by
+    all countries. Returns None if absent (caller falls back to the io file)."""
+    path = os.path.join(_CACHE, "..", "sector_ai_exposure.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 class InputOutputModule(Module):
     name = "input_output"
 
@@ -96,6 +106,11 @@ class InputOutputModule(Module):
         fd = io["final_demand_shares"]
         ls0 = io["labour_share_sector"]
         expo = io["automation_exposure"]
+        expo_src = {"source": "legacy assumption", "url": ""}
+        _se = load_sector_exposure()
+        if _se and _se.get("sectors") == sectors:
+            expo = list(_se["exposure"])               # data-grounded, sourced
+            expo_src = {"source": _se.get("source", ""), "url": _se.get("source_url", "")}
 
         # REAL technical coefficients (FIGARO/Eurostat naio, via the figaro
         # connector) when present; else the legacy common-supplier construction
@@ -157,4 +172,6 @@ class InputOutputModule(Module):
                                     else "supply-shares construction"),
                   "multipliers": dict(zip(sectors, mult)),
                   "automation_exposure": dict(zip(sectors, expo)),
+                  "ai_exposure_source": expo_src["source"],
+                  "ai_exposure_url": expo_src["url"],
                   "notes": io.get("_meta", {})})

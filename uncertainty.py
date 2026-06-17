@@ -41,10 +41,15 @@ PRIORS: Dict[str, Tuple[float, float]] = {
     # Monte-Carlo prior stays WIDE here to carry the structural-shock uncertainty
     # the weak R^2 reflects. UBC-vs-cash band-separated across the span (F12).
     "beta":             (0.1, 1.0),
+    # omega = capital-share -> WEALTH-concentration elasticity (Phase A). The
+    # cross-section is uninformative (R^2 .06, wrong sign), so the prior is WIDE
+    # and includes 0 (no endogenous concentration) up to a strong r>g regime.
+    "omega":            (0.0, 0.40),
     # (gamma removed 2026-06-11: transfer incidence is now EXACT in the
     # distribution module, not an assumed compression elasticity)
     "a1_w":             (0.90, 0.98),   # workers' marginal propensity to consume
 }
+_OUT_KEYS = ("gini", "poverty", "citizen_wealth_pc", "dividend_pc", "gdp_end")
 _POLICY = {"ubc": dict(ubc=True), "cash_ubi": dict(ubi=True), "none": dict()}
 
 
@@ -73,20 +78,18 @@ def _pctile(xs: List[float], q: float) -> float:
     return xs[lo] + frac * (xs[hi] - xs[lo])
 
 
-def monte_carlo(geo: str = "DE", form: str = "ubc", tau: float = 0.40,
-                year: int = 2019, horizon: int = 30, n: int = 200,
-                seed: int = 0, priors: Optional[dict] = None
-                ) -> Tuple[Dict[str, Band], int, int]:
-    """Return ({metric: Band}, n_draws_used, n_skipped). Each draw samples the
-    priors, builds + runs the gated model, and contributes to the bands."""
+def _run_draws(geo: str, form: str, tau: float, year: int, horizon: int,
+               n: int, seed: int, priors: Optional[dict]):
+    """Sample the JOINT prior, run the gated model per draw, and return
+    (input_samples, {metric: [outputs]}, n_used, n_skipped). One sampling loop
+    shared by the bands (monte_carlo) and the sensitivity ranking."""
     rng = random.Random(seed)
     priors = priors or PRIORS
     pol = _POLICY[form]
     rows = DBnomicsConnector(allow_live=False).fetch(geo, year)
     data = {k: v["value"] for k, v in rows.items()}
-
-    keys = ("gini", "poverty", "citizen_wealth_pc", "dividend_pc", "gdp_end")
-    acc: Dict[str, List[float]] = {k: [] for k in keys}
+    inputs: List[Dict[str, float]] = []
+    acc: Dict[str, List[float]] = {k: [] for k in _OUT_KEYS}
     used, skipped = 0, 0
     for _ in range(n):
         d = {k: rng.uniform(*v) for k, v in priors.items()}
@@ -101,7 +104,7 @@ def monte_carlo(geo: str = "DE", form: str = "ubc", tau: float = 0.40,
             if max(r.max_residual for r in check_run(res, strict=False)) > 1.0:
                 skipped += 1
                 continue
-            dist = DistributionModule(beta=d["beta"],
+            dist = DistributionModule(beta=d["beta"], omega=d.get("omega", 0.15),
                                       base_year=year).run(scen, data,
                                                           {"sfc_core": res})
         except Exception:
@@ -114,7 +117,55 @@ def monte_carlo(geo: str = "DE", form: str = "ubc", tau: float = 0.40,
         acc["citizen_wealth_pc"].append(m["swf_stake"] * 1e6 / pop)
         acc["dividend_pc"].append(m["transfer_pool"] * 1e6 / pop)
         acc["gdp_end"].append(m["gdp"])
+        inputs.append(d)
         used += 1
+    return inputs, acc, used, skipped
+
+
+def monte_carlo(geo: str = "DE", form: str = "ubc", tau: float = 0.40,
+                year: int = 2019, horizon: int = 30, n: int = 200,
+                seed: int = 0, priors: Optional[dict] = None
+                ) -> Tuple[Dict[str, Band], int, int]:
+    """Return ({metric: Band}, n_draws_used, n_skipped) over the JOINT prior."""
+    _, acc, used, skipped = _run_draws(geo, form, tau, year, horizon, n, seed, priors)
     bands = {k: Band(k, _pctile(v, 5), _pctile(v, 50), _pctile(v, 95), len(v))
              for k, v in acc.items()}
     return bands, used, skipped
+
+
+def _pearson(xs: List[float], ys: List[float]) -> float:
+    n = len(xs)
+    if n < 3:
+        return 0.0
+    mx = sum(xs) / n
+    my = sum(ys) / n
+    sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    sxx = sum((x - mx) ** 2 for x in xs)
+    syy = sum((y - my) ** 2 for y in ys)
+    den = (sxx * syy) ** 0.5
+    return (sxy / den) if den > 0 else 0.0
+
+
+def sensitivity(geo: str = "DE", form: str = "ubc", tau: float = 0.40,
+                year: int = 2019, horizon: int = 30, n: int = 400,
+                seed: int = 0, priors: Optional[dict] = None,
+                metric: str = "gini") -> Dict[str, object]:
+    """First-order (correlation-based) global sensitivity: across the JOINT
+    draws, how much does each prior input move the chosen output? Returns each
+    input's correlation (sign + strength) and its share of explained variance
+    (squared correlation, normalised), ranked - i.e. WHICH assumption drives the
+    verdict. Honest first-order approximation (independent uniform inputs)."""
+    priors = priors or PRIORS
+    inputs, acc, used, skipped = _run_draws(geo, form, tau, year, horizon, n, seed, priors)
+    ys = acc.get(metric, [])
+    drivers = []
+    for k in priors:
+        xs = [d[k] for d in inputs]
+        r = _pearson(xs, ys)
+        drivers.append({"param": k, "corr": r, "r2": r * r})
+    tot = sum(x["r2"] for x in drivers) or 1.0
+    for x in drivers:
+        x["share"] = x["r2"] / tot
+    drivers.sort(key=lambda x: -x["r2"])
+    return {"metric": metric, "n": used, "skipped": skipped,
+            "drivers": drivers, "linear_r2": min(1.0, sum(x["r2"] for x in drivers))}
