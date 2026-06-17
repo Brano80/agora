@@ -15,8 +15,10 @@ from modules.distribution import DistributionModule
 from modules.input_output import InputOutputModule
 from scout.checks import snapshot_geos
 from schema.accounts import AGGREGATE_GEOS
+from region import MultiRegion
 
 H = 30
+Q2_EXCLUDE = {"IE", "LU"}   # MNC-inflated / entrepot GDP distorts cross-country comparison
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def _provenance(geo):
@@ -86,10 +88,40 @@ def geo_data(geo):
         fr.append({"name": p.name, "form": p.form, "gini": round(mt["gini"], 3),
                    "gdp": round(mt["gdp_end"]/1e6, 2), "pov": round(mt["poverty"], 3), "front": bool(p.on_frontier)})
     res["frontier"] = fr
-    rows, _ = o.validate_baseline(horizon=H)
-    res["valid"] = [{"m": r.metric, "t": round(r.target, 1), "v": round(r.model, 1), "ok": bool(r.ok)} for r in rows]
+    rows, run = o.validate_baseline(horizon=H)
+    m0 = run.result.periods[0].reported
+    relabel = {"Gov debt seed / full GDP (%)": "Government debt / GDP (%)"}
+    valid = []
+    for r in rows:
+        valid.append({"m": relabel.get(r.metric, r.metric), "t": round(r.target, 1), "v": round(r.model, 1), "ok": bool(r.ok)})
+        if r.metric == "Investment (GFCF)":
+            inv = float(m0.get("inventories", 0.0))
+            tgt = float(d.get("gcf", 0.0)) - float(d.get("gfcf", 0.0))
+            if abs(tgt) < 1e-9: tgt = inv
+            valid.append({"m": "Changes in inventories", "t": round(tgt, 1), "v": round(inv, 1),
+                          "ok": abs(inv - tgt) <= max(1.0, 1e-6 * abs(tgt))})
+    res["valid"] = valid
     res["prov"] = _provenance(geo)
     return res
+
+def q2_data(geos):
+    """Live between-country Gini (national vs pooled EU dividend), IE/LU excluded."""
+    elig = tuple(g for g in geos if g.upper() not in Q2_EXCLUDE)
+    if len(elig) < 2:
+        return None
+    mr = MultiRegion(geos=elig, year=2019, allow_live=False)
+    out = {"excluded": sorted(g.upper() for g in geos if g.upper() in Q2_EXCLUDE), "tau": 40}
+    runtime_excl = set()
+    for form in ("cash", "ubc"):
+        dc = mr.dividend_comparison(form=form, tau=0.40, horizon=H)
+        srt = dc.summary()
+        out[form + "_nat"] = round(srt["gini_national_end"], 4)
+        out[form + "_pool"] = round(srt["gini_global_end"], 4)
+        runtime_excl |= {x.upper() for x in dc.excluded}
+    out["excluded"] = sorted(set(out["excluded"]) | runtime_excl)
+    out["n"] = len(elig) - len(runtime_excl)
+    return out
+
 
 def mc_de(n=15):
     random.seed(1); cg=[]; ug=[]; cp=[]; up=[]
@@ -114,7 +146,7 @@ def main():
             print("skip", g, "->", e)
     DATA["meta"]["geos"] = sorted(DATA["geos"].keys())
     DATA["global"] = {
-        "q2": {"cash_nat": 0.207, "cash_pool": 0.102, "ubc_nat": 0.209, "ubc_pool": 0.100},
+        "q2": q2_data(geos),
         "mc": mc_de() if "DE" in DATA["geos"] else None,
         "assumptions": [
             ["Capital-share → market-inequality elasticity (β)", "0.13 (prior 0.1–1.0)", "Live OECD market-Gini FE estimate; verdict is band-separated across the prior (F15/F16)."],
@@ -123,6 +155,10 @@ def main():
             ["AI capex growth", "~6%/yr", "Damped from Epoch frontier-compute growth (~4.2×/yr)."],
             ["Fund reinvestment (headline)", "0 (pay-out)", "C1: with reinvestment UBC ends a larger economy (F14)."],
             ["Horizon", "30 years", "Scenario comparison, not a forecast."],
+            ["AI exposure by sector", "0.30 / 0.70 / 0.20 / 0.50 / 0.90 / 0.40", "Assumption (Agri / Industry / Constr / Distrib / ICT-finance / Public). The FIGARO matrix &amp; sector labour shares are REAL; the exposure weights are assumed."],
+            ["Per-sector labour-share floor", "2%", "No sector's labour share falls below 2% under the AI shift (why high-exposure sectors bottom out rather than hit zero)."],
+            ["Wealth-ownership dynamics", "fixed unless UBC acts", "No-policy &amp; cash hold the top-10% wealth share constant; only an ownership transfer (UBC) moves it. Conservative for UBC."],
+            ["Input-output tables", "FIGARO cp1700 ×17, cp1750 ×10", "Per-country Eurostat symmetric IO table (product×product or industry×industry, whichever Eurostat publishes). Cross-country sector structure mixes both constructs."],
         ],
     }
     html = TEMPLATE.replace("__DATA__", json.dumps(DATA, separators=(",", ":"), ensure_ascii=False)) \
@@ -209,6 +245,7 @@ function bar(id, labels, sets, ylabel){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{usePointStyle:true,boxWidth:8}}},scales:{y:{title:{display:!!ylabel,text:ylabel}}}}}));
 }
 function fmt(n,d=0){return Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});}
+function vfmt(n){return Math.abs(n)>=1000?fmt(n,0):fmt(n,1);}
 
 function render(){
   killCharts();
@@ -222,12 +259,12 @@ function render(){
       <div class="card"><div class="v">€${p.gdp}tn</div><div class="l">GDP (2019, current prices)</div></div>
       <div class="card"><div class="v">${p.ls}%</div><div class="l">Labour share of GDP</div></div>
       <div class="card"><div class="v">${p.gini}</div><div class="l">Gini, disposable income</div></div>
-      <div class="card"><div class="v">${p.wealth}%</div><div class="l">Top-10% wealth share (OECD)</div></div>
+      <div class="card"><div class="v">${p.wealth}%</div><div class="l">Top-10% wealth share (OECD${(()=>{const w=(g.prov||[]).find(r=>r.s==='top10_wealth_share');return w&&w.yr?', '+w.yr:'';})()})</div></div>
       <div class="card"><div class="v">${p.debt}%</div><div class="l">Govt debt / GDP</div></div>
       <div class="card"><div class="v">${p.pop}M</div><div class="l">Population</div></div></div>
       <h3>Baseline validation (year-0 reproduces the national accounts)</h3>
       <table><tr><th>Metric</th><th>Target</th><th>Model</th><th>OK</th></tr>
-      ${g.valid.map(r=>`<tr><td>${r.m}</td><td>${fmt(r.t,1)}</td><td>${fmt(r.v,1)}</td><td>${r.ok?'<span class="ok">✓</span>':'<span class="bad">✗</span>'}</td></tr>`).join("")}</table>
+      ${g.valid.map(r=>`<tr><td>${r.m}</td><td>${vfmt(r.t)}</td><td>${vfmt(r.v)}</td><td>${r.ok?'<span class="ok">✓</span>':'<span class="bad">✗</span>'}</td></tr>`).join("")}</table>
       <div class="note">Calibrated to live 2019 data; back-tested to 2010–2019 history (~1% GDP error). Every scenario below is consistency-gated.</div>
       <h3>Data provenance — every parameter sourced &amp; swappable</h3>
       <table><tr><th>Series</th><th>Value</th><th>Provider</th><th>Source</th></tr>
@@ -237,7 +274,8 @@ function render(){
     box.innerHTML=`<h3>The Great Decoupling — labour share vs output (no policy)</h3>
       <div class="chartbox"><canvas id="c1"></canvas></div>
       <h3>Inequality under each scenario (personal Gini)</h3>
-      <div class="chartbox"><canvas id="c2"></canvas></div>`;
+      <div class="chartbox"><canvas id="c2"></canvas></div>
+      <div class="note">The settlement scenario applies policy from year 0, so its Gini starts below the no-policy baseline. The labour-share line floors at 30% (an assumption — see Assumptions tab).</div>`;
     line("c1",yr,[{l:"Labour share % (AI shift)",d:g.triad.ls_ai,c:C.nopol},{l:"GDP index (AI shift, 2019=100)",d:g.triad.gdp_ai,c:C.blue}]);
     line("c2",yr,[{l:"Baseline",d:g.triad.gini_base,c:C.grey},{l:"AI shift, no policy",d:g.triad.gini_ai,c:C.nopol},{l:"AI + settlement",d:g.triad.gini_settle,c:C.ubc}]);
   } else if(cur.tab==="ubc"){
@@ -247,9 +285,10 @@ function render(){
       <div class="card"><div class="v">${u.fund[i]}%</div><div class="l">Citizens' fund share of capital (UBC, yr ${lastYr})</div></div>
       <div class="card"><div class="v">€${fmt(u.ubc_div[i])} vs €${fmt(u.cash_div[i])}</div><div class="l">UBC dividend vs cash transfer / person (yr ${lastYr})</div></div></div>
       <h3>Flow vs stock — annual payment per citizen</h3><div class="chartbox"><canvas id="c1"></canvas></div>
-      <h3>Only ownership touches wealth — top-10% wealth share</h3><div class="chartbox"><canvas id="c2"></canvas></div>`;
+      <h3>Only ownership touches wealth — top-10% wealth share</h3><div class="chartbox"><canvas id="c2"></canvas></div>
+      <div class="note">Cash UBI (dashed) sits exactly on the No-policy line — cash flows don't change who owns capital, so the two coincide. Only UBC (an ownership transfer) bends the wealth curve down.</div>`;
     line("c1",yr,[{l:"Cash UBI transfer (€)",d:u.cash_div,c:C.cash},{l:"UBC dividend (€)",d:u.ubc_div,c:C.ubc}],"€ / person / yr");
-    line("c2",yr,[{l:"No policy",d:u.nopol_w,c:C.nopol},{l:"Cash UBI",d:u.cash_w,c:C.cash,dash:[6,4]},{l:"UBC",d:u.ubc_w,c:C.ubc}],"Top-10% wealth share (%)");
+    line("c2",yr,[{l:"No policy",d:u.nopol_w,c:C.nopol},{l:"Cash UBI",d:u.cash_w,c:C.cash,dash:[8,5],width:3},{l:"UBC",d:u.ubc_w,c:C.ubc}],"Top-10% wealth share (%)");
   } else if(cur.tab==="dist"){
     box.innerHTML=`<h3>Income share by decile at yr ${lastYr} (1 = poorest, 10 = richest)</h3>
       <div class="chartbox"><canvas id="c1"></canvas></div>
@@ -270,27 +309,28 @@ function render(){
   } else if(cur.tab==="frontier"){
     box.innerHTML=`<h3>Policy frontier — equality vs economy size (year ${lastYr})</h3>
       <div class="chartbox"><canvas id="c1"></canvas></div>
-      <div class="note">Lower Gini (right) and higher GDP (up) are both better. UBC policies dominate cash UBI and inaction; "no policy" is off the frontier.</div>`;
+      <div class="note">Lower Gini (right) and higher GDP (up) are both better. The frontier is <b>multi-objective</b> (growth, equality, stability, fiscal, resilience) — this view shows two of the five criteria, so a point that is off the frontier here can still look non-dominated in this 2-D slice. At <b>equal tax rate</b>, UBC dominates cash UBI on every criterion; "no policy" is off the frontier. Hover a point for its policy, intensity and outcomes.</div>`;
     const ctx=document.getElementById("c1");
-    const pt=(f,fl)=>g.frontier.filter(p=>p.form===f).map(p=>({x:p.gini,y:p.gdp,front:p.front}));
+    const pt=(f,fl)=>g.frontier.filter(p=>p.form===f).map(p=>({x:p.gini,y:p.gdp,front:p.front,name:p.name,pov:p.pov}));
     const ds=(arr,label,col,style)=>({label,data:arr,backgroundColor:col,pointStyle:style,radius:arr.map(a=>a.front?8:5),borderColor:'#1f2937',borderWidth:arr.map(a=>a.front?1.5:0)});
     charts.push(new Chart(ctx,{type:'scatter',data:{datasets:[
       ds(pt('ubc'),'UBC',C.ubc,'circle'),ds(pt('cash_ubi'),'Cash UBI',C.cash,'rect'),ds(pt('none'),'No policy',C.nopol,'triangle')]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{usePointStyle:true}},
-        tooltip:{callbacks:{label:c=>`Gini ${c.parsed.x}, GDP €${c.parsed.y}tn`}}},
+        tooltip:{callbacks:{label:c=>`${c.raw.name}${c.raw.front?' • on frontier':''}: Gini ${c.parsed.x}, GDP €${c.parsed.y}tn, poverty ${(c.raw.pov*100).toFixed(1)}%`}}},
         scales:{x:{reverse:true,title:{display:true,text:'Inequality — Gini (lower = better →)'}},y:{title:{display:true,text:'GDP at horizon (€tn, model scale)'}}}}}));
   } else if(cur.tab==="europe"){
     const q=DATA.global.q2;
-    box.innerHTML=`<h3>Between-country inequality: national vs pooled EU dividend (25 countries)</h3>
+    if(!q){box.innerHTML=`<div class="note">Between-country comparison needs the full multi-country build.</div>`;}
+    else{box.innerHTML=`<h3>Between-country inequality: national vs pooled EU dividend (${q.n} countries)</h3>
       <div class="chartbox"><canvas id="c1"></canvas></div>
-      <div class="note">A purely national AI dividend entrenches the gap between richer and poorer member states (Gini ~0.21); pooling the dividend across the Union roughly <b>halves</b> it under either form. Gated all-EU run; magnitudes are model-scale, not forecasts.</div>`;
-    bar("c1",["Cash UBI","Universal Basic Capital"],[{l:"National dividend",d:[q.cash_nat,q.ubc_nat],c:C.grey},{l:"Pooled EU dividend",d:[q.cash_pool,q.ubc_pool],c:C.ubc}],"Between-country Gini");
+      <div class="note">A purely national AI dividend entrenches the gap between richer and poorer member states (Gini ~0.21); pooling the dividend across the Union roughly <b>halves</b> it under either form. Dividend at τ=${q.tau}%. ${q.excluded&&q.excluded.length?('Excluded: '+q.excluded.join(', ')+' (MNC-inflated / entrepôt GDP distorts the cross-country comparison), matching the companion study.'):''} Gated all-EU run; magnitudes are model-scale, not forecasts.</div>`;
+    bar("c1",["Cash UBI","Universal Basic Capital"],[{l:"National dividend",d:[q.cash_nat,q.ubc_nat],c:C.grey},{l:"Pooled EU dividend",d:[q.cash_pool,q.ubc_pool],c:C.ubc}],"Between-country Gini");}
   } else if(cur.tab==="uncert"){
     const m=DATA.global.mc;
     if(!m){box.innerHTML=`<div class="note">Uncertainty band computed for DE (representative).</div>`;}
     else{box.innerHTML=`<h3>Robustness to the key assumption (β), Germany — ${m.n} draws across the full prior 0.1–1.0</h3>
       <div class="chartbox"><canvas id="c1"></canvas></div>
-      <div class="note">Even across the entire plausible range of the capital-share→inequality elasticity, UBC's outcome band sits below cash UBI's on both Gini and poverty at the horizon — the "owning beats receiving" verdict does not hinge on β. Bars show min–max across draws.</div>`;
+      <div class="note">Even across the entire plausible range of the capital-share→inequality elasticity, UBC's outcome band sits below cash UBI's on both Gini and poverty at the horizon — the "owning beats receiving" verdict does not hinge on β. Bars show min–max across draws. Robustness is computed for Germany as the reference economy and does not change with the country selector above.</div>`;
       bar("c1",["Cash UBI","UBC"],[{l:"Gini (min)",d:[m.cash_gini[0],m.ubc_gini[0]],c:C.grey},{l:"Gini (max)",d:[m.cash_gini[1],m.ubc_gini[1]],c:C.ubc}],"Personal Gini at horizon (range)");
     }
   } else if(cur.tab==="assume"){
