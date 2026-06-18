@@ -17,6 +17,7 @@ live data and validated against history.
 > in the accounts) before any result is reported.
 
 📄 **Read the study:** *Owning the Machine — A Governance of Abundance for Europe* (12 pp) → [`AGORA_Manifesto.pdf`](AGORA_Manifesto.pdf) · permanent copy: https://doi.org/10.5281/zenodo.20726928 · SSRN: (forthcoming)
+📋 **One-page policy brief:** [`AGORA_Policy_Brief_UBC.pdf`](AGORA_Policy_Brief_UBC.pdf) — practical paths to implement UBC and where the capital comes from.
 🔗 **Live dashboard:** https://brano80.github.io/agora/
 
 ---
@@ -30,6 +31,10 @@ Under an AI labour-share shock (Germany, 30-year scenario):
 - With fund **reinvestment**, the UBC economy ends *larger* than the cash economy — predistribution needn't cost growth.
 - A **pooled EU dividend** roughly **halves** between-country inequality.
 - Across a multi-objective frontier, **UBC policies dominate** both cash UBI and inaction.
+
+![UBC owns the policy frontier — equality and growth together (Germany, France, Slovakia)](AGORA_frontier_DE_FR_SK.png)
+
+*At equal cost, Universal Basic Capital is non-dominated across all five objectives (growth, equality, poverty, fiscal sustainability, stability); cash UBI and “do nothing” are dominated everywhere. Per-country charts: [DE](AGORA_frontier_DE.png).*
 
 ## How it's built
 - **Stock-flow-consistent core** + pluggable modules (distribution · input-output · AI-shock · citizens' fund · multi-region) through a common schema.
