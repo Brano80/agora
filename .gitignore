@@ -20,3 +20,7 @@ __pycache__/
 *_pdfcheck*.png
 _check_*.png
 # kept public: engine code, docs/, data/cache, tests/, AGORA_Manifesto.pdf, social_1_wealth.png
+LINKEDIN_STORY_SERIES.md
+LINKEDIN_POSTS_READY.md
+LINKEDIN_ARTICLES.md
+AGORA_Outreach_Emails.md
