@@ -1,0 +1,16 @@
+# Normalize line endings: store text as LF in the repo, force LF on checkout.
+# Kills the recurring CRLF<->LF "modified files" churn on this cross-platform repo.
+* text=auto eol=lf
+
+# Windows batch scripts must keep CRLF
+*.bat text eol=crlf
+
+# Binary assets — never normalize
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.xlsx binary
+*.xls  binary
