@@ -77,7 +77,7 @@ class AgoraOrchestrator:
                  allow_live: bool = True, strict: bool = True,
                  inv_elasticity: float = 0.0, fiscal_reaction: float = 0.0,
                  debt_target: Optional[float] = None, i_rate: Optional[float] = None,
-                 capital_tax_share: float = 0.0):
+                 capital_tax_share: float = 0.0, fund_payout: float = 0.0):
         self.geo = geo
         self.year = year
         self.inv_elasticity = float(inv_elasticity)
@@ -86,10 +86,13 @@ class AgoraOrchestrator:
         self.debt_target = debt_target
         self.i_rate = i_rate
         self.capital_tax_share = float(capital_tax_share)
+        self.fund_payout = float(fund_payout)   # SWF POMV draw (GPFG 3% / Alaska 5%); 0 = legacy
         self.modules = modules or [SFCCore(base_year=year,
                                            inv_elasticity=inv_elasticity,
                                            fiscal_reaction=fiscal_reaction,
-                                           debt_target=debt_target, i_rate=i_rate),
+                                           debt_target=debt_target, i_rate=i_rate,
+                                           fund_payout=fund_payout,
+                                           calib_kwargs={"capital_tax_share": capital_tax_share}),
                                    DistributionModule(base_year=year),
                                    InputOutputModule(base_year=year)]
         self.store = store
@@ -119,7 +122,8 @@ class AgoraOrchestrator:
             self.load_data()
         return calibrate(self._data, geo=self.geo, base_year=self.year,
                          sources=self._sources,
-                         capital_tax_share=self.capital_tax_share)
+                         capital_tax_share=self.capital_tax_share,
+                         i_rate=(self.i_rate if self.i_rate is not None else 0.0))
 
     def run_scenario(self, scenario: Scenario) -> ScenarioRun:
         if self._data is None:
@@ -262,9 +266,11 @@ class AgoraOrchestrator:
 def build(geo: str = "DE", year: int = 2019, allow_live: bool = True,
           db_path: Optional[str] = None, strict: bool = True,
           fiscal_reaction: float = 0.0, debt_target: Optional[float] = None,
-          i_rate: Optional[float] = None, capital_tax_share: float = 0.0) -> AgoraOrchestrator:
+          i_rate: Optional[float] = None, capital_tax_share: float = 0.0,
+          fund_payout: float = 0.0) -> AgoraOrchestrator:
     store = Store(db_path) if db_path is not None else None
     return AgoraOrchestrator(geo=geo, year=year, store=store,
                              allow_live=allow_live, strict=strict,
                              fiscal_reaction=fiscal_reaction, debt_target=debt_target,
-                             i_rate=i_rate, capital_tax_share=capital_tax_share)
+                             i_rate=i_rate, capital_tax_share=capital_tax_share,
+                             fund_payout=fund_payout)

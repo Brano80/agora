@@ -193,3 +193,39 @@ def test_phase6_broad_base_and_full_block_via_orchestrator():
     debt_off = off.run_scenario(make_triad(off.params(), horizon=40)[1]
                                 ).result.periods[-1].reported["gov_debt_gdp"]
     assert debt_on < debt_off - 20                        # the block tames the runaway
+
+
+def test_swf_pomv_payout_grounds_the_dividend(orch):
+    """SWF calibration: a GPFG/Alaska percent-of-market-value (POMV) payout makes the
+    citizens' fund pay a rule-based draw of its VALUE and REINVEST the rest, so it
+    compounds like a real sovereign wealth fund instead of paying out the full
+    domestic profit share. Gate exact; default OFF unchanged."""
+    from modules.sfc_core import SFCCore
+    from scenarios import make_ubc_experiment
+    p = orch.params(); pop = p.population
+    ubc = [s for s in make_ubc_experiment(p, horizon=30)
+           if "Universal Basic Capital" in s.name][0]
+
+    def run(fp):
+        res = SFCCore(base_year=2019, fund_payout=fp).run(ubc, orch._data)
+        assert max(r.max_residual for r in check_run(res, strict=False)) < 1.0   # gate exact
+        e = res.periods[-1].reported
+        return e["transfer_pool"] / pop * 1e6, e["swf_share"]
+
+    div_legacy, share_legacy = run(0.0)
+    div_pomv, share_pomv = run(0.03)            # Norway GPFG 3% fiscal rule
+    assert share_pomv > share_legacy            # POMV reinvests the rest -> fund compounds further
+    assert div_pomv < div_legacy                # a rule-based draw, not the full profit share
+
+
+def test_phase6_interest_reproduces_year0():
+    """Phase 6 (ii): with year-0 interest income folded into the calibration AND the
+    run calibrated at the same rate, the interest switch (i_rate>0) now reproduces
+    the base year too (it used to shift year-0). Closes the Phase-6 fiscal block."""
+    from orchestrator import AgoraOrchestrator
+    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True, i_rate=0.02)
+    o.load_data()
+    ok = {r.metric: r.ok for r in o.validate_baseline(horizon=30)[0]}
+    for m in ("GDP (C+I+G+X-M)", "Household consumption", "Investment (GFCF)",
+              "Government expenditure"):
+        assert ok[m], f"{m} doesn't reproduce with the interest switch on"

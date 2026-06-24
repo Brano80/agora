@@ -138,8 +138,11 @@ def calibrate(
     # owners also finance the (non-productive) inventory accumulation INV.
     # a1_k recalibrated to the post-tax disposable split so year-0 demand still
     # reproduces baseline GDP for ANY capital_tax_share.
-    a1_k = (Y0 * (1.0 + m_imp) - a1_w * ls0 * (1.0 - theta_w) * Y0
-            - a2 * Mtot - A0 - INV - G0 - X0) / ((1.0 - ls0) * (1.0 - theta_k) * Y0)
+    # Phase 6 (ii): fold YEAR-0 interest income into the demand solve so the
+    # interest switch (i_rate>0) reproduces the base year too. At t=0 the split is
+    # int_w = i_rate*M_w0, int_k = i_rate*M_k0. i_rate=0 -> identical to before.
+    a1_k = (Y0 * (1.0 + m_imp) - a1_w * (ls0 * (1.0 - theta_w) * Y0 + i_rate * M_w0)
+            - a2 * Mtot - A0 - INV - G0 - X0) / ((1.0 - ls0) * (1.0 - theta_k) * Y0 + i_rate * M_k0)
 
     # PLAUSIBILITY GUARD (the Luxembourg lesson): a residually-solved owners'
     # MPC far outside [0, 1] means the national structure (entrepôt, trade >>

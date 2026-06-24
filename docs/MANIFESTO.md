@@ -333,6 +333,23 @@ affecting), gate-clean.
 
 ---
 
+## F21 (2026-06-24) — the citizens' dividend, grounded in real sovereign-wealth-fund rules
+
+The UBC dividend was paying out the FULL domestic profit share each year — which
+inflated it (DE ~EUR82k/person at the horizon) and, by paying everything out, never
+let the fund compound. Anchoring it to how real citizen funds actually operate fixes
+both. The fund now draws a **percent-of-market-value (POMV)** each year and REINVESTS
+the rest, exactly like Norway's GPFG (fiscal rule: spend ~3% of fund value, the
+expected real return, preserve the principal) and the Alaska Permanent Fund (5% POMV
+of the 5-yr average, in statute). Under the 3% GPFG rule the DE dividend is ~EUR25k
+and the fund COMPOUNDS to full citizen ownership; under Alaska's 5%, ~EUR39k. The
+magnitudes now rest on a citable payout RULE, and the compounding (which is where the
+divergence from cash actually comes from) is explicit. Honest distinction to keep:
+AGORA's fund earns the DOMESTIC profit rate because it owns domestic capital (the
+predistribution mechanism) — unlike GPFG, which earns a global market return; what is
+borrowed from GPFG/Alaska is the payout rule, not the return. Switchable
+(`fund_payout=`), default OFF, gate exact (~1.5e-8), 200 tests.
+
 ## F20 (2026-06-24) — a responsible government dissolves the "fiscal vs equality" trade-off
 
 Phase 6 gave AGORA a proper fiscal block: a broad revenue base (a baseline capital

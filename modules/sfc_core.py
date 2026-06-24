@@ -57,7 +57,8 @@ class SFCCore(Module):
 
     def __init__(self, base_year: int = 2019, calib_kwargs: Optional[dict] = None,
                  inv_elasticity: float = 0.0, fiscal_reaction: float = 0.0,
-                 debt_target: Optional[float] = None, i_rate: Optional[float] = None):
+                 debt_target: Optional[float] = None, i_rate: Optional[float] = None,
+                 fund_payout: float = 0.0):
         self.base_year = base_year
         self.calib_kwargs = calib_kwargs or {}
         # C1 (enclosure-vs-diffusion): elasticity of investment to owners'
@@ -74,6 +75,15 @@ class SFCCore(Module):
         self.fiscal_reaction = float(fiscal_reaction)
         self.debt_target = debt_target
         self.i_rate_override = i_rate
+        # SWF calibration (default OFF -> legacy full-profit-share payout):
+        #   fund_payout = the citizens' fund's percent-of-market-value (POMV) draw
+        #   per year, grounded in real sovereign-wealth-fund rules - Norway GPFG's
+        #   fiscal rule ~0.03 (3% of value, the expected real return) or the Alaska
+        #   Permanent Fund's 0.05 (5% POMV, statute). The fund pays this out and
+        #   REINVESTS the rest, so it COMPOUNDS like a real SWF and the dividend
+        #   rests on the GPFG/Alaska track record, not the full domestic profit
+        #   share. 0.0 keeps the legacy reinvest-split behaviour.
+        self.fund_payout = float(fund_payout)
         self.params: Optional[SFCParams] = None
 
     def declares_inputs(self) -> List[str]:
@@ -102,9 +112,12 @@ class SFCCore(Module):
 
     def run(self, scenario: Scenario, data: Dict[str, float],
             context: Optional[dict] = None) -> RunResult:
+        ck = dict(self.calib_kwargs)
+        if self.i_rate_override is not None:
+            ck.setdefault("i_rate", self.i_rate_override)   # calibration matches the run rate
         p = calibrate(data, geo=scenario.geo, base_year=self.base_year,
                       sources=data.get("_sources", {}) if isinstance(data, dict) else {},
-                      **self.calib_kwargs)
+                      **ck)
         self.params = p
         H = scenario.horizon
         f_w, f_k = p.f_workers, 1.0 - p.f_workers
@@ -188,8 +201,16 @@ class SFCCore(Module):
                     # The fund REINVESTS a fraction and pays out the rest, so as
                     # owners are diluted the fund sustains capex (resolves C1).
                     gross_fund = phi * FP
-                    A_fund = reinvest * gross_fund         # fund-financed capex
-                    div_total = gross_fund - A_fund        # paid out per capita
+                    if self.fund_payout > 0.0:
+                        # GPFG/Alaska POMV: pay out fund_payout of the fund's VALUE,
+                        # reinvest the rest -> the fund compounds like a real SWF.
+                        # E_sf_prev is predetermined, so the draw is constant within
+                        # the period -> the demand solve stays exactly linear (gate clean).
+                        div_total = self.fund_payout * E_sf_prev
+                        A_fund = gross_fund - div_total
+                    else:
+                        A_fund = reinvest * gross_fund     # legacy reinvest split
+                        div_total = gross_fund - A_fund
                     owners_profit = (1.0 - phi) * FP
                     tax_k = 0.0                      # no cash levy; dilution instead
                     ubi_pool = 0.0
