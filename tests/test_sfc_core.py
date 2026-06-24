@@ -141,3 +141,55 @@ def test_interest_on_gov_debt_is_gated_and_optional(orch):
     assert any(abs(per.reported["gov_interest"]) > 0 for per in withi.periods)
     assert (withi.periods[-1].reported["gov_debt_gdp"]
             != base.periods[-1].reported["gov_debt_gdp"])      # fiscal path moves
+
+
+def test_phase6_fiscal_reaction_and_interest(orch):
+    """Phase 6: the fiscal-reaction rule steers debt/GDP toward a target (so the
+    model can represent a consolidation or expansion stance), and the interest
+    switch adds the r-g snowball. Both stay gate-exact; both default OFF."""
+    from modules.sfc_core import SFCCore
+    p = orch.params()
+    base = make_triad(p, horizon=40)[0]
+    data = orch._data
+
+    def debt_end(fiscal_reaction=0.0, target=None, i_rate=None):
+        res = SFCCore(base_year=2019, fiscal_reaction=fiscal_reaction,
+                      debt_target=target, i_rate=i_rate).run(base, data)
+        worst = max(r.max_residual for r in check_run(res, strict=False))
+        assert worst < 1.0                                  # gate exact in every config
+        return res.periods[-1].reported["gov_debt_gdp"]
+
+    off = debt_end()                                        # legacy (rule off, interest off)
+    low = debt_end(0.006, target=40.0)                      # force consolidation
+    high = debt_end(0.006, target=90.0)                     # force expansion
+    assert low < off < high                                 # the rule steers BOTH ways
+    assert abs(low - 40.0) < 5 and abs(high - 90.0) < 5     # and converges near the target
+    # interest switch (no reaction) raises the debt path — the snowball term
+    assert debt_end(i_rate=0.04) > off
+
+
+def test_phase6_broad_base_and_full_block_via_orchestrator():
+    """Phase 6 increment 2: broad revenue base (capital + labour tax) + the
+    fiscal-reaction rule, wired through the orchestrator. The broad base preserves
+    year-0 reproduction exactly; the block turns the AI-shock debt RUNAWAY into a
+    controlled path; the gate stays exact. Default OFF leaves everything unchanged."""
+    from orchestrator import AgoraOrchestrator
+    on = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True,
+                           capital_tax_share=0.2, fiscal_reaction=0.01)
+    on.load_data()
+    rows, _ = on.validate_baseline(horizon=30)
+    ok = {r.metric: r.ok for r in rows}
+    for m in ("GDP (C+I+G+X-M)", "Household consumption", "Investment (GFCF)",
+              "Government expenditure", "Labour share (%)"):
+        assert ok[m], f"{m} stopped reproducing with the broad revenue base on"
+    p = on.params()
+    assert p.theta_k > 0 and p.theta_w < p.theta          # revenue genuinely split
+    ai = make_triad(p, horizon=40)[1]
+    r = on.run_scenario(ai)
+    assert r.consistent and r.max_residual < 1.0          # gate exact with the block on
+    debt_on = r.result.periods[-1].reported["gov_debt_gdp"]
+    off = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    off.load_data()
+    debt_off = off.run_scenario(make_triad(off.params(), horizon=40)[1]
+                                ).result.periods[-1].reported["gov_debt_gdp"]
+    assert debt_on < debt_off - 20                        # the block tames the runaway

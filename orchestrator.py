@@ -75,12 +75,21 @@ class AgoraOrchestrator:
                  modules: Optional[List[Module]] = None,
                  store: Optional[Store] = None,
                  allow_live: bool = True, strict: bool = True,
-                 inv_elasticity: float = 0.0):
+                 inv_elasticity: float = 0.0, fiscal_reaction: float = 0.0,
+                 debt_target: Optional[float] = None, i_rate: Optional[float] = None,
+                 capital_tax_share: float = 0.0):
         self.geo = geo
         self.year = year
         self.inv_elasticity = float(inv_elasticity)
+        # Phase 6 fiscal block (all default OFF -> exact legacy behaviour)
+        self.fiscal_reaction = float(fiscal_reaction)
+        self.debt_target = debt_target
+        self.i_rate = i_rate
+        self.capital_tax_share = float(capital_tax_share)
         self.modules = modules or [SFCCore(base_year=year,
-                                           inv_elasticity=inv_elasticity),
+                                           inv_elasticity=inv_elasticity,
+                                           fiscal_reaction=fiscal_reaction,
+                                           debt_target=debt_target, i_rate=i_rate),
                                    DistributionModule(base_year=year),
                                    InputOutputModule(base_year=year)]
         self.store = store
@@ -109,7 +118,8 @@ class AgoraOrchestrator:
         if self._data is None:
             self.load_data()
         return calibrate(self._data, geo=self.geo, base_year=self.year,
-                         sources=self._sources)
+                         sources=self._sources,
+                         capital_tax_share=self.capital_tax_share)
 
     def run_scenario(self, scenario: Scenario) -> ScenarioRun:
         if self._data is None:
@@ -250,7 +260,11 @@ class AgoraOrchestrator:
 
 
 def build(geo: str = "DE", year: int = 2019, allow_live: bool = True,
-          db_path: Optional[str] = None, strict: bool = True) -> AgoraOrchestrator:
+          db_path: Optional[str] = None, strict: bool = True,
+          fiscal_reaction: float = 0.0, debt_target: Optional[float] = None,
+          i_rate: Optional[float] = None, capital_tax_share: float = 0.0) -> AgoraOrchestrator:
     store = Store(db_path) if db_path is not None else None
     return AgoraOrchestrator(geo=geo, year=year, store=store,
-                             allow_live=allow_live, strict=strict)
+                             allow_live=allow_live, strict=strict,
+                             fiscal_reaction=fiscal_reaction, debt_target=debt_target,
+                             i_rate=i_rate, capital_tax_share=capital_tax_share)

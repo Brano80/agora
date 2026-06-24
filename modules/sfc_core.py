@@ -56,7 +56,8 @@ class SFCCore(Module):
     name = "sfc_core"
 
     def __init__(self, base_year: int = 2019, calib_kwargs: Optional[dict] = None,
-                 inv_elasticity: float = 0.0):
+                 inv_elasticity: float = 0.0, fiscal_reaction: float = 0.0,
+                 debt_target: Optional[float] = None, i_rate: Optional[float] = None):
         self.base_year = base_year
         self.calib_kwargs = calib_kwargs or {}
         # C1 (enclosure-vs-diffusion): elasticity of investment to owners'
@@ -64,6 +65,15 @@ class SFCCore(Module):
         # behaviour); >0 = socialising owners' returns (cash tax OR UBC
         # dilution) deters capex. An inspectable, swappable ASSUMPTION.
         self.inv_elasticity = float(inv_elasticity)
+        # Phase 6 - proper fiscal block (all default OFF -> exact legacy behaviour):
+        #   fiscal_reaction = tax-rate response per pp of debt/GDP gap (Taylor-style;
+        #     lets the government consolidate or expand toward a debt target).
+        #   debt_target = target debt/GDP in % (None -> the calibrated seed level).
+        #   i_rate = override interest rate on gov debt (None -> calibrated p.i_rate,
+        #     0 by default; set >0 to turn on the r-g snowball).
+        self.fiscal_reaction = float(fiscal_reaction)
+        self.debt_target = debt_target
+        self.i_rate_override = i_rate
         self.params: Optional[SFCParams] = None
 
     def declares_inputs(self) -> List[str]:
@@ -104,6 +114,10 @@ class SFCCore(Module):
         F_w, F_k = 0.0, 0.0           # net foreign assets start at 0 (accumulate CA)
         E_sf = 0.0                    # sovereign-fund capital stake (UBC); 0 = no fund
         Y_prev = p.Y0
+        debt_target = (self.debt_target if self.debt_target is not None
+                       else (100.0 * (p.M_w0 + p.M_k0) / p.Y0 if p.Y0 else 0.0))
+        i_rate_eff = (self.i_rate_override if self.i_rate_override is not None
+                      else p.i_rate)
         periods: List[PeriodState] = []
 
         for t in range(H):
@@ -123,7 +137,15 @@ class SFCCore(Module):
             tau = scenario.tax_capital.at(t, H)
             ubi_on = scenario.ubi_on.at(t, H) >= 0.5
             ubc_on = scenario.ubc_on.at(t, H) >= 0.5
-            theta = p.theta
+            # Phase 6 fiscal-reaction rule (default OFF): adjusts the LABOUR rate
+            # (the usual marginal instrument) to steer debt/GDP toward target.
+            if self.fiscal_reaction:
+                debt_gdp_prev = (100.0 * (M_w + M_k) / Y_prev) if Y_prev else debt_target
+                delta_theta = self.fiscal_reaction * (debt_gdp_prev - debt_target)
+            else:
+                delta_theta = 0.0
+            theta_w = min(0.95, max(0.0, p.theta_w + delta_theta))
+            theta_k = p.theta_k
 
             M_w_prev, M_k_prev, K_prev = M_w, M_k, K
             K_trad_prev, K_ai_prev = K_trad, K_ai
@@ -146,7 +168,7 @@ class SFCCore(Module):
             # predetermined from last period's debt; paid out by money share.
             gov_debt_prev = M_w_prev + M_k_prev
             sh_w_m = (M_w_prev / gov_debt_prev) if gov_debt_prev > 0 else 0.5
-            interest = p.i_rate * gov_debt_prev
+            interest = i_rate_eff * gov_debt_prev
             int_w, int_k = interest * sh_w_m, interest * (1.0 - sh_w_m)
             # inventories+valuables (P52+P53): constant autonomous, owner-
             # financed, NOT added to productive K (closes the identity).
@@ -159,7 +181,8 @@ class SFCCore(Module):
             def breakdown(Y: float):
                 WB = ls * Y
                 FP = (1.0 - ls) * Y
-                tax_w = theta * WB
+                tax_w = theta_w * WB
+                tax_k_base = theta_k * FP            # P6 baseline capital tax (general revenue)
                 if ubc_on:
                     # capital income socialised in kind: fund owns phi of it.
                     # The fund REINVESTS a fraction and pays out the rest, so as
@@ -173,8 +196,8 @@ class SFCCore(Module):
                     transfer_pool = div_total
                     div_w, div_k = div_total * f_w, div_total * f_k
                     YD_w = WB - tax_w + div_w + int_w + tr_w
-                    YD_k = owners_profit + div_k + int_k + tr_k
-                    net_profits = owners_profit
+                    YD_k = owners_profit - tax_k_base + div_k + int_k + tr_k
+                    net_profits = owners_profit - tax_k_base
                 elif ubi_on:
                     tax_k = tau * FP
                     ubi_pool = tax_k
@@ -183,8 +206,8 @@ class SFCCore(Module):
                     div_w = div_k = 0.0
                     ubi_w, ubi_k = ubi_pool * f_w, ubi_pool * f_k
                     YD_w = WB - tax_w + ubi_w + int_w + tr_w
-                    YD_k = FP - tax_k + ubi_k + int_k + tr_k
-                    net_profits = FP - tax_k
+                    YD_k = FP - tax_k - tax_k_base + ubi_k + int_k + tr_k
+                    net_profits = FP - tax_k - tax_k_base
                     gross_fund = A_fund = 0.0
                 else:
                     tax_k = tau * FP
@@ -192,12 +215,12 @@ class SFCCore(Module):
                     div_total = owners_profit = 0.0
                     div_w = div_k = ubi_w = ubi_k = 0.0
                     YD_w = WB - tax_w + int_w + tr_w
-                    YD_k = FP - tax_k + int_k + tr_k
-                    net_profits = FP - tax_k
+                    YD_k = FP - tax_k - tax_k_base + int_k + tr_k
+                    net_profits = FP - tax_k - tax_k_base
                     gross_fund = A_fund = 0.0
                 C_w = p.a1_w * YD_w + p.a2 * (M_w_prev + F_w_prev)
                 C_k = p.a1_k * YD_k + p.a2 * (M_k_prev + F_k_prev)
-                return dict(WB=WB, FP=FP, tax_w=tax_w, tax_k=tax_k,
+                return dict(WB=WB, FP=FP, tax_w=tax_w, tax_k=tax_k, tax_k_base=tax_k_base,
                             ubi_pool=ubi_pool, transfer_pool=transfer_pool,
                             div_total=div_total, div_w=div_w, div_k=div_k,
                             owners_profit=owners_profit, net_profits=net_profits,
@@ -234,7 +257,7 @@ class SFCCore(Module):
             # profit share equals the dividend it pays, so it nets to zero.
             nafa_w = b["YD_w"] - b["C_w"]
             nafa_k = b["YD_k"] - b["C_k"] - A_priv - INV
-            dH_s = (G + b["ubi_pool"] + interest) - (b["tax_w"] + b["tax_k"])  # gov money issued (incl. debt interest)
+            dH_s = (G + b["ubi_pool"] + interest) - (b["tax_w"] + b["tax_k"] + b["tax_k_base"])  # gov money issued (incl. debt interest)
 
             # current account accrues as net foreign assets, split by money wealth
             tot_money = M_w_prev + M_k_prev
@@ -285,6 +308,9 @@ class SFCCore(Module):
             if interest:
                 tfm["interest"] = {"hh_workers": int_w, "hh_owners": int_k,
                                    "government": -interest}
+            if b["tax_k_base"]:
+                tfm["tax_capital_base"] = {"government": b["tax_k_base"],
+                                           "hh_owners": -b["tax_k_base"]}
             if T_int:
                 tfm["transfer_intl"] = {"hh_workers": tr_w, "hh_owners": tr_k,
                                         "rest_of_world": -T_int}

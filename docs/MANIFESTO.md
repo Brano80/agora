@@ -333,6 +333,23 @@ affecting), gate-clean.
 
 ---
 
+## F20 (2026-06-24) — a responsible government dissolves the "fiscal vs equality" trade-off
+
+Phase 6 gave AGORA a proper fiscal block: a broad revenue base (a baseline capital
+tax alongside the wage tax, so revenue follows the capital share) and a fiscal-
+reaction rule (the tax rate drifts to steer debt/GDP toward a target). Re-running
+the policy frontier with it on is decisive. WITHOUT it, the stub debt block runs
+every policy up to 118-152% of GDP under the AI shock — an unrealistic runaway.
+WITH it, debt is controlled to **80-82% across every policy** — a spread of just
+2pp. So once the government is modelled as *responsive*, fiscal sustainability
+becomes nearly **policy-invariant**: any of these policies can be made sustainable
+by ordinary fiscal management. The apparent "fiscal sustainability vs equality"
+tension dissolves — it was an artifact of a government that couldn't adjust. The
+binding trade-offs are equality, growth and poverty, where UBC wins; you cannot
+argue against UBC on fiscal-sustainability grounds, because a responsible
+government makes any of the options sustainable. (Default OFF; the shipped frontier
+is unchanged until regenerated with the block. 199 tests, gate exact.)
+
 ## F19 (2026-06-17) — AI exposure is cognitive, not robotic: grounding it moves the shock from factories to offices
 
 Replacing the round-number sectoral exposure guess [0.30/0.70/0.20/0.50/0.90/0.40]

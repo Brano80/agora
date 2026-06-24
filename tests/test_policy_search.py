@@ -92,3 +92,26 @@ def test_pareto_front_ignores_inconsistent_points():
                         objectives={k: 99.0 for k in keys})   # better but FAILED gate
     front = pareto_front([win, ghost])
     assert win in front and ghost not in front                # gate gates the search
+
+
+def test_phase6_fiscal_block_makes_debt_a_realistic_objective():
+    """Phase 6: running the policy search with the proper fiscal block (broad base
+    + fiscal-reaction) makes the 'fiscal' objective REALISTIC — debt is controlled,
+    not a stub runaway — and reveals that a responsive government can make ANY of
+    the policies fiscally sustainable. Fiscal sustainability thus stops being the
+    binding trade-off; the real choices are equality/growth/poverty (UBC wins)."""
+    from orchestrator import AgoraOrchestrator
+
+    def run(fiscal_on):
+        kw = dict(capital_tax_share=0.2, fiscal_reaction=0.01) if fiscal_on else {}
+        o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True, **kw)
+        o.load_data()
+        pts = o.run_policy_search(horizon=30)
+        assert all(p.consistent for p in pts)                       # gate holds both ways
+        return [p.metrics["debt_gdp"] for p in pts], pts
+
+    d_off, _ = run(False)
+    d_on, pts_on = run(True)
+    assert max(d_on) < min(d_off)                                   # block controls debt vs runaway
+    assert (max(d_on) - min(d_on)) < (max(d_off) - min(d_off))      # fiscal axis compresses
+    assert any(p.on_frontier and p.form == "ubc" for p in pts_on)   # UBC still on the frontier

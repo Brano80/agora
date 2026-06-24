@@ -28,7 +28,9 @@ class SFCParams:
     g_ratio: float           # government / Y0
     export_ratio: float      # exports / Y0 (openness; exports proxied vs lagged output)
     m_imp: float             # import propensity: imports = m_imp * Y
-    theta: float             # income-tax rate (calibrated to the Gini target)
+    theta: float             # total effective net-tax rate (calibrated to fiscal balance)
+    theta_w: float           # P6: labour-income tax rate (on wage bill)
+    theta_k: float           # P6: baseline capital-income tax rate (on profits); 0 = legacy
     f_workers: float
     a1_w: float
     a1_k: float
@@ -77,6 +79,8 @@ def calibrate(
     delta: float = 0.06,        # ~consumption of fixed capital; with I/Y~0.21
                                 # and g~1.5% this holds K/Y near the 3.0 target
     delta_ai: float = 0.25,     # AI capital obsolesces in ~4 years
+    capital_tax_share: float = 0.0,  # P6 broad revenue base: share of base-year net
+                                     # tax raised on CAPITAL (0 = legacy wage-only base)
     i_rate: float = 0.0,        # interest on gov debt; 0 keeps Phase 1-3 behaviour
     world_growth: float = 0.015,  # exports grow with FOREIGN demand, not own output
     g_fiscal: float = 0.015,    # debt-stabilising growth for the fiscal anchor
@@ -122,9 +126,20 @@ def calibrate(
     target_deficit = g_fiscal * debt
     theta = max(0.05, min(0.60, (G0 - target_deficit) / (ls0 * Y0)))
     tau_fisc = 0.0   # theta now carries the fiscal balance; proportional top-up unused
-    # owners also finance the (non-productive) inventory accumulation INV
-    a1_k = (Y0 * (1.0 + m_imp) - a1_w * ls0 * (1.0 - theta) * Y0
-            - a2 * Mtot - A0 - INV - G0 - X0) / ((1.0 - ls0) * Y0)
+    # Phase 6 broad revenue base: split the SAME total base-year net tax
+    # (theta*WB0) into a labour rate (theta_w on wages) + a baseline CAPITAL rate
+    # (theta_k on profits) per capital_tax_share. share=0 -> theta_w=theta,
+    # theta_k=0 (exact legacy). Total base-year revenue is unchanged so the
+    # baseline still reproduces; the COMPOSITION now responds to the capital
+    # share going forward (fixes the wage-only-base under-taxation, F-debt).
+    sk = max(0.0, min(0.9, capital_tax_share))
+    theta_w = (1.0 - sk) * theta
+    theta_k = (sk * theta * ls0 / (1.0 - ls0)) if (1.0 - ls0) > 1e-9 else 0.0
+    # owners also finance the (non-productive) inventory accumulation INV.
+    # a1_k recalibrated to the post-tax disposable split so year-0 demand still
+    # reproduces baseline GDP for ANY capital_tax_share.
+    a1_k = (Y0 * (1.0 + m_imp) - a1_w * ls0 * (1.0 - theta_w) * Y0
+            - a2 * Mtot - A0 - INV - G0 - X0) / ((1.0 - ls0) * (1.0 - theta_k) * Y0)
 
     # PLAUSIBILITY GUARD (the Luxembourg lesson): a residually-solved owners'
     # MPC far outside [0, 1] means the national structure (entrepôt, trade >>
@@ -142,7 +157,7 @@ def calibrate(
     params = SFCParams(
         geo=geo, base_year=base_year, Y0=Y0, gdp_full=gdp_full, nx_gap=nx_gap,
         ls0=ls0, a_ratio0=a_ratio0, g_ratio=g_ratio, export_ratio=export_ratio,
-        m_imp=m_imp, theta=theta, f_workers=f_workers, a1_w=a1_w, a1_k=a1_k, a2=a2, inv0=INV,
+        m_imp=m_imp, theta=theta, theta_w=theta_w, theta_k=theta_k, f_workers=f_workers, a1_w=a1_w, a1_k=a1_k, a2=a2, inv0=INV,
         M_w0=M_w0, M_k0=M_k0, F0=0.0, K0=K0, delta=delta, delta_ai=delta_ai, i_rate=i_rate,
         world_growth=world_growth, tau_fisc=tau_fisc, population=pop,
         targets={
