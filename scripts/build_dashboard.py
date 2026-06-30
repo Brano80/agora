@@ -331,7 +331,7 @@ function render(){
     if(!q){box.innerHTML=`<div class="note">Between-country comparison needs the full multi-country build.</div>`;}
     else{box.innerHTML=`<h3>Between-country inequality: national vs pooled EU dividend (${q.n} countries)</h3>
       <div class="chartbox"><canvas id="c1"></canvas></div>
-      <div class="note">A purely national AI dividend entrenches the gap between richer and poorer member states (Gini ~0.21); pooling the dividend across the Union roughly <b>halves</b> it under either form. Dividend at τ=${q.tau}%. ${q.excluded&&q.excluded.length?('Excluded: '+q.excluded.join(', ')+' (MNC-inflated / entrepôt GDP distorts the cross-country comparison), matching the companion study.'):''} Gated all-EU run; magnitudes are model-scale, not forecasts.</div>`;
+      <div class="note">A purely national AI dividend entrenches the gap between richer and poorer member states (Gini ~0.21); pooling the dividend across the Union roughly <b>halves</b> it under either form. (Between-country inequality depends on <b>national vs pooled</b>, not cash vs UBC, so the two forms look alike here — the cash-vs-UBC difference is a <i>within</i>-country result, see the other tabs.) Dividend at τ=${q.tau}%. ${q.excluded&&q.excluded.length?('Excluded: '+q.excluded.join(', ')+' (MNC-inflated / entrepôt GDP distorts the cross-country comparison), matching the companion study.'):''} Gated all-EU run; magnitudes are model-scale, not forecasts.</div>`;
     bar("c1",["Cash UBI","Universal Basic Capital"],[{l:"National dividend",d:[q.cash_nat,q.ubc_nat],c:C.grey},{l:"Pooled EU dividend",d:[q.cash_pool,q.ubc_pool],c:C.ubc}],"Between-country Gini");}
   } else if(cur.tab==="uncert"){
     const m=DATA.global.mc;
