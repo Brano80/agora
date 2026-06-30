@@ -117,3 +117,10 @@ human stays the decision-maker; agents draft, the gate guards, you decide.
 
 ### Multi-region core — Q2 (national vs global dividend)  ▶ increment 1 SHIPPED 2026-06-07
 DE+FR as separately-gated open economies; national-vs-global AI-dividend comparison (`region.py`, `docs/MULTI-REGION.md`, finding F7). National dividend widens the between-country gap under the shock; global pooling narrows it ~34%. **Next:** add a low-income region (the real rich-vs-poor test) + tight bilateral trade feedback.
+
+### Study — AI-levy-base sizing (SHIPPED 2026-06-30)
+`scripts/study_ai_levy_base.py`: sizes an AI-specific levy (EU-wide DST + data-centre/compute
+levy) vs an ownership-funded dividend. Finding F22 — levy raises ~€35/person/yr today (~1/25th
+of the ownership route) and does not catch up before ~2050; ownership is the engine, the levy a
+seed. Sourced inputs (hyperscaler capex guidance, Tax Foundation DST, CEPS, AGORA counterfactual).
+Output `study_ai_levy_base.md` gitignored; chart `social_ai_levy.png`.

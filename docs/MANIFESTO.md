@@ -92,6 +92,36 @@ therefore the compounding — untouched: owners keep pulling away while recipien
 get a drip that rent and inflation erode. **To distribute a compounding
 advantage you must distribute the asset, not just the income.**
 
+**Clarification — what actually funds the dividend, and AI's real role** (added
+2026-06-24; foreground this in the v2 paper — readers conflate these). Two things
+must be separated sharply.
+
+*The dividend is a payout on an owned **stock**, not a tax **flow**.* Citizens
+receive the return on capital they **own** (via the fund), drawn at a sustainable
+rate (the GPFG/Alaska POMV rule, F21). Its size scales with the *value of the owned
+capital* — multiples of GDP — not with any single tax stream. So a small
+AI-specific levy (a DST or compute tax — fiscally a rounding error today, ~EUR27/
+person for a 5% EU DST) is **not** the dividend and does not bound it. They are
+different objects: the levy is one minor way to help *build* the fund's ownership;
+the dividend is the *return on that ownership* once built. Norway and Alaska prove
+it — their large payouts come from owning accumulated capital funds (Norway's is
+~3.5x GDP), not from any current levy.
+
+*The ownership mechanism is general; AI is the forcing function, not the source of
+the money.* Broadening capital ownership would benefit people in any economy (Norway
+and Alaska did it on oil, decades before AI). What AI changes is **urgency and
+scale**: by shifting income from labour to capital (the falling labour share) it
+makes owning capital both *more valuable* (capital captures more of output, so the
+dividend grows) and *more necessary* (wages — how most people get income — are
+exactly what is eroding). AI is the accelerant that turns a long-standing
+predistribution idea (Meade's social dividend; the citizens'-wealth-fund tradition)
+into a live, large-stakes question now. The engine that pays the dividend is *owning
+the capital stock* (acquired via equity dilution); the AI levy is a footnote on
+seeding, not the headline.
+
+AGORA tests this neutrally — it compares ownership against cash transfers and
+inaction and reports the trade-offs; the values judgement stays with the reader.
+
 A menu of mechanisms, each with its case and its tension. AGORA's job is to let
 us test them, not to pick.
 
@@ -517,3 +547,15 @@ matters less for BETWEEN-country equality than for within-country wealth (F5/F10
 — but UBC pooling implies much larger cross-border transfer volumes, which is
 where the political constraint will bind. Magnitudes are model-scale under the
 stated shock, not forecasts.
+
+### F22 — An AI-specific levy is a seed, not the engine (2026-06-30)
+Sizing check (`scripts/study_ai_levy_base.py`): an AI-specific levy in the EU — an EU-wide
+digital-services tax (CEPS-style ~€12bn/yr) plus a 5–10% levy on the AI/data-centre capex
+build-out (EU share ~10% of the ~$650bn 2026 global capex) — raises only **~€33–40 per
+person per year today**, about **1/25th** of an ownership-funded dividend (~€1,000–1,500
+from a citizens' fund built since 1995). Two reasons it stays small: the AI value chain is
+**largely US-owned and lightly taxed in the EU**, so a flow tax misses value that has already
+left the jurisdiction; and even on aggressive compounding (AI capex growing 35%→12%/yr) the
+levy does **not** match the ownership route until the **early-2050s** (~2052 at a 10% levy, ~2057 at 5% -- about a generation out; it reaches only ~€870/person by 2050 at 10%). Conclusion, reinforcing the core thesis: **predistribution through equity is
+the engine; the AI levy is a fast-growing supplement that seeds the fund.** Ownership reaches
+households now and captures the value the flow tax leaks.
