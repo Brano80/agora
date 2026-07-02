@@ -94,7 +94,7 @@ function render(){
       <h3>Baseline validation (year-0 reproduces the national accounts)</h3>
       <table><tr><th>Metric</th><th>Target</th><th>Model</th><th>OK</th></tr>
       ${g.valid.map(r=>`<tr><td>${r.m}</td><td>${vfmt(r.t)}</td><td>${vfmt(r.v)}</td><td>${r.ok?'<span class="ok">✓</span>':'<span class="bad">✗</span>'}</td></tr>`).join("")}</table>
-      <div class="note">Calibrated to live 2019 data; back-tested to 2010–2019 history (~1% GDP error). Every scenario below is consistency-gated.</div>
+      <div class="note">Calibrated to live 2019 data; back-tested to 2010–2019 history (~2.3% mean GDP error; government-debt path within the 10% bound). Every scenario below is consistency-gated.</div>
       <h3>Data provenance — every parameter sourced &amp; swappable</h3>
       <table><tr><th>Series</th><th>Value</th><th>Provider</th><th>Source</th></tr>
       ${g.prov.map(r=>`<tr><td>${r.s}</td><td>${(Math.abs(r.val)>=1000?fmt(r.val,0):fmt(r.val,2))} <span class="u">${r.unit}</span></td><td>${r.prov}${(r.yr&&r.yr!=2019)?` <span class="warn" title="latest observation ${r.yr}, not 2019">obs ${r.yr}</span>`:''}</td><td>${r.url?`<a class="srcbadge" href="${r.url}" target="_blank" rel="noopener" title="${r.code}">open ↗</a>`:`<span class="srcbadge dead" title="${r.code}">${r.code||'—'}</span>`}</td></tr>`).join("")}</table>

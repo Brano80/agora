@@ -39,7 +39,7 @@ Under an AI labour-share shock (Germany, 30-year scenario):
 ## How it's built
 - **Stock-flow-consistent core** + pluggable modules (distribution · input-output · AI-shock · citizens' fund · multi-region) through a common schema.
 - **Live data:** Eurostat national accounts, AMECO wage shares, BIS household debt, OECD wealth distribution, Eurostat **FIGARO** input-output — integrated via DBnomics; 26 EU members calibrated.
-- **Validated:** back-tested to 2010–2019 history (~1% GDP error); a consistency gate enforced on every run (residuals ~1e-10 of GDP); **192 automated tests**.
+- **Validated:** back-tested to 2010–2019 history (~2.3% mean GDP error; government-debt path within the 10% bound); a consistency gate enforced on every run (residuals ~1e-10 of GDP); **192 automated tests**.
 - Pure standard-library Python engine.
 
 ## Quickstart
