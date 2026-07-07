@@ -363,6 +363,71 @@ def compare(geo: str = "DE", preset: Optional[str] = None,
 
 
 @_public
+def preview_scenario(geo: str = "DE", horizon: int = 30,
+                     labour_share_end: Optional[float] = None,
+                     capex_growth: float = CAPEX_BASE_GROWTH,
+                     capital_tax: float = 0.0, ubi: bool = False,
+                     ubc: bool = False, ubc_reinvest: float = 0.0,
+                     adoption: str = "ramp",
+                     automation_rate: Optional[float] = None,
+                     reinstatement_rate: float = 0.02,
+                     name: Optional[str] = None, allow_live: bool = False,
+                     year: int = 2019) -> Dict[str, Any]:
+    """Resolve a scenario's assumptions WITHOUT running the engine.
+
+    This is the ELICITATION (approval) step: an agent shows the fully-resolved
+    lever paths to the human, who approves or edits them, BEFORE any numbers are
+    computed -- \"the values judgement stays with the user\". Same levers as
+    run_scenario. Returns {disclaimer, geo, scenario, assumptions,
+    approval_prompt}. No gate is run here (nothing is computed yet).
+    """
+    horizon = _check_horizon(horizon)
+    spec = _validate_levers({"labour_share_end": labour_share_end,
+                             "capex_growth": capex_growth,
+                             "capital_tax": capital_tax, "ubi": ubi, "ubc": ubc,
+                             "ubc_reinvest": ubc_reinvest, "adoption": adoption,
+                             "automation_rate": automation_rate,
+                             "reinstatement_rate": reinstatement_rate})
+    orch = _orchestrator(geo=geo, year=year, allow_live=allow_live)
+    scen = build_custom(orch.params(), horizon=horizon,
+                        name=name or "Custom", **spec)
+    a = _assumptions(scen)
+    lines = [f"- {k}: {d['start']} -> {d['end']} ({d['path']})"
+             for k, d in a["levers"].items()]
+    prompt = (f"Approve these AGORA assumptions before the model runs "
+              f"(geo={orch.geo}, horizon={horizon} yrs):\n" + "\n".join(lines) +
+              "\n\nThese are swappable assumptions, not a forecast. Approve to "
+              "compute, or change the levers and preview again.")
+    return {"disclaimer": DISCLAIMER, "geo": orch.geo, "scenario": scen.name,
+            "assumptions": a, "approval_prompt": prompt}
+
+
+def narration_prompt(payload: Dict[str, Any]) -> str:
+    """Build the MCP-sampling prompt that asks the CLIENT's model to narrate a
+    gated result faithfully.
+
+    Numbers are never generated here: the model is instructed to use ONLY the
+    payload, keep the sandbox framing, and name no single \"winner\".
+    mcp_server passes the returned prompt to the client via sampling; the
+    engine's numbers stay authoritative.
+    """
+    import json as _json
+    keep = ("geo", "base_year", "scenario", "gate", "years", "summary",
+            "series", "assumptions", "runs", "fiscal_block")
+    slim = {k: payload[k] for k in keep if k in payload}
+    body = _json.dumps(slim, default=str)
+    if len(body) > 6000:
+        body = body[:6000] + " ...(truncated)"
+    return ("You are narrating output from AGORA, a stock-flow-consistent policy "
+            "SANDBOX (not a forecaster). In 3-5 plain sentences, summarise the "
+            "result below for a policy reader. Strict rules: use ONLY the "
+            "numbers given and invent none; report the trade-offs and name NO "
+            "single 'winner'; state explicitly that these are internally-"
+            "consistent scenarios under swappable assumptions, not forecasts."
+            "\n\nRESULT (JSON):\n" + body)
+
+
+@_public
 def list_modules() -> Dict[str, Any]:
     """The pluggable module chain: names + declared schema inputs/outputs."""
     mods = [SFCCore(base_year=2019), DistributionModule(base_year=2019),

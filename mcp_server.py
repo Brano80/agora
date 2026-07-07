@@ -19,7 +19,8 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.fastmcp import FastMCP, Context
+    from mcp import types
 except ImportError:
     raise SystemExit('The MCP SDK is required to serve AGORA over MCP:\n'
                      '    pip install "mcp[cli]"\n'
@@ -151,6 +152,72 @@ def agora_validate_baseline(geo: str = "DE", allow_live: bool = False) -> str:
     conclusions from scenarios on a geo you haven't used yet.
     """
     return _dump(mcp_api.validate_baseline(geo=geo, allow_live=allow_live))
+
+
+@mcp.tool(name="agora_preview_scenario",
+          annotations={"title": "Preview & approve scenario assumptions",
+                       **_READ_ONLY})
+def agora_preview_scenario(geo: str = "DE", horizon: int = 30,
+                           labour_share_end: Optional[float] = None,
+                           capex_growth: float = 0.015, capital_tax: float = 0.0,
+                           ubi: bool = False, ubc: bool = False,
+                           ubc_reinvest: float = 0.0,
+                           name: Optional[str] = None,
+                           allow_live: bool = False) -> str:
+    """Resolve a scenario's assumptions WITHOUT running the model — the
+    approval (elicitation) step. Call this first, show `approval_prompt` to the
+    human, and only call agora_run_scenario once they sign off: the values
+    judgement stays with the user, and nobody approves one thing while the
+    engine runs another (the resolved lever paths returned here are exactly what
+    agora_run_scenario will use). No numbers are computed. Returns JSON:
+    {disclaimer, geo, scenario, assumptions{levers}, approval_prompt}.
+    """
+    return _dump(mcp_api.preview_scenario(
+        geo=geo, horizon=horizon, labour_share_end=labour_share_end,
+        capex_growth=capex_growth, capital_tax=capital_tax, ubi=ubi, ubc=ubc,
+        ubc_reinvest=ubc_reinvest, name=name, allow_live=allow_live))
+
+
+@mcp.tool(name="agora_narrate",
+          annotations={"title": "Narrate a gated result via the client's model",
+                       **_READ_ONLY})
+async def agora_narrate(ctx: Context, geo: str = "DE",
+                        preset: Optional[str] = None,
+                        scenarios: Optional[List[Dict[str, Any]]] = None,
+                        horizon: int = 30, series: Optional[List[str]] = None,
+                        reinvest: float = 0.0, allow_live: bool = False) -> str:
+    """Run a scenario (or comparison) through the gated engine, then narrate it
+    in plain prose using the CLIENT's own model via MCP sampling — AGORA ships
+    no model of its own. The numbers stay authoritative (they come from the
+    gated engine); the borrowed model only phrases them and is instructed to
+    invent nothing and declare no single 'winner'.
+
+    Pass preset='triad'/'ubc' or scenarios=[{...}] (like agora_compare); with
+    neither, narrates the plain baseline run. If the client does not support
+    sampling, the numeric payload is returned with a `narrative_unavailable`
+    note (never an error). Returns the run/compare JSON plus `narrative`.
+    """
+    if preset or scenarios:
+        payload = mcp_api.compare(geo=geo, preset=preset, scenarios=scenarios,
+                                  horizon=horizon, series=series,
+                                  reinvest=reinvest, allow_live=allow_live)
+    else:
+        payload = mcp_api.run_scenario(geo=geo, horizon=horizon, series=series,
+                                       allow_live=allow_live)
+    prompt = mcp_api.narration_prompt(payload)
+    try:
+        msg = await ctx.session.create_message(
+            messages=[types.SamplingMessage(
+                role="user",
+                content=types.TextContent(type="text", text=prompt))],
+            max_tokens=400)
+        content = getattr(msg, "content", None)
+        payload["narrative"] = getattr(content, "text", str(content))
+    except Exception as exc:  # client without sampling capability -> graceful
+        payload["narrative_unavailable"] = (
+            "This client does not support MCP sampling; numbers returned "
+            "without narration (%s)." % type(exc).__name__)
+    return _dump(payload)
 
 
 if __name__ == "__main__":

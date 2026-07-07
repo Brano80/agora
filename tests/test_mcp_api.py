@@ -223,3 +223,42 @@ def test_mcp_server_shim_registers_tools():
     assert {"agora_run_scenario", "agora_compare", "agora_list_modules",
             "agora_get_series", "agora_list_geos",
             "agora_validate_baseline"} <= names
+
+
+# --------------------------------------------------------------------------- #
+# MCP increment 2 — elicitation (preview) + sampling (narration prompt)
+# --------------------------------------------------------------------------- #
+def test_preview_scenario_resolves_without_running():
+    p = mcp_api.preview_scenario(geo="DE", labour_share_end=0.30,
+                                 capex_growth=0.06, capital_tax=0.40, ubc=True)
+    assert "error" not in p
+    # elicitation step computes NOTHING: no gate, no series
+    assert "gate" not in p and "series" not in p and "summary" not in p
+    lev = p["assumptions"]["levers"]
+    assert "tax_capital" in lev and lev["ubc_on"]["end"]        # UBC lever on
+    assert "Approve these AGORA assumptions" in p["approval_prompt"]
+
+
+def test_preview_matches_the_run_it_approves():
+    """The assumptions shown for approval must equal the assumptions actually
+    run — otherwise the human approves one thing and the engine runs another."""
+    levers = dict(geo="FR", labour_share_end=0.30, capex_growth=0.06,
+                  capital_tax=0.40, ubc=True)
+    prev = mcp_api.preview_scenario(**levers)
+    run = mcp_api.run_scenario(**levers)
+    assert prev["assumptions"]["levers"] == run["assumptions"]["levers"]
+
+
+def test_preview_rejects_bad_levers_before_running():
+    p = mcp_api.preview_scenario(geo="DE", ubi=True, ubc=True)   # mutually excl.
+    assert "error" in p and "cannot set both" in p["error"]
+
+
+def test_narration_prompt_is_faithful_and_payload_bound():
+    payload = mcp_api.run_scenario(geo="DE", capital_tax=0.40, ubc=True,
+                                   labour_share_end=0.30, capex_growth=0.06)
+    prompt = mcp_api.narration_prompt(payload)
+    assert "invent none" in prompt and "'winner'" in prompt
+    assert "not forecasts" in prompt
+    assert payload["scenario"] in prompt          # bound to THIS result
+    assert "sandbox" in prompt.lower() or "SANDBOX" in prompt

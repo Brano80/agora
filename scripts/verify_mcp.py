@@ -9,7 +9,7 @@ Requires: pip install "mcp[cli]"   (same dependency as the server itself)
 
 Checks:
   1. initialize handshake + server identity (agora_mcp)
-  2. tools/list exposes the 6 agora_* tools
+  2. tools/list exposes the 8 agora_* tools
   3. tools/call agora_run_scenario (AI shock + UBC, DE) -> gate passed,
      disclaimer + resolved assumptions + data provenance present,
      series length == horizon
@@ -64,8 +64,9 @@ async def main() -> int:
             names = {t.name for t in tools.tools}
             expected = {"agora_run_scenario", "agora_compare",
                         "agora_list_modules", "agora_get_series",
-                        "agora_list_geos", "agora_validate_baseline"}
-            check("tools/list exposes the 6 agora_* tools",
+                        "agora_list_geos", "agora_validate_baseline",
+                        "agora_preview_scenario", "agora_narrate"}
+            check("tools/list exposes the 8 agora_* tools",
                   expected <= names, "missing: %s" % (expected - names))
 
             r = await session.call_tool("agora_run_scenario", {
@@ -98,6 +99,22 @@ async def main() -> int:
             check("compare preset=ubc: every arm gate-clean",
                   bool(runs) and all(x.get("gate", {}).get("passed")
                                      for x in runs))
+
+            # increment 2 -- elicitation (preview) + sampling (narrate)
+            r = await session.call_tool("agora_preview_scenario", {
+                "geo": "DE", "labour_share_end": 0.30, "capex_growth": 0.06,
+                "capital_tax": 0.40, "ubc": True})
+            p = payload(r)
+            check("preview: assumptions resolved, nothing computed",
+                  "approval_prompt" in p and "gate" not in p
+                  and "series" not in p)
+
+            r = await session.call_tool("agora_narrate", {
+                "geo": "DE", "preset": "ubc", "horizon": 5})
+            p = payload(r)
+            check("narrate: gated numbers returned (narration optional)",
+                  bool(p.get("runs")) and ("narrative" in p
+                                           or "narrative_unavailable" in p))
 
     print()
     if FAILURES:
