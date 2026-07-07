@@ -262,3 +262,13 @@ def test_narration_prompt_is_faithful_and_payload_bound():
     assert "not forecasts" in prompt
     assert payload["scenario"] in prompt          # bound to THIS result
     assert "sandbox" in prompt.lower() or "SANDBOX" in prompt
+
+
+def test_policy_frontier_is_a_gated_menu_no_winner():
+    f = mcp_api.policy_frontier(geo="DE", horizon=30)
+    assert f["n_gated_out"] == 0                       # every candidate gated
+    assert f["n_frontier"] >= 2                        # a menu, not one winner
+    assert f["n_dominated"] >= 1                       # some options are dominated
+    assert "no single" in f["note"].lower()
+    assert {p["form"] for p in f["frontier"]} <= {"none", "cash_ubi", "ubc"}
+    assert all(p["on_frontier"] for p in f["frontier"])

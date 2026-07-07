@@ -79,3 +79,17 @@ def test_reporter_hook_is_pluggable():
 def test_refusal_payload_reads_as_refused():
     txt = crew.template_report({"geo": "XX", "error": "Unknown geo 'XX'."})
     assert "REFUSED" in txt and "XX" in txt
+
+
+def test_plan_frontier_intent():
+    assert crew.plan("optimise policy in France").mode == "frontier"
+    assert crew.plan("which policy is best for SK").mode == "frontier"
+    assert crew.plan("show me the trade-off frontier for Germany").mode == "frontier"
+
+
+def test_crew_frontier_mode_returns_a_menu():
+    r = crew.run_crew("what is the policy frontier for Germany", horizon=10)
+    assert r.plan["mode"] == "frontier" and r.gate_passed is True
+    assert "non-dominated" in r.report and "no single 'best'" in r.report
+    assert r.payload.get("n_frontier", 0) >= 2
+    assert r.payload.get("n_gated_out") == 0

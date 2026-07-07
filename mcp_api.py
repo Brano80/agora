@@ -428,6 +428,34 @@ def narration_prompt(payload: Dict[str, Any]) -> str:
 
 
 @_public
+def policy_frontier(geo: str = "DE", horizon: int = 30,
+                    taus: Optional[List[float]] = None,
+                    allow_live: bool = False, year: int = 2019) -> Dict[str, Any]:
+    """The Phase-4 optimiser as a tool: sweep the policy space (form x capital-
+    tax intensity) against the AI shock, GATE every candidate, and return the
+    Pareto (non-dominated) set scored on five objectives (growth, equality,
+    stability, fiscal, resilience). The frontier IS the 'no single best' answer:
+    it reports the trade-off MENU, never a winner. `taus` overrides the levy
+    grid. Returns {disclaimer, geo, horizon, objectives[], frontier[],
+    n_frontier, n_dominated, n_gated_out, note, data_sources}.
+    """
+    from policy_search import OBJECTIVES
+    horizon = _check_horizon(horizon)
+    orch = _orchestrator(geo=geo, year=year, allow_live=allow_live)
+    pts = orch.run_policy_search(taus=taus, horizon=horizon)
+    front = [p.as_dict() for p in pts if p.on_frontier]
+    return {"disclaimer": DISCLAIMER, "geo": orch.geo, "horizon": horizon,
+            "objectives": [{"key": k, "label": lbl} for k, lbl in OBJECTIVES],
+            "frontier": front, "n_frontier": len(front),
+            "n_dominated": sum(1 for p in pts if p.consistent and not p.on_frontier),
+            "n_gated_out": sum(1 for p in pts if not p.consistent),
+            "note": ("The frontier IS the answer: several non-dominated policies, "
+                     "no single 'best'. Each point trades one objective for "
+                     "another; the values judgement stays with you."),
+            "data_sources": _sources(orch)}
+
+
+@_public
 def list_modules() -> Dict[str, Any]:
     """The pluggable module chain: names + declared schema inputs/outputs."""
     mods = [SFCCore(base_year=2019), DistributionModule(base_year=2019),

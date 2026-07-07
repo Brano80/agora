@@ -220,5 +220,23 @@ async def agora_narrate(ctx: Context, geo: str = "DE",
     return _dump(payload)
 
 
+@mcp.tool(name="agora_policy_frontier",
+          annotations={"title": "Compute the policy trade-off frontier",
+                       **_READ_ONLY})
+def agora_policy_frontier(geo: str = "DE", horizon: int = 30,
+                          taus: Optional[List[float]] = None,
+                          allow_live: bool = False) -> str:
+    """The Phase-4 optimiser as a tool: sweep policy form x capital-tax intensity
+    against the AI shock, gate every candidate, and return the Pareto
+    (non-dominated) set on five objectives (growth, equality, stability, fiscal,
+    resilience). Deliberately returns a MENU, not a winner -- the frontier IS the
+    'no single best' answer. `taus` overrides the levy grid. Returns JSON:
+    {disclaimer, geo, horizon, objectives[], frontier[], n_frontier, n_dominated,
+    n_gated_out, note, data_sources}.
+    """
+    return _dump(mcp_api.policy_frontier(geo=geo, horizon=horizon, taus=taus,
+                                         allow_live=allow_live))
+
+
 if __name__ == "__main__":
     mcp.run()

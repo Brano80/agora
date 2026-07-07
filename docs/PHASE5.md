@@ -31,8 +31,9 @@ non-negotiable) and the sandbox/provenance guardrails travel with every result.
 Recognises a country (name or 2-letter code; default DE), an AI shock
 ("AI shock/shift/automation"), a policy form (UBC / cash UBI), a tax rate
 ("40%", "tau 0.4"), fund reinvestment ("reinvest 50%"), and comparison intent
-("compare", " vs ", "ubc vs cash", "triad"). Unknown phrasing degrades to the
-no-shock baseline for the detected country.
+("compare", " vs ", "ubc vs cash", "triad"), and the OPTIMISER ("frontier",
+"optimise", "best policy", "which policy", "trade-off frontier"). Unknown
+phrasing degrades to the no-shock baseline for the detected country.
 
 ## Use
 ```
@@ -47,7 +48,10 @@ print(res.report)
 ```
 
 ## Scope / next increments
-- Increment 1 (this): Scenario + approve + Runner + Critic + Report, deterministic.
+- Increment 1: Scenario + approve + Runner + Critic + Report, deterministic.
+- Increment 2 (2026-07-07): the **Phase-4 optimiser is a crew tool** -- ask for
+  the trade-off frontier in plain language (`mode='frontier'` ->
+  `agora_policy_frontier`), reported as a menu with no winner.
 - Next: LLM planner/reporter via MCP sampling; wire the **scout** and the
   **Phase-4 optimiser** in as crew tools (the plan already treats them as
   callable stages); optional LangGraph/n8n DAG for the deterministic wiring.

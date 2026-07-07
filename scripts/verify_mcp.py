@@ -9,7 +9,7 @@ Requires: pip install "mcp[cli]"   (same dependency as the server itself)
 
 Checks:
   1. initialize handshake + server identity (agora_mcp)
-  2. tools/list exposes the 8 agora_* tools
+  2. tools/list exposes the 9 agora_* tools
   3. tools/call agora_run_scenario (AI shock + UBC, DE) -> gate passed,
      disclaimer + resolved assumptions + data provenance present,
      series length == horizon
@@ -65,8 +65,9 @@ async def main() -> int:
             expected = {"agora_run_scenario", "agora_compare",
                         "agora_list_modules", "agora_get_series",
                         "agora_list_geos", "agora_validate_baseline",
-                        "agora_preview_scenario", "agora_narrate"}
-            check("tools/list exposes the 8 agora_* tools",
+                        "agora_preview_scenario", "agora_narrate",
+                        "agora_policy_frontier"}
+            check("tools/list exposes the 9 agora_* tools",
                   expected <= names, "missing: %s" % (expected - names))
 
             r = await session.call_tool("agora_run_scenario", {
@@ -115,6 +116,12 @@ async def main() -> int:
             check("narrate: gated numbers returned (narration optional)",
                   bool(p.get("runs")) and ("narrative" in p
                                            or "narrative_unavailable" in p))
+
+            r = await session.call_tool("agora_policy_frontier",
+                                        {"geo": "DE", "horizon": 10})
+            p = payload(r)
+            check("frontier: gated Pareto menu, no single winner",
+                  p.get("n_frontier", 0) >= 2 and p.get("n_gated_out") == 0)
 
     print()
     if FAILURES:

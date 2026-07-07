@@ -21,6 +21,9 @@ can drive gated scenario runs directly.
 | `agora_get_series` | Series catalogue / full provenance (provider, dataset, dimensions, source URL, live/snapshot). |
 | `agora_list_geos` | Available snapshot countries (+ aggregate + FIGARO-matrix flags). |
 | `agora_validate_baseline` | The validate-before-trusting scorecard for a geo. |
+| `agora_preview_scenario` | **Elicitation / approval step**: resolve a scenario's assumptions *without running it*, so the human signs off on the lever paths before any numbers are computed. What it shows is exactly what `agora_run_scenario` will run. |
+| `agora_narrate` | **Sampling**: run a gated scenario/comparison, then narrate it in prose using the *client's own model* (AGORA bundles none). Numbers stay authoritative; the borrowed model only phrases them, told to invent nothing and name no 'winner'. Degrades to numbers-only if the client lacks sampling. |
+| `agora_policy_frontier` | **Optimiser as a tool**: sweep policy form x tax intensity against the AI shock, gate every candidate, return the Pareto (non-dominated) set on 5 objectives. A trade-off menu, not a winner. |
 
 ## Guardrails (enforced in `mcp_api`, not the shim)
 1. **Consistency gate on every result** — a failing run returns an error
@@ -53,21 +56,12 @@ Scheduler.) Quick test without a client:
 npx @modelcontextprotocol/inspector python mcp_server.py
 ```
 
-## Verified (2026-07-07)
-- Sandbox: 219 tests green (18 new for the tool layer + shim registration);
-  end-to-end through the FastMCP protocol layer (gated payload, object-array
-  `scenarios` argument, unknown-geo refusal).
-- **User's Windows machine: `python scripts/verify_mcp.py` PASS** — real
-  spawned stdio subprocess, protocol 2025-11-25, all 11 checks green
-  (handshake, 6 tools listed, gated UBC run with disclaimer/assumptions/
-  provenance, no-series refusal, 4-arm compare gate-clean). Re-run this
-  script after any change to mcp_api.py / mcp_server.py.
-
-## Deferred (next increments, per the brief)
-- **Elicitation** (server→user approval of assumptions before a run) — direct
-  fit for "the values judgment stays with the user"; +~1 day.
-- **Sampling** (Report step borrows the client's model to narrate) — +~1 day.
-- **MCP Apps** (dashboard inside the client) — out of scope; Streamlit stands.
-- **MCP Registry** publication — after the server has real mileage.
-- Spec note: built against the current stable SDK; re-check the 2026-07-28 RC
-  (stateless core + Extensions) when it lands.
+## Verified
+- Sandbox: 236 tests green (tool layer + shim registration + increment-2
+  elicitation/sampling helpers); end-to-end through the FastMCP protocol layer
+  (gated payload, object-array `scenarios` argument, unknown-geo refusal).
+- **User's Windows machine: `python scripts/verify_mcp.py`** — real spawned
+  stdio subprocess, protocol 2025-11-25 (handshake, tools listed, gated UBC run
+  with disclaimer/assumptions/provenance, no-series refusal, 4-arm compare
+  gate-clean). Increment 1 (6 tools) PASSED 2026-07-07; re-run after the
+  i

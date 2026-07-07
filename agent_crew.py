@@ -108,6 +108,14 @@ def plan(request: str, valid: Optional[set] = None) -> CrewPlan:
 
     shock_levers = {"labour_share_end": 0.30, "capex_growth": 0.06} if shock else {}
 
+    # --- optimiser intent (the Phase-4 frontier as a crew tool) ---
+    if any(w in t for w in ("frontier", "pareto", "optimis", "optimiz",
+                            "best policy", "best mix", "which policy",
+                            "policy mix", "trade-off frontier",
+                            "trade off frontier")):
+        return CrewPlan(geo=geo, mode="frontier",
+                        note="policy trade-off frontier")
+
     # --- comparison intent ---
     compare = any(w in t for w in (" vs ", " versus ", " against ", "compare"))
     if "ubc vs cash" in t or "cash vs ubc" in t or "pinned" in t \
@@ -153,6 +161,20 @@ def _fmt(v: Any) -> str:
 
 
 def template_report(payload: Dict[str, Any]) -> str:
+    if payload.get("mode") == "frontier":
+        nf, nd = payload.get("n_frontier", 0), payload.get("n_dominated", 0)
+        lines = [f"AGORA crew -- policy frontier on {payload.get('geo')} "
+                 f"({payload.get('horizon', '?')}y). {nf} non-dominated "
+                 f"policies out of {nf + nd}; no single 'best' -- each trades one "
+                 f"objective for another."]
+        for pt in payload.get("frontier", []):
+            lines.append(
+                f"  - {pt.get('name')}: GDP {_fmt(pt.get('m_gdp_end'))}, "
+                f"Gini {_fmt(pt.get('m_gini'))}, poverty {_fmt(pt.get('m_poverty'))}, "
+                f"debt/GDP {_fmt(pt.get('m_debt_gdp'))}.")
+        lines.append("  Sandbox, not a forecast; every candidate passed the "
+                     "consistency gate. The choice is yours.")
+        return "\n".join(lines)
     if payload.get("mode") == "compare" or "runs" in payload:
         lines = [f"AGORA crew -- comparison on {payload.get('geo')} "
                  f"({payload.get('horizon', '?')}y). No single 'winner': the "
@@ -242,7 +264,13 @@ def run_crew(request: str, *, horizon: int = 30, allow_live: bool = False,
                           "gate; no numbers computed.", stages)
 
     # --- run (gated) ---
-    if p.mode == "compare":
+    if p.mode == "frontier":
+        payload = mcp_api.policy_frontier(geo=p.geo, horizon=horizon,
+                                          allow_live=allow_live)
+        payload["mode"] = "frontier"
+        gate_passed = (payload.get("n_gated_out", 1) == 0
+                       and payload.get("n_frontier", 0) >= 1)
+    elif p.mode == "compare":
         payload = (mcp_api.compare(geo=p.geo, preset=p.preset, horizon=horizon,
                                    series=CREW_SERIES, allow_live=allow_live)
                    if p.preset else
