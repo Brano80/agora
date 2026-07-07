@@ -52,6 +52,11 @@ print(res.report)
 - Increment 2 (2026-07-07): the **Phase-4 optimiser is a crew tool** -- ask for
   the trade-off frontier in plain language (`mode='frontier'` ->
   `agora_policy_frontier`), reported as a menu with no winner.
+- Increment 2 (2026-07-07): **LLM adapters** -- `make_llm_planner(model_call)` /
+  `make_llm_reporter(model_call)` borrow a model (the client's via MCP sampling,
+  or the scout's local Qwen via `qwen_model_call`). Both VALIDATE/gate whatever
+  the model proposes and fall back to the deterministic agents on any failure,
+  so the crew never hard-depends on a model. No bundled model.
 - Next: LLM planner/reporter via MCP sampling; wire the **scout** and the
   **Phase-4 optimiser** in as crew tools (the plan already treats them as
   callable stages); optional LangGraph/n8n DAG for the deterministic wiring.

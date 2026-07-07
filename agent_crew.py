@@ -16,6 +16,7 @@ uses). No bundled model.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
@@ -205,6 +206,98 @@ def template_report(payload: Dict[str, Any]) -> str:
             f"poverty {_fmt(s.get('poverty_rate_end'))}, "
             f"debt/GDP {_fmt(s.get('gov_debt_gdp_end'))}. "
             f"Sandbox, not a forecast.")
+
+
+# --------------------------------------------------------------------------- #
+# LLM adapters -- borrow a model (the client's via MCP sampling, or the scout's
+# local Qwen); AGORA bundles none. Both fall back to the deterministic agents on
+# ANY failure, so the crew never hard-depends on a model and the gate always guards.
+# --------------------------------------------------------------------------- #
+def make_llm_reporter(model_call: Callable[[str], Optional[str]]
+                      ) -> Callable[[Dict[str, Any]], str]:
+    """Reporter that narrates a gated payload via `model_call(prompt)->str|None`.
+    Numbers come from the payload (`mcp_api.narration_prompt`); the model only
+    phrases them. Falls back to `template_report` on any failure."""
+    def reporter(payload: Dict[str, Any]) -> str:
+        try:
+            out = model_call(mcp_api.narration_prompt(payload))
+            if out and out.strip():
+                return out.strip()
+        except Exception:
+            pass
+        return template_report(payload)
+    return reporter
+
+
+_PLANNER_SYSTEM = (
+    'You are AGORA\'s scenario planner. Map the request to a JSON plan and output '
+    'ONLY JSON, no prose. Schema: {"geo": <2-letter EU code>, "mode": '
+    '"single"|"compare"|"frontier", "levers": {"labour_share_end": 0-1 or null, '
+    '"capex_growth": 0-1, "capital_tax": 0-1, "ubi": bool, "ubc": bool, '
+    '"ubc_reinvest": 0-1}}. The AI shock is labour_share_end=0.30, '
+    'capex_growth=0.06. "frontier" = the trade-off menu (no levers). "compare" = '
+    'cash UBI vs UBC. Use only the levers in the schema.')
+
+
+def make_llm_planner(model_call: Callable[[str], Optional[str]],
+                     valid: Optional[set] = None
+                     ) -> Callable[[str], CrewPlan]:
+    """Planner backed by `model_call`. The model proposes a JSON plan; it is
+    parsed and VALIDATED (geo in the snapshot set, taus clamped to [0,1],
+    ubi/ubc exclusivity) into a CrewPlan. Falls back to the deterministic
+    rule-based `plan()` on any failure -- model down, unparseable, or invalid."""
+    vg = _valid_geos() if valid is None else valid
+
+    def planner(request: str) -> CrewPlan:
+        try:
+            raw = model_call(_PLANNER_SYSTEM + "\n\nRequest: " + request)
+            m = re.search(r"\{.*\}", raw or "", re.S)
+            spec = json.loads(m.group(0))
+            geo = str(spec.get("geo", "DE")).upper()
+            geo = geo if geo in vg else "DE"
+            mode = spec.get("mode", "single")
+            if mode == "frontier":
+                return CrewPlan(geo=geo, mode="frontier", note="policy frontier (llm)")
+            if mode == "compare":
+                return CrewPlan(geo=geo, mode="compare", preset="ubc",
+                                note="cash vs UBC (llm)")
+            lv = spec.get("levers", {}) or {}
+            levers: Dict[str, Any] = {}
+
+            def clamp(x):
+                return max(0.0, min(1.0, float(x)))
+            if lv.get("labour_share_end") is not None:
+                levers["labour_share_end"] = clamp(lv["labour_share_end"])
+            if lv.get("capex_growth") is not None:
+                levers["capex_growth"] = float(lv["capex_growth"])
+            if lv.get("capital_tax") is not None:
+                levers["capital_tax"] = clamp(lv["capital_tax"])
+            if lv.get("ubc"):
+                levers["ubc"] = True
+            elif lv.get("ubi"):
+                levers["ubi"] = True
+            if lv.get("ubc_reinvest") is not None:
+                levers["ubc_reinvest"] = clamp(lv["ubc_reinvest"])
+            return CrewPlan(geo=geo, mode="single", levers=levers, note="llm plan")
+        except Exception:
+            return plan(request, valid=vg)
+    return planner
+
+
+def qwen_model_call(prompt: str, temperature: float = 0.2,
+                    max_tokens: int = 500) -> Optional[str]:
+    """Optional local-model adapter: route a prompt to the scout's local Qwen
+    (Ollama, OpenAI-compatible). Returns None if the endpoint is down -- the
+    adapters read that as 'fall back to deterministic'."""
+    try:
+        from scout.llm import QwenClient
+        c = QwenClient()
+        if not c.available():
+            return None
+        return c.chat([{"role": "user", "content": prompt}],
+                      temperature=temperature, max_tokens=max_tokens)
+    except Exception:
+        return None
 
 
 # --------------------------------------------------------------------------- #

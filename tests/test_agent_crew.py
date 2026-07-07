@@ -93,3 +93,46 @@ def test_crew_frontier_mode_returns_a_menu():
     assert "non-dominated" in r.report and "no single 'best'" in r.report
     assert r.payload.get("n_frontier", 0) >= 2
     assert r.payload.get("n_gated_out") == 0
+
+
+# ---- LLM adapters (borrow a model; deterministic fallback) ---------------- #
+def test_llm_reporter_uses_model_then_falls_back():
+    payload = crew.mcp_api.run_scenario(geo="DE", capital_tax=0.40, ubc=True,
+                                        labour_share_end=0.30, capex_growth=0.06)
+    good = crew.make_llm_reporter(lambda prompt: "NARRATIVE for " + payload["geo"])
+    assert good(payload).startswith("NARRATIVE for DE")
+    # model returns None -> deterministic template fallback
+    assert "AGORA crew" in crew.make_llm_reporter(lambda p: None)(payload)
+    # model raises -> fallback too
+    def boom(p): raise RuntimeError("model down")
+    assert "AGORA crew" in crew.make_llm_reporter(boom)(payload)
+
+
+def test_llm_planner_parses_json_then_validates():
+    stub = lambda p: ('here you go ```json {"geo":"FR","mode":"single","levers":'
+                      '{"labour_share_end":0.30,"capex_growth":0.06,'
+                      '"capital_tax":0.5,"ubc":true}} ```')
+    cp = crew.make_llm_planner(stub, valid={"FR", "DE"})("anything")
+    assert cp.geo == "FR" and cp.mode == "single"
+    assert cp.levers.get("ubc") and abs(cp.levers["capital_tax"] - 0.5) < 1e-9
+
+
+def test_llm_planner_invalid_geo_and_bad_json_fall_back():
+    # invalid geo clamps to DE
+    cp = crew.make_llm_planner(lambda p: '{"geo":"ZZ","mode":"frontier"}',
+                               valid={"DE"})("x")
+    assert cp.geo == "DE" and cp.mode == "frontier"
+    # unparseable -> deterministic rule-based plan()
+    cp2 = crew.make_llm_planner(lambda p: "not json at all",
+                                valid={"DE", "SK"})("UBC at 40% in Slovakia")
+    assert cp2.geo == "SK" and cp2.levers.get("ubc")
+
+
+def test_run_crew_end_to_end_with_llm_stubs():
+    plan_stub = lambda p: ('{"geo":"DE","mode":"single","levers":'
+                           '{"labour_share_end":0.30,"capex_growth":0.06,'
+                           '"capital_tax":0.40,"ubc":true}}')
+    r = crew.run_crew("free text", horizon=8,
+                      planner=crew.make_llm_planner(plan_stub, valid={"DE"}),
+                      reporter=crew.make_llm_reporter(lambda prompt: "LLM: all gated"))
+    assert r.gate_passed is True and "LLM: all gated" in r.report
