@@ -115,3 +115,27 @@ def test_phase6_fiscal_block_makes_debt_a_realistic_objective():
     assert max(d_on) < min(d_off)                                   # block controls debt vs runaway
     assert (max(d_on) - min(d_on)) < (max(d_off) - min(d_off))      # fiscal axis compresses
     assert any(p.on_frontier and p.form == "ubc" for p in pts_on)   # UBC still on the frontier
+
+
+def test_rich_policy_search_reopens_form_tradeoff():
+    """Richer sweep: form x tau x INVESTMENT REGIME x fund reinvestment. Under
+    FIXED investment the frontier stays UBC-only (F20); once investment is
+    ENDOGENOUS (dilution bites) the cash-vs-UBC form trade-off RE-OPENS (F23)."""
+    from orchestrator import AgoraOrchestrator
+    from policy_search import pareto_front
+    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    o.load_data()
+    pts = o.rich_policy_search(horizon=30)
+    assert pts and all(p.consistent for p in pts)          # every candidate gated
+    assert {p.inv_regime for p in pts} == {"fixed", "endogenous"}
+
+    def regime_front(reg):
+        sub = [p for p in pts if p.inv_regime == reg]
+        for p in sub:
+            p.on_frontier = False
+        return pareto_front(sub)
+
+    assert {p.form for p in regime_front("fixed")} == {"ubc"}   # F20 holds
+    endo = regime_front("endogenous")
+    assert any(p.form == "cash_ubi" for p in endo)             # cash re-enters
+    assert any(p.form == "ubc" for p in endo)                  # alongside UBC (F23)

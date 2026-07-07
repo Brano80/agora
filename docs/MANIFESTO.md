@@ -559,3 +559,19 @@ left the jurisdiction; and even on aggressive compounding (AI capex growing 35%�
 levy does **not** match the ownership route until the **early-2050s** (~2052 at a 10% levy, ~2057 at 5% -- about a generation out; it reaches only ~€870/person by 2050 at 10%). Conclusion, reinforcing the core thesis: **predistribution through equity is
 the engine; the AI levy is a fast-growing supplement that seeds the fund.** Ownership reaches
 households now and captures the value the flow tax leaks.
+
+### F23 — "UBC dominates cash" is conditional on the investment assumption (2026-07-07)
+Richer policy search (`orchestrator.rich_policy_search`: form x tau x investment
+regime x fund-reinvestment, every candidate gated; `policy_search.search_policies_rich`).
+Under **fixed investment** (dilution cannot bite) the DE frontier is **UBC-only** across
+tau 0.25-0.50 -- F20 holds. But once investment is **endogenous** (owners diluted, capex
+responds) the **cash-vs-UBC form trade-off RE-OPENS**: cash UBI at high tau (0.45-0.60)
+re-enters the frontier on the **growth + fiscal** axes (GDP ~8.0M MEUR, lower debt), while
+UBC holds the **equality + poverty** axes (Gini to ~0.06, poverty 0). The fund's
+reinvestment fraction is itself a growth-vs-equality dial (reinvest=1.0 lifts GDP but raises
+Gini/poverty, since less is paid out now). Reading: "ownership dominates cash" is **not
+unconditional** -- it depends on how strongly dilution suppresses investment and on how you
+weight growth against equality. This **sharpens** the "no single best" principle rather than
+weakening it: the honest frontier is a menu, and the binding empirical question becomes the
+investment-response elasticity. Default (fixed-regime) dashboard/manifesto results are
+unchanged; the multi-regime sweep is opt-in.

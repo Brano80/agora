@@ -124,3 +124,9 @@ levy) vs an ownership-funded dividend. Finding F22 — levy raises ~€35/person
 of the ownership route) and does not catch up before ~2050; ownership is the engine, the levy a
 seed. Sourced inputs (hyperscaler capex guidance, Tax Foundation DST, CEPS, AGORA counterfactual).
 Output `study_ai_levy_base.md` gitignored; chart `social_ai_levy.png`.
+
+### Richer policy search (SHIPPED 2026-07-07)
+`orchestrator.rich_policy_search` adds the investment-regime x fund-reinvestment axes to the
+Phase-4 frontier (opt-in; default frontier unchanged). Finding F23: the UBC-dominates-cash
+frontier is conditional on fixed investment; under endogenous investment the cash-vs-UBC form
+trade-off re-opens. Gate-clean, +1 test. Feeds Phase 5 (agent crew over the MCP tools).

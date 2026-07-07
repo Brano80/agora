@@ -228,6 +228,36 @@ class AgoraOrchestrator:
         p = self.params()
         return search_policies(self.run_scenario, p, taus=taus, horizon=horizon)
 
+    def rich_policy_search(self, taus=None, reinvests=None,
+                           inv_elasticity: float = 0.75, horizon: int = 30):
+        """Richer Phase-4 sweep: form x tau x INVESTMENT REGIME (fixed vs
+        endogenous) x fund-reinvestment. Tests whether endogenous investment +
+        low UBC reinvestment re-opens the cash-vs-UBC form trade-off. Supplies a
+        gated runner per investment regime by swapping the module chain (same
+        mechanism as run_ubc_experiment). Every candidate is gated."""
+        from policy_search import search_policies_rich
+        p = self.params()
+
+        def runner_for(inv_e: float):
+            def run(scen):
+                if inv_e == self.inv_elasticity:
+                    return self.run_scenario(scen)
+                saved = self.modules
+                self.modules = [
+                    SFCCore(base_year=self.year, inv_elasticity=float(inv_e)),
+                    DistributionModule(base_year=self.year),
+                    InputOutputModule(base_year=self.year)]
+                try:
+                    return self.run_scenario(scen)
+                finally:
+                    self.modules = saved
+            return run
+
+        return search_policies_rich(runner_for, p, taus=taus,
+                                    reinvests=reinvests,
+                                    inv_elasticity=inv_elasticity,
+                                    horizon=horizon)
+
     def validate_baseline(self, horizon: int = 30,
                           rtol: float = 0.005) -> Tuple[List[ValidationRow], ScenarioRun]:
         """Backtest: does the baseline year-0 reproduce the national targets?"""

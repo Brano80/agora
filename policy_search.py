@@ -40,6 +40,8 @@ OBJECTIVES: List[Tuple[str, str]] = [
     ("resilience", "Resilience (−poverty)"),
 ]
 DEFAULT_TAUS = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+DENSE_TAUS = [round(0.05*i, 2) for i in range(0, 13)]   # 0.00..0.60 step 0.05
+DEFAULT_REINVESTS = [0.0, 0.5, 1.0]
 
 
 @dataclass
@@ -52,11 +54,15 @@ class PolicyPoint:
     metrics: Dict[str, float] = field(default_factory=dict)      # raw, readable
     objectives: Dict[str, float] = field(default_factory=dict)   # higher = better
     on_frontier: bool = False
+    inv_regime: str = "fixed"        # "fixed" | "endogenous" (investment axis)
+    ubc_reinvest: float = 0.0        # fund reinvestment fraction (UBC only)
 
     def as_dict(self) -> Dict[str, object]:
         return {"form": self.form, "capital_tax": self.capital_tax,
                 "name": self.name, "consistent": self.consistent,
                 "on_frontier": self.on_frontier,
+                "inv_regime": self.inv_regime,
+                "ubc_reinvest": self.ubc_reinvest,
                 "max_residual": self.max_residual,
                 **{f"m_{k}": v for k, v in self.metrics.items()},
                 **{f"o_{k}": v for k, v in self.objectives.items()}}
@@ -129,3 +135,58 @@ def search_policies(run_scenario, p: SFCParams, taus: Optional[List[float]] = No
             metrics=metrics, objectives=objectives))
     pareto_front(points)                       # sets on_frontier in place
     return points
+
+
+def search_policies_rich(runner_for, p: SFCParams,
+                         taus: Optional[List[float]] = None,
+                         reinvests: Optional[List[float]] = None,
+                         inv_elasticity: float = 0.75,
+                         horizon: int = 30) -> List[PolicyPoint]:
+    """Richer sweep: adds the INVESTMENT-REGIME axis to form x tau.
+
+    Runs the grid under FIXED investment (the legacy frontier, where dilution
+    cannot bite) AND under ENDOGENOUS investment (owners diluted -> capex
+    responds) across a range of fund-reinvestment fractions. This is the honest
+    stress of the headline: does endogenous investment + LOW UBC reinvestment
+    re-open the cash-vs-UBC form trade-off on the frontier (cash winning the
+    growth axis where an un-reinvesting fund starves capex)?
+
+    `runner_for(inv_elasticity) -> run_scenario` supplies a gated runner for a
+    given investment regime (the orchestrator swaps its module chain). Every
+    candidate is gated; returns ALL points with the frontier flagged.
+    """
+    taus = DENSE_TAUS if taus is None else taus
+    reinvests = DEFAULT_REINVESTS if reinvests is None else reinvests
+    fixed_run = runner_for(0.0)
+    endo_run = runner_for(inv_elasticity)
+    pts: List[PolicyPoint] = []
+
+    def add(form, tau, kw, name, regime, reinv, run_fn):
+        scen = build_custom(p, labour_share_end=LS_AI_END,
+                            capex_growth=CAPEX_AI_GROWTH, capital_tax=tau,
+                            horizon=horizon, name=name, ubc_reinvest=reinv, **kw)
+        run = run_fn(scen)
+        m, o = _score(run)
+        pts.append(PolicyPoint(form=form, capital_tax=tau, name=name,
+                               consistent=run.consistent,
+                               max_residual=run.max_residual, metrics=m,
+                               objectives=o, inv_regime=regime,
+                               ubc_reinvest=reinv))
+
+    add("none", 0.0, dict(ubi=False, ubc=False), "No policy", "fixed", 0.0, fixed_run)
+    for tau in taus:
+        if tau <= 0:
+            continue
+        pct = int(round(tau * 100))
+        add("cash_ubi", tau, dict(ubi=True, ubc=False),
+            f"Cash UBI t={pct}% [fixed]", "fixed", 0.0, fixed_run)
+        add("cash_ubi", tau, dict(ubi=True, ubc=False),
+            f"Cash UBI t={pct}% [endo]", "endogenous", 0.0, endo_run)
+        add("ubc", tau, dict(ubi=False, ubc=True),
+            f"UBC t={pct}% [fixed]", "fixed", 0.0, fixed_run)
+        for rv in reinvests:
+            add("ubc", tau, dict(ubi=False, ubc=True),
+                f"UBC t={pct}% reinv={int(round(rv*100))}% [endo]",
+                "endogenous", rv, endo_run)
+    pareto_front(pts)
+    return pts
