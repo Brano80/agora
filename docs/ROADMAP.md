@@ -86,9 +86,9 @@ crew calls.
 
 **Interim option (smaller, if needed before the full block):** the minimal fiscal-reaction rule alone (step 2's theta-drift) — self-contained, gated, default-off — would make debt track far better without building the full tax system.
 
-### Phase-4 enabler (queued spike) — AGORA over MCP
+### Phase-4 enabler (spike) — AGORA over MCP  ▶ increment 1 SHIPPED 2026-07-07
 
-**Status: approved as a time-boxed P2 spike; queued — do NOT preempt** Phase 3 (FIGARO + connectors), the pinned UBC experiment, or Phase 6 (government block). Full brief: `docs/BRIEF-mcp-integration.md`.
+**Status: minimal read-only server SHIPPED** (`mcp_api.py` + `mcp_server.py`, 6 tools, gate-refusal + disclaimer/provenance enforced in the tool layer, 18 tests; see `docs/MCP.md`). Deferred increments: Elicitation (assumption approval), Sampling (narration), MCP Apps, Registry. Full brief: `docs/BRIEF-mcp-integration.md`.
 
 **Ask.** Wrap the existing `orchestrator` as an MCP server so AGORA can be driven by the planned agent crew and any MCP client (Claude, VS Code, Hermes): minimal read-only tools `run_scenario(geo, levers)` + `compare(scenarios)` first; then Elicitation (assumption/scenario approval — fits "the values judgment stays with the user") and Sampling (let the Report step borrow the client's model to narrate, no bundled model) as small increments. Defer MCP Apps. Build to the stable 2025-11-25 spec; note the 2026-07-28 RC (stateless core + Extensions); consider the official MCP Registry.
 

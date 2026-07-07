@@ -99,7 +99,7 @@
  ],
  "_meta": {
   "note": "REAL Eurostat input-output structure, NACE-64 aggregated to 6 sectors; A used directly by the module. automation_exposure remains a documented assumption.",
-  "source": "Eurostat/naio_10_cp1750 (stk_flow=DOM), 5478 cells, pulled 2026-06-16",
+  "source": "Eurostat/naio_10_cp1750 (stk_flow=DOM), 5478 cells, pulled 2026-07-02",
   "labour_shares": "nama_10_a64 (D1/B1G)",
   "va_coeff_definition": "1 - intermediate column sum (primary-input residual; reconciles VA to GDP). Domestic table -> includes import+tax content.",
   "va_coeff_observed_B1G": [
