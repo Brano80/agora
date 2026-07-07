@@ -164,9 +164,9 @@ def write_report(out):
         L.append("")
     L+=["## All checks",""]
     for st,lab,got,cl in R:
-        mark="✅" if st=="PASS" else "🚩"
+        mark="[PASS]" if st=="PASS" else "[FLAG]"
         L.append(f"- {mark} {lab}: engine `{got}` / post `{cl}`")
-    open("POST_NUMBERS.md","w").write("\n".join(L)+"\n")
+    open("POST_NUMBERS.md","w",encoding="utf-8").write("\n".join(L)+"\n")
     return R, flags
 
 def main():
@@ -175,7 +175,7 @@ def main():
     try: fr = frontier_all_ubc()
     except Exception as e: fr = {"error": str(e)}
     out = {"geos": res, "pooling": pool, "frontier": fr}
-    with open("POST_NUMBERS.json", "w") as f: json.dump(out, f, indent=2)
+    with open("POST_NUMBERS.json", "w", encoding="utf-8") as f: json.dump(out, f, indent=2)
     R, flags = write_report(out)
     print(f"AUDIT: {len(R)-len(flags)}/{len(R)} PASS; {len(flags)} FLAG")
     print("=== COMPUTED (current gated engine) ===")
@@ -183,7 +183,7 @@ def main():
 
 if __name__ == "__main__":
     if "--report-only" in sys.argv:
-        o=json.load(open("POST_NUMBERS.json")); R,flags=write_report(o)
+        o=json.load(open("POST_NUMBERS.json", encoding="utf-8")); R,flags=write_report(o)
         print(f"AUDIT: {len(R)-len(flags)}/{len(R)} PASS; {len(flags)} FLAG")
         [print(" FLAG:",f[1],f[2],"vs",f[3]) for f in flags]
     else: main()
