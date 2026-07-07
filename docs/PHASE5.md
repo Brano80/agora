@@ -46,6 +46,8 @@ from agent_crew import run_crew
 res = run_crew("triad for France", approver=my_human_gate)   # -> CrewResult
 print(res.report)
 ```
+Over MCP, the whole crew is one tool -- `agora_crew(request)` -- so any client can
+drive it in natural language (pair with `agora_narrate` for model-written prose).
 
 ## Scope / next increments
 - Increment 1: Scenario + approve + Runner + Critic + Report, deterministic.

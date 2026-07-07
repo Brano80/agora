@@ -136,3 +136,11 @@ def test_run_crew_end_to_end_with_llm_stubs():
                       planner=crew.make_llm_planner(plan_stub, valid={"DE"}),
                       reporter=crew.make_llm_reporter(lambda prompt: "LLM: all gated"))
     assert r.gate_passed is True and "LLM: all gated" in r.report
+
+
+def test_crew_transcript_is_json_serialisable_without_payload():
+    import json as _json
+    r = crew.run_crew("compare cash UBI vs UBC in Germany", horizon=8)
+    d = r.as_dict(); d.pop("payload", None)
+    blob = _json.dumps(d)                       # must not raise
+    assert '"report"' in blob and '"stages"' in blob and '"gate_passed"' in blob

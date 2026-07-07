@@ -238,5 +238,25 @@ def agora_policy_frontier(geo: str = "DE", horizon: int = 30,
                                          allow_live=allow_live))
 
 
+@mcp.tool(name="agora_crew",
+          annotations={"title": "Run the AGORA agent crew (plain language)",
+                       **_READ_ONLY})
+def agora_crew(request: str, horizon: int = 30,
+               allow_live: bool = False) -> str:
+    """The run-time agent crew as ONE tool: give a plain-language request and the
+    crew plans it, resolves and (auto-)approves the assumptions, runs it through
+    the consistency gate, and reports the result -- a single scenario, a cash-vs-
+    UBC comparison, or the policy trade-off frontier, always with the numbers and
+    never a 'winner'. Deterministic planner + template report (call agora_narrate
+    for model-written prose). Returns JSON: {request, plan, assumptions,
+    gate_passed, report, stages}.
+    """
+    from agent_crew import run_crew
+    res = run_crew(request, horizon=horizon, allow_live=allow_live)
+    d = res.as_dict()
+    d.pop("payload", None)          # keep the transcript lean; numbers are in `report`
+    return _dump(d)
+
+
 if __name__ == "__main__":
     mcp.run()
