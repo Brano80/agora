@@ -64,6 +64,12 @@ The orchestrator becomes the full agent crew (describe a scenario or objective i
 plain language → route → run → reconcile → report) · more countries / euro-area ·
 shareable dashboard. The scout loop and the Phase-4 optimiser become tools the
 crew calls.
+**Increment 1 SHIPPED 2026-07-07** — `agent_crew.py`: run-time pipeline
+(Scenario→approve→Runner→Critic(gate)→Report) over the `mcp_api` tool layer.
+Deterministic rule-based planner + template reporter (offline, 9 tests, 233
+total); human-approval gate (elicitation) can veto before compute; comparisons
+declare no 'winner'; LLM planner/reporter pluggable. `docs/PHASE5.md`. Next:
+LLM steps via MCP sampling + wire scout/optimiser as crew tools.
 
 ### Phase 6 — Proper government / fiscal block  (increments 1+2 SHIPPED 2026-06-24)
 
