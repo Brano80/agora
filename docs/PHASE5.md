@@ -54,6 +54,10 @@ drive it in natural language (pair with `agora_narrate` for model-written prose)
 - Increment 2 (2026-07-07): the **Phase-4 optimiser is a crew tool** -- ask for
   the trade-off frontier in plain language (`mode='frontier'` ->
   `agora_policy_frontier`), reported as a menu with no winner.
+- Increment 2 (2026-07-08): **Analysis agent** -- `agora_sensitivity` + crew
+  `mode='sensitivity'`: Monte-Carlo bands + ranked drivers, and the crew runs
+  both forms to report whether the UBC/cash bands separate. This COMPLETES the
+  run-time crew (Scenario -> Runner -> Analysis -> Report).
 - Increment 2 (2026-07-07): **LLM adapters** -- `make_llm_planner(model_call)` /
   `make_llm_reporter(model_call)` borrow a model (the client's via MCP sampling,
   or the scout's local Qwen via `qwen_model_call`). Both VALIDATE/gate whatever

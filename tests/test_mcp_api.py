@@ -272,3 +272,19 @@ def test_policy_frontier_is_a_gated_menu_no_winner():
     assert "no single" in f["note"].lower()
     assert {p["form"] for p in f["frontier"]} <= {"none", "cash_ubi", "ubc"}
     assert all(p["on_frontier"] for p in f["frontier"])
+
+
+def test_sensitivity_bands_and_ranked_drivers():
+    r = mcp_api.sensitivity(geo="DE", form="ubc", metric="gini", n_draws=30)
+    assert "error" not in r and r["n_used"] >= 3
+    b = r["bands"]["gini"]
+    assert b["p5"] <= b["p50"] <= b["p95"]                 # ordered band
+    d = r["drivers"]
+    assert len(d) == 6 and d[0]["r2"] >= d[-1]["r2"]       # ranked
+    assert abs(sum(x["share"] for x in d) - 1.0) < 0.02    # shares normalise
+    assert "sandbox" in r["disclaimer"].lower()
+
+
+def test_sensitivity_rejects_bad_metric():
+    r = mcp_api.sensitivity(geo="DE", metric="nope", n_draws=10)
+    assert "error" in r and "nope" in r["error"]

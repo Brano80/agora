@@ -258,5 +258,22 @@ def agora_crew(request: str, horizon: int = 30,
     return _dump(d)
 
 
+@mcp.tool(name="agora_sensitivity",
+          annotations={"title": "Robustness & driver ranking (Analysis agent)",
+                       **_READ_ONLY})
+def agora_sensitivity(geo: str = "DE", form: str = "ubc", tau: float = 0.40,
+                      metric: str = "gini", n_draws: int = 120,
+                      horizon: int = 30) -> str:
+    """Global sensitivity / robustness: a Monte-Carlo over the JOINT prior of the
+    uncertain assumptions, gated per draw, returning (a) 5-95% uncertainty bands
+    for the key outcomes and (b) the ranked DRIVERS of `metric` -- which
+    assumption moves the result most. Answers 'is the headline just your
+    parameters?'. form in {ubc, cash_ubi, none}; metric in {gini, poverty,
+    citizen_wealth_pc, dividend_pc, gdp_end}. Returns JSON.
+    """
+    return _dump(mcp_api.sensitivity(geo=geo, form=form, tau=tau, metric=metric,
+                                     n_draws=n_draws, horizon=horizon))
+
+
 if __name__ == "__main__":
     mcp.run()

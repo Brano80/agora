@@ -9,7 +9,7 @@ Requires: pip install "mcp[cli]"   (same dependency as the server itself)
 
 Checks:
   1. initialize handshake + server identity (agora_mcp)
-  2. tools/list exposes the 10 agora_* tools
+  2. tools/list exposes the 11 agora_* tools
   3. tools/call agora_run_scenario (AI shock + UBC, DE) -> gate passed,
      disclaimer + resolved assumptions + data provenance present,
      series length == horizon
@@ -66,8 +66,8 @@ async def main() -> int:
                         "agora_list_modules", "agora_get_series",
                         "agora_list_geos", "agora_validate_baseline",
                         "agora_preview_scenario", "agora_narrate",
-                        "agora_policy_frontier", "agora_crew"}
-            check("tools/list exposes the 10 agora_* tools",
+                        "agora_policy_frontier", "agora_crew", "agora_sensitivity"}
+            check("tools/list exposes the 11 agora_* tools",
                   expected <= names, "missing: %s" % (expected - names))
 
             r = await session.call_tool("agora_run_scenario", {
@@ -129,6 +129,13 @@ async def main() -> int:
             check("crew: plain-language -> gated transcript",
                   p.get("gate_passed") is True and "report" in p
                   and p.get("plan", {}).get("geo") == "DE")
+
+            r = await session.call_tool("agora_sensitivity", {
+                "geo": "DE", "form": "ubc", "metric": "gini", "n_draws": 25})
+            p = payload(r)
+            check("sensitivity: gated bands + ranked drivers",
+                  p.get("n_used", 0) >= 3 and len(p.get("drivers", [])) == 6
+                  and p["bands"]["gini"]["p5"] <= p["bands"]["gini"]["p95"])
 
     print()
     if FAILURES:

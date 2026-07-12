@@ -456,6 +456,58 @@ def policy_frontier(geo: str = "DE", horizon: int = 30,
 
 
 @_public
+def sensitivity(geo: str = "DE", form: str = "ubc", tau: float = 0.40,
+                metric: str = "gini", n_draws: int = 120, horizon: int = 30,
+                year: int = 2019) -> Dict[str, Any]:
+    """Global sensitivity / robustness -- the Analysis agent. Sample the JOINT
+    prior over the uncertain assumptions (AI-shock depth/speed, the investment
+    response, the distribution elasticities, the MPC), run the GATED model per
+    draw (leaking draws dropped), and report (a) 5-95% uncertainty BANDS for the
+    key outcomes and (b) the ranked DRIVERS -- which assumption moves `metric`
+    most. Answers the sceptic's 'is the headline just your parameters?'.
+
+    form in {ubc, cash_ubi, none}; metric in {gini, poverty, citizen_wealth_pc,
+    dividend_pc, gdp_end}. Snapshot data (parameter uncertainty, not data
+    liveness). Returns {disclaimer, geo, form, tau, metric, n_used, n_skipped,
+    bands, drivers, note}.
+    """
+    from uncertainty import _run_draws, _pctile, _pearson, PRIORS, _POLICY, _OUT_KEYS
+    horizon = _check_horizon(horizon)
+    form = str(form).lower()
+    if form not in _POLICY:
+        raise ToolError(f"Unknown form '{form}'. Use one of: {', '.join(_POLICY)}.")
+    if metric not in _OUT_KEYS:
+        raise ToolError(f"Unknown metric '{metric}'. Use: {', '.join(_OUT_KEYS)}.")
+    if not 0.0 <= float(tau) <= 1.0:
+        raise ToolError("tau must be in [0, 1].")
+    n_draws = max(10, min(int(n_draws), 500))
+    inputs, acc, used, skipped = _run_draws(geo, form, float(tau), year,
+                                            horizon, n_draws, 0, None)
+    if used < 3:
+        return {"disclaimer": DISCLAIMER, "geo": geo,
+                "error": f"Too few consistent draws ({used}/{n_draws}) to rank "
+                         "sensitivity -- widen priors or raise n_draws."}
+    bands = {k: {"p5": _round(_pctile(v, 5)), "p50": _round(_pctile(v, 50)),
+                 "p95": _round(_pctile(v, 95))} for k, v in acc.items()}
+    ys = acc.get(metric, [])
+    drivers = []
+    for k in PRIORS:
+        r = _pearson([d[k] for d in inputs], ys)
+        drivers.append({"param": k, "corr": round(r, 3), "r2": round(r * r, 4)})
+    tot = sum(d["r2"] for d in drivers) or 1.0
+    for d in drivers:
+        d["share"] = round(d["r2"] / tot, 3)
+    drivers.sort(key=lambda d: -d["r2"])
+    return {"disclaimer": DISCLAIMER, "geo": geo, "form": form, "tau": float(tau),
+            "metric": metric, "n_used": used, "n_skipped": skipped,
+            "bands": bands, "drivers": drivers,
+            "note": ("Bands are 5-95th percentile across gated draws over the "
+                     "joint prior; drivers rank each assumption's share of "
+                     f"variance in '{metric}'. Priors are swappable assumptions, "
+                     "not estimates. Call the other form to compare band overlap.")}
+
+
+@_public
 def list_modules() -> Dict[str, Any]:
     """The pluggable module chain: names + declared schema inputs/outputs."""
     mods = [SFCCore(base_year=2019), DistributionModule(base_year=2019),

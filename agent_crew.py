@@ -109,6 +109,16 @@ def plan(request: str, valid: Optional[set] = None) -> CrewPlan:
 
     shock_levers = {"labour_share_end": 0.30, "capex_growth": 0.06} if shock else {}
 
+    # --- robustness intent (the Analysis agent) ---
+    if any(w in t for w in ("sensitivit", "robust", "how sensitive",
+                            "what drives", "uncertain", "just your parameters",
+                            "hold up", "band")):
+        metric = ("poverty" if "poverty" in t else
+                  "citizen_wealth_pc" if "wealth" in t else
+                  "gdp_end" if ("growth" in t or "gdp" in t) else "gini")
+        return CrewPlan(geo=geo, mode="sensitivity",
+                        levers={"metric": metric}, note="robustness / drivers")
+
     # --- optimiser intent (the Phase-4 frontier as a crew tool) ---
     if any(w in t for w in ("frontier", "pareto", "optimis", "optimiz",
                             "best policy", "best mix", "which policy",
@@ -162,6 +172,28 @@ def _fmt(v: Any) -> str:
 
 
 def template_report(payload: Dict[str, Any]) -> str:
+    if payload.get("mode") == "sensitivity":
+        m = payload.get("metric")
+        if "error" in payload:
+            return (f"AGORA crew -- robustness on {payload.get('geo')} ({m}): "
+                    f"could not estimate. {payload['error']}")
+        ub, cb = payload["ubc_band"], payload["cash_band"]
+        lines = [f"AGORA crew -- robustness on {payload.get('geo')}, metric "
+                 f"'{m}'. Bands are 5-95% across gated draws over the joint prior "
+                 f"of the uncertain assumptions.",
+                 f"  Ownership (UBC): {_fmt(ub['p5'])} to {_fmt(ub['p95'])} "
+                 f"(median {_fmt(ub['p50'])})",
+                 f"  Cash UBI: {_fmt(cb['p5'])} to {_fmt(cb['p95'])} "
+                 f"(median {_fmt(cb['p50'])})"]
+        lines.append("  The bands do NOT overlap: the ordering is robust to the "
+                     "assumptions." if payload["band_separated"] else
+                     "  The bands overlap: the ordering is sensitive to the "
+                     "assumptions.")
+        top = payload["drivers"][:3]
+        lines.append("  Biggest drivers of the result: " + ", ".join(
+            f"{d['param']} ({int(round(d['share']*100))}%)" for d in top) + ".")
+        lines.append("  Sandbox, not a forecast; the priors are swappable.")
+        return "\n".join(lines)
     if payload.get("mode") == "frontier":
         nf, nd = payload.get("n_frontier", 0), payload.get("n_dominated", 0)
         lines = [f"AGORA crew -- policy frontier on {payload.get('geo')} "
@@ -357,7 +389,25 @@ def run_crew(request: str, *, horizon: int = 30, allow_live: bool = False,
                           "gate; no numbers computed.", stages)
 
     # --- run (gated) ---
-    if p.mode == "frontier":
+    if p.mode == "sensitivity":
+        metric = p.levers.get("metric", "gini")
+        nd = 60
+        ubc = mcp_api.sensitivity(geo=p.geo, form="ubc", metric=metric,
+                                  n_draws=nd, horizon=horizon)
+        cash = mcp_api.sensitivity(geo=p.geo, form="cash_ubi", metric=metric,
+                                   n_draws=nd, horizon=horizon)
+        ok = "error" not in ubc and "error" not in cash
+        payload = {"mode": "sensitivity", "geo": p.geo, "metric": metric,
+                   "disclaimer": ubc.get("disclaimer")}
+        if ok:
+            ub, cb = ubc["bands"][metric], cash["bands"][metric]
+            payload.update(ubc_band=ub, cash_band=cb, drivers=ubc["drivers"],
+                           band_separated=(ub["p95"] < cb["p5"] or cb["p95"] < ub["p5"]),
+                           n_used={"ubc": ubc["n_used"], "cash": cash["n_used"]})
+        else:
+            payload["error"] = ubc.get("error") or cash.get("error")
+        gate_passed = ok and ubc.get("n_used", 0) >= 3 and cash.get("n_used", 0) >= 3
+    elif p.mode == "frontier":
         payload = mcp_api.policy_frontier(geo=p.geo, horizon=horizon,
                                           allow_live=allow_live)
         payload["mode"] = "frontier"

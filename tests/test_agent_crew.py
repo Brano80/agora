@@ -144,3 +144,19 @@ def test_crew_transcript_is_json_serialisable_without_payload():
     d = r.as_dict(); d.pop("payload", None)
     blob = _json.dumps(d)                       # must not raise
     assert '"report"' in blob and '"stages"' in blob and '"gate_passed"' in blob
+
+
+def test_plan_sensitivity_intent():
+    assert crew.plan("how robust is the ownership result in Germany").mode == "sensitivity"
+    assert crew.plan("what drives the inequality result in France").mode == "sensitivity"
+    p = crew.plan("how sensitive is poverty in Slovakia to the assumptions")
+    assert p.mode == "sensitivity" and p.levers.get("metric") == "poverty"
+
+
+def test_crew_sensitivity_bands_and_drivers():
+    r = crew.run_crew("how robust is the ownership result in Germany", horizon=20)
+    assert r.plan["mode"] == "sensitivity" and r.gate_passed is True
+    assert "robustness" in r.report.lower() and "drivers" in r.report.lower()
+    assert "Ownership (UBC)" in r.report and "Cash UBI" in r.report
+    assert r.payload.get("band_separated") in (True, False)
+    assert len(r.payload.get("drivers", [])) == 6

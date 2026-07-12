@@ -24,7 +24,8 @@ can drive gated scenario runs directly.
 | `agora_preview_scenario` | **Elicitation / approval step**: resolve a scenario's assumptions *without running it*, so the human signs off on the lever paths before any numbers are computed. What it shows is exactly what `agora_run_scenario` will run. |
 | `agora_narrate` | **Sampling**: run a gated scenario/comparison, then narrate it in prose using the *client's own model* (AGORA bundles none). Numbers stay authoritative; the borrowed model only phrases them, told to invent nothing and name no 'winner'. Degrades to numbers-only if the client lacks sampling. |
 | `agora_policy_frontier` | **Optimiser as a tool**: sweep policy form x tax intensity against the AI shock, gate every candidate, return the Pareto (non-dominated) set on 5 objectives. A trade-off menu, not a winner. |
-| `agora_crew` | **The run-time agent crew as one tool**: a plain-language request -> plan -> approve -> gated run -> report (single / comparison / frontier). The natural-language front door; pair with `agora_narrate` for model-written prose. |
+| `agora_crew` | **The run-time agent crew as one tool**: a plain-language request -> plan -> approve -> gated run -> report (single / comparison / frontier / robustness). The natural-language front door; pair with `agora_narrate` for model-written prose. |
+| `agora_sensitivity` | **Robustness / Analysis**: Monte-Carlo over the joint prior (gated per draw) -> 5-95% outcome bands + the ranked drivers of a metric. Answers 'is the result just your parameters?'. |
 
 ## Guardrails (enforced in `mcp_api`, not the shim)
 1. **Consistency gate on every result** — a failing run returns an error
@@ -58,7 +59,7 @@ npx @modelcontextprotocol/inspector python mcp_server.py
 ```
 
 ## Verified
-- Sandbox: 241 tests green (tool layer + shim registration + increment-2
+- Sandbox: 246 tests green (tool layer + shim registration + increment-2
   elicitation/sampling helpers); end-to-end through the FastMCP protocol layer
   (gated payload, object-array `scenarios` argument, unknown-geo refusal).
 - **User's Windows machine: `python scripts/verify_mcp.py`** — real spawned
