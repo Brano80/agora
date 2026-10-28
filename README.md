@@ -16,21 +16,42 @@ live data and validated against history.
 > sourced; every scenario must pass a consistency gate (no money created or lost
 > in the accounts) before any result is reported.
 
+> ⚠️ **Known issues: headline results under revision (2026-10-28).** A review found
+> that several headline numbers below come from runs that pass the accounting gate but
+> are not economically plausible. Until the fixes in [`docs/PHASE7.md`](docs/PHASE7.md)
+> land, treat the headline results, frontier charts, study PDF and dashboard as
+> **provisional**:
+> 1. **No supply side.** Output is purely demand-led, with no capacity limit or price
+>    level, so redistribution raises GDP mechanically. The growth claims below ("the UBC
+>    economy ends larger", "predistribution needn't cost growth") follow from this
+>    closure; they are not findings.
+> 2. **Unconstrained investment financing.** Investment follows an assumed path, and
+>    capital owners finance it with unlimited interest-free borrowing. In many runs they
+>    end insolvent: in both the UBC and cash-UBI arms, in several countries, and in part
+>    of the robustness simulation.
+> 3. **No foreign ownership of capital.** All capital, AI capital included, is modelled
+>    as domestically owned, so the model cannot yet say how much of a largely
+>    foreign-owned AI rent European policies can reach.
+>
+> What stands: the accounting framework, the live EU data pipeline and the consistency
+> gate. Whether "ownership beats cash" survives the fixes is open. Corrections will ship
+> as a new versioned release.
+
 📄 **Read the study:** *Owning the Machine — A Governance of Abundance for Europe* (12 pp) → [`AGORA_Manifesto.pdf`](AGORA_Manifesto.pdf) · permanent copy: https://doi.org/10.5281/zenodo.20726928 · SSRN: (forthcoming)
 📋 **One-page policy brief:** [`AGORA_Policy_Brief_UBC.pdf`](AGORA_Policy_Brief_UBC.pdf) — practical paths to implement UBC and where the capital comes from.
 🔗 **Live dashboard:** https://brano80.github.io/agora/
 
 ---
 
-## The headline result
+## The headline result *(provisional, see Known issues above)*
 ![Only ownership touches wealth](social_1_wealth.png)
 
 Under an AI labour-share shock (Germany, 30-year scenario):
 - **Cash UBI** lowers income inequality but leaves the **top-10% wealth share ~56%** — it redistributes the income capital throws off, never the capital.
 - **Universal Basic Capital** (a citizens' fund paying a per-capita dividend) collapses it to **~20%** — it distributes the asset itself.
-- With fund **reinvestment**, the UBC economy ends *larger* than the cash economy — predistribution needn't cost growth.
+- With fund **reinvestment**, the UBC economy ends *larger* than the cash economy — predistribution needn't cost growth. *(Artifact of the demand-led closure; under revision.)*
 - A **pooled EU dividend** roughly **halves** between-country inequality.
-- Across a multi-objective frontier, **UBC policies dominate** both cash UBI and inaction.
+- Across a multi-objective frontier, **UBC policies dominate** both cash UBI and inaction. *(Holds only with investment held fixed; with investment responding, cash re-enters the frontier: finding F23.)*
 
 ![UBC owns the policy frontier — equality and growth together (Germany, France, Slovakia)](AGORA_frontier_DE_FR_SK.png)
 

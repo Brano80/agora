@@ -190,6 +190,8 @@ header .wrap{padding-top:0;padding-bottom:0}
 h1{margin:0;font-size:22px;letter-spacing:.5px}
 .sub{color:#bfe3d6;font-size:13px;margin-top:4px}
 .note{background:#f3f6f5;border-left:3px solid #E08A2B;padding:10px 14px;font-size:12.5px;color:#374151;margin:16px 0}
+.issue{background:#FDF0E6;border:1px solid #F0C9A6;border-left:4px solid #C0392B;border-radius:4px;padding:12px 16px;font-size:13px;color:#3f2a1d;margin:16px 0}
+.issue ol{margin:6px 0 6px 20px;padding:0}.issue li{margin:3px 0}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:16px 0}
 select{font-size:14px;padding:6px 10px;border:1px solid #cfe0d9;border-radius:6px}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:2px solid #eef2f4;margin:6px 0 18px}
@@ -216,6 +218,7 @@ footer{font-size:11.5px;color:#6b7280;margin-top:30px;border-top:1px solid #eef2
 </style></head><body>
 <header><div class="wrap"><h1>AGORA</h1><div class="sub">AI-economy &amp; post-labour policy sandbox — European Union · __NGEOS__ countries · generated __DATE__</div></div></header>
 <div class="wrap">
+<div class="issue"><b>⚠️ Known issues: results under revision (2026-10-28).</b> A review found that several headline numbers here come from runs that pass the accounting gate but are not economically plausible. Treat the results, frontier charts and the companion study as <b>provisional</b> until the fixes land:<ol><li><b>No supply side.</b> Output is purely demand-led, with no capacity limit or price level, so redistribution raises GDP mechanically. Growth gains from redistribution or UBC follow from this closure; they are not findings.</li><li><b>Unconstrained investment financing.</b> Investment follows an assumed path, and capital owners finance it with unlimited interest-free borrowing. In many runs they end insolvent: in both the UBC and cash-UBI arms, in several countries, and in part of the robustness simulation.</li><li><b>No foreign ownership of capital.</b> All capital, AI capital included, is modelled as domestically owned, so the model cannot yet say how much of a largely foreign-owned AI rent European policies can reach.</li></ol>What stands: the accounting framework, the live EU data pipeline and the consistency gate. Whether "ownership beats cash" survives the fixes is open. Fix plan: <a href="https://github.com/Brano80/agora/blob/master/docs/PHASE7.md">docs/PHASE7.md</a>.</div>
 <div class="note"><b>Sandbox, not oracle.</b> Every result is a policy comparison under explicit, swappable assumptions — never a forecast. Calibrated to live Eurostat / AMECO / BIS / OECD data; every scenario passes a consistency gate (books close to ~1e-10 of GDP). Companion study: <a href="https://doi.org/10.5281/zenodo.20726928">Owning the Machine</a> · <a href="https://github.com/Brano80/agora">code</a>.</div>
 <div class="bar"><label for="geo"><b>Country:</b></label> <select id="geo"></select>
 <span id="ctx" style="font-size:12.5px;color:#6b7280"></span></div>
