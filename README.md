@@ -26,12 +26,16 @@ live data and validated against history.
 >    economy ends larger", "predistribution needn't cost growth") follow from this
 >    closure; they are not findings.
 > 2. **Unconstrained investment financing.** Investment follows an assumed path, and
->    capital owners finance it with unlimited interest-free borrowing. In many runs they
->    end insolvent: in both the UBC and cash-UBI arms, in several countries, and in part
->    of the robustness simulation.
+>    capital owners finance it with unlimited interest-free borrowing from the state.
+>    Their money balance goes negative in over half the policy runs, cash UBI and UBC
+>    alike, and in about a third of UBC runs they end insolvent, owing more than they own.
 > 3. **No foreign ownership of capital.** All capital, AI capital included, is modelled
 >    as domestically owned, so the model cannot yet say how much of a largely
 >    foreign-owned AI rent European policies can reach.
+>
+> An audit of the 3,057 scenario runs behind the published numbers finds that every one
+> balances its books, but only 13% also pass the new plausibility checks:
+> [`docs/AUDIT-2026-10.md`](docs/AUDIT-2026-10.md).
 >
 > What stands: the accounting framework, the live EU data pipeline and the consistency
 > gate. Whether "ownership beats cash" survives the fixes is open. Corrections will ship

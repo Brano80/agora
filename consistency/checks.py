@@ -12,6 +12,14 @@ gated by exactly these laws. It enforces the Godley-Lavoie accounting identities
                            (the exact leak that killed v0).
   4. Balance-sheet closure — each FINANCIAL instrument nets to ~0 across sectors.
   5. Sectoral balances sum to zero — Σ net-lending across all sectors == 0.
+  6. Economic plausibility — finite, non-negative levels, shares in [0,1], no
+                           explosive growth.
+  7. Plausibility v2 (Phase 7 A) — solvency and scale: household net worth
+                           >= 0 per class, investment/GDP bounded, household
+                           money holdings >= 0, owners' calibrated MPC in [0,1],
+                           personal Gini above a floor. ADVISORY in "audit"
+                           mode (the default until Phase 7 B), blocking in
+                           "enforce" mode.
 
 Convention (AGORA TFM): tfm[flow][sector] is the signed contribution to that
 sector's cash budget (inflow +, outflow -). For a stock-driving flow,
@@ -21,6 +29,7 @@ columns balance. Hence: Δstock[sector] == -tfm[flow][sector].
 from __future__ import annotations
 
 import math
+import os
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -32,12 +41,44 @@ class ConsistencyError(AssertionError):
     """Raised by the orchestrator when the gate fails and strict mode is on."""
 
 
+# --------------------------------------------------------------------------- #
+# Plausibility v2 (Phase 7 step A, 2026-10-28). Books can balance while a
+# sector runs an impossible balance sheet: the 2026-10-28 review found capital
+# owners ending deeply insolvent (DE UBC: owners' money -4.2x GDP; SK -140x) in
+# runs that passed every accounting law. These checks ALWAYS run; the MODE
+# decides whether a failure blocks the gate:
+#   "audit"   (default until Phase 7 step B fixes the investment closure):
+#             failures are ADVISORY - listed by ConsistencyReport.advisories()
+#             but they change neither .passed, .max_residual nor strict
+#             raising, so every shipped result runs exactly as before;
+#   "enforce": they count like every other law.
+# Per call: plausibility="enforce". Process-wide: env AGORA_PLAUSIBILITY.
+# Thresholds are inspectable, swappable assumptions.
+# --------------------------------------------------------------------------- #
+PLAUSIBILITY_MODES = ("audit", "enforce")
+DEFAULT_PLAUSIBILITY = "audit"
+MAX_INVESTMENT_SHARE = 0.40   # investment/GDP; EU GFCF/GDP peaks ~0.25-0.30 (IE aside)
+MIN_PERSONAL_GINI = 0.15      # lowest EU disposable Gini in the snapshots: SK 0.228 (2019)
+HOUSEHOLD_SECTORS = ("hh_workers", "hh_owners")
+
+
+def _plaus_advisory(mode: Optional[str]) -> bool:
+    """True if plausibility-v2 failures are advisory (audit mode)."""
+    m = mode if mode is not None else os.environ.get("AGORA_PLAUSIBILITY",
+                                                      DEFAULT_PLAUSIBILITY)
+    if m not in PLAUSIBILITY_MODES:
+        raise ValueError(f"plausibility mode must be one of {PLAUSIBILITY_MODES}, "
+                         f"got {m!r}")
+    return m == "audit"
+
+
 @dataclass
 class CheckResult:
     name: str
     passed: bool
     max_residual: float
     detail: str = ""
+    advisory: bool = False   # True = reported only (audit mode); never blocks the gate
 
 
 @dataclass
@@ -47,14 +88,20 @@ class ConsistencyReport:
 
     @property
     def passed(self) -> bool:
-        return all(c.passed for c in self.checks)
+        return all(c.passed for c in self.checks if not c.advisory)
 
     @property
     def max_residual(self) -> float:
-        return max((c.max_residual for c in self.checks), default=0.0)
+        return max((c.max_residual for c in self.checks if not c.advisory),
+                   default=0.0)
 
     def failures(self) -> List[CheckResult]:
-        return [c for c in self.checks if not c.passed]
+        """Failed checks that block the gate."""
+        return [c for c in self.checks if not c.passed and not c.advisory]
+
+    def advisories(self) -> List[CheckResult]:
+        """Failed checks that were reported but did not block (audit mode)."""
+        return [c for c in self.checks if not c.passed and c.advisory]
 
 
 def _is_financial(instrument: str) -> bool:
@@ -73,8 +120,11 @@ def check_period(
     scale: Optional[float] = None,
     atol: float = 1e-6,
     rtol: float = 1e-9,
+    plausibility: Optional[str] = None,
 ) -> ConsistencyReport:
-    """Run all consistency laws on one PeriodState. `scale` defaults to GDP."""
+    """Run all consistency laws on one PeriodState. `scale` defaults to GDP.
+    `plausibility` = "audit" | "enforce" | None (env AGORA_PLAUSIBILITY, else
+    DEFAULT_PLAUSIBILITY) sets whether law-7 failures block the gate."""
     tfm = state.tfm
     bsm = state.bsm
     stock_flow_map = stock_flow_map or {}
@@ -195,20 +245,82 @@ def check_period(
         0.0 if not issues else float("inf"),
         "; ".join(issues) if issues else "ok"))
 
+    # --- 7. plausibility v2: solvency + scale (Phase 7 A). A household class
+    # may borrow, but one whose liabilities exceed everything it owns is
+    # insolvent: the model is then financing its spending with an unlimited,
+    # interest-free overdraft at the state. Advisory in audit mode. ------- #
+    adv = _plaus_advisory(plausibility)
+    gdp_scale = abs(scale) if scale else 1.0
+    worst_nw, worst_sec, seen = 0.0, "", False
+    for sec in HOUSEHOLD_SECTORS:
+        if not any(sec in cols for cols in bsm.values()):
+            continue
+        seen = True
+        nw = sum(float(cols.get(sec, 0.0)) for cols in bsm.values())
+        if nw < worst_nw:
+            worst_nw, worst_sec = nw, sec
+    if seen:
+        ok = worst_nw >= -tol
+        rep.checks.append(CheckResult(
+            "hh_net_worth_nonnegative", ok, 0.0 if ok else float("inf"),
+            "ok" if ok else (f"'{worst_sec}' net worth {worst_nw:.6g} "
+                             f"= {worst_nw / gdp_scale:.3g} x GDP"),
+            advisory=adv))
+
+    inv, gdp = rv.get("investment"), rv.get("gdp")
+    if (isinstance(inv, (int, float)) and isinstance(gdp, (int, float))
+            and math.isfinite(inv) and math.isfinite(gdp) and gdp > 0):
+        share = inv / gdp
+        ok = share <= MAX_INVESTMENT_SHARE + 1e-12
+        rep.checks.append(CheckResult(
+            "investment_share_bounded", ok, 0.0 if ok else float("inf"),
+            f"investment/GDP {share:.4f} (max {MAX_INVESTMENT_SHARE:.2f})",
+            advisory=adv))
+
+    money = bsm.get("money", {})
+    if all(sec in money for sec in HOUSEHOLD_SECTORS):
+        mw, mk = float(money["hh_workers"]), float(money["hh_owners"])
+        ok = mw >= -tol and mk >= -tol and (mw + mk) > tol
+        rep.checks.append(CheckResult(
+            "money_split_shares_valid", ok, 0.0 if ok else float("inf"),
+            f"money held: workers {mw:.6g}, owners {mk:.6g} (interest and the "
+            "current account are split by these shares, so both must be >= 0)",
+            advisory=adv))
+
     return rep
 
 
-def check_run(result, stock_flow_map=None, strict: bool = False, **tol):
+def _calibration_check(result, advisory: bool) -> Optional[CheckResult]:
+    """Owners' marginal propensity to consume is solved as a calibration
+    RESIDUAL so that year 0 reproduces GDP. Outside [0, 1] it is not a
+    behaviour but a sign the closure does not fit the country."""
+    params = (getattr(result, "meta", None) or {}).get("params") or {}
+    a1_k = params.get("a1_k") if isinstance(params, dict) else None
+    if not isinstance(a1_k, (int, float)):
+        return None
+    ok = 0.0 <= a1_k <= 1.0
+    return CheckResult(
+        "owners_mpc_in_unit_interval", ok, 0.0 if ok else float("inf"),
+        f"owners' MPC a1_k = {a1_k:.3f} (calibration residual; must lie in [0, 1])",
+        advisory=advisory)
+
+
+def check_run(result, stock_flow_map=None, strict: bool = False,
+              plausibility: Optional[str] = None, **tol):
     """Check every period of a RunResult. Returns the list of reports.
 
     If strict, raises ConsistencyError on the first failing period — the gate
     that prevents a leaky model from being trusted.
     """
     stock_flow_map = stock_flow_map or result.meta.get("stock_flow_map", {})
+    calib = _calibration_check(result, _plaus_advisory(plausibility))
     reports: List[ConsistencyReport] = []
     prev = None
-    for p in result.periods:
-        rep = check_period(p, prev, stock_flow_map=stock_flow_map, **tol)
+    for i, p in enumerate(result.periods):
+        rep = check_period(p, prev, stock_flow_map=stock_flow_map,
+                           plausibility=plausibility, **tol)
+        if i == 0 and calib is not None:
+            rep.checks.append(calib)
         reports.append(rep)
         if strict and not rep.passed:
             fails = "; ".join(f"{c.name}({c.max_residual:.3g}: {c.detail})"
@@ -225,8 +337,12 @@ def check_run(result, stock_flow_map=None, strict: bool = False, **tol):
 # through the schema" law extended to Phase-2 modules.
 # --------------------------------------------------------------------------- #
 def check_distribution(dist_result, n_deciles: int = 10,
-                       atol: float = 1e-6, rtol: float = 1e-9):
-    """Per period: Σ decile incomes == hh_disposable, and shares sum to 1."""
+                       atol: float = 1e-6, rtol: float = 1e-9,
+                       plausibility: Optional[str] = None):
+    """Per period: Σ decile incomes == hh_disposable, and shares sum to 1.
+    Plus (law 7, advisory in audit mode) the personal Gini stays above a floor
+    no real economy has gone below."""
+    adv = _plaus_advisory(plausibility)
     reports = []
     for p in dist_result.periods:
         rep = p.reported
@@ -243,6 +359,13 @@ def check_distribution(dist_result, n_deciles: int = 10,
             CheckResult("decile_shares_sum_one", abs(sh - 1.0) <= 1e-9,
                         abs(sh - 1.0), f"Σshares {sh:.9g}"),
         ])
+        g = rep.get("gini_personal")
+        if isinstance(g, (int, float)) and math.isfinite(g):
+            ok = g >= MIN_PERSONAL_GINI
+            r.checks.append(CheckResult(
+                "gini_floor", ok, 0.0 if ok else float("inf"),
+                f"personal Gini {g:.3f} (floor {MIN_PERSONAL_GINI:.2f}; lowest "
+                "EU member in the 2019 snapshots: SK 0.228)", advisory=adv))
         reports.append(r)
     return reports
 

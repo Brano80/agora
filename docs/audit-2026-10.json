@@ -1,0 +1,2486 @@
+{
+ "generated": "2026-10-28 19:56",
+ "thresholds": {
+  "max_investment_share": 0.4,
+  "min_personal_gini": 0.15
+ },
+ "by_geo_family": {
+  "AT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 11,
+    "gini_floor": 3
+   }
+  },
+  "AT|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 12,
+    "money_split_shares_valid": 10,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "AT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 4
+   }
+  },
+  "AT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 5,
+   "fails": {
+    "investment_share_bounded": 55,
+    "money_split_shares_valid": 18,
+    "hh_net_worth_nonnegative": 6,
+    "gini_floor": 17
+   }
+  },
+  "AT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "AT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 2
+   }
+  },
+  "BE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 11,
+    "gini_floor": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "BE|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 13,
+    "money_split_shares_valid": 10,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 2
+   }
+  },
+  "BE|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 4,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "BE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 57,
+    "money_split_shares_valid": 20,
+    "hh_net_worth_nonnegative": 9,
+    "gini_floor": 17
+   }
+  },
+  "BE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "BE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "BG|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 7,
+    "money_split_shares_valid": 7,
+    "gini_floor": 1,
+    "hh_net_worth_nonnegative": 2
+   }
+  },
+  "BG|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 10,
+    "money_split_shares_valid": 12,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 2
+   }
+  },
+  "BG|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "investment_share_bounded": 1,
+    "hh_net_worth_nonnegative": 2
+   }
+  },
+  "BG|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 43,
+    "money_split_shares_valid": 58,
+    "hh_net_worth_nonnegative": 18,
+    "gini_floor": 19
+   }
+  },
+  "BG|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "BG|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "CY|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 7,
+    "money_split_shares_valid": 4,
+    "gini_floor": 2
+   }
+  },
+  "CY|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 12,
+    "money_split_shares_valid": 12,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 2
+   }
+  },
+  "CY|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 1
+   }
+  },
+  "CY|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 7,
+   "fails": {
+    "investment_share_bounded": 46,
+    "money_split_shares_valid": 31,
+    "hh_net_worth_nonnegative": 13,
+    "gini_floor": 19
+   }
+  },
+  "CY|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "CY|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "CZ|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 11,
+    "money_split_shares_valid": 8,
+    "gini_floor": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "CZ|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 13,
+    "money_split_shares_valid": 13,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 4
+   }
+  },
+  "CZ|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "CZ|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 57,
+    "money_split_shares_valid": 54,
+    "hh_net_worth_nonnegative": 12,
+    "gini_floor": 22
+   }
+  },
+  "CZ|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2
+   }
+  },
+  "CZ|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 3,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "DE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 3
+   }
+  },
+  "DE|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 7,
+    "money_split_shares_valid": 6,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "DE|pooling": {
+   "runs": 8,
+   "accounting_ok": 8,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 8,
+    "investment_share_bounded": 6,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "DE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 10,
+   "fails": {
+    "investment_share_bounded": 39,
+    "gini_floor": 20,
+    "money_split_shares_valid": 11,
+    "hh_net_worth_nonnegative": 5
+   }
+  },
+  "DE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "DE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "DK|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 3
+   }
+  },
+  "DK|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 10,
+    "money_split_shares_valid": 8,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "DK|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "DK|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 9,
+   "fails": {
+    "investment_share_bounded": 44,
+    "money_split_shares_valid": 15,
+    "gini_floor": 20,
+    "hh_net_worth_nonnegative": 5
+   }
+  },
+  "DK|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "DK|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "EE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 11,
+    "money_split_shares_valid": 12,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 3
+   }
+  },
+  "EE|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 13,
+    "money_split_shares_valid": 13,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 2
+   }
+  },
+  "EE|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 2
+   }
+  },
+  "EE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 60,
+    "money_split_shares_valid": 71,
+    "hh_net_worth_nonnegative": 21,
+    "gini_floor": 15
+   }
+  },
+  "EE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2
+   }
+  },
+  "EE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "EL|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 12,
+   "fails": {
+    "gini_floor": 3,
+    "investment_share_bounded": 3
+   }
+  },
+  "EL|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 9,
+   "fails": {
+    "hh_net_worth_nonnegative": 4,
+    "money_split_shares_valid": 4,
+    "gini_floor": 4
+   }
+  },
+  "EL|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 2,
+   "fails": {
+    "hh_net_worth_nonnegative": 2,
+    "money_split_shares_valid": 2,
+    "gini_floor": 2
+   }
+  },
+  "EL|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 34,
+   "fails": {
+    "investment_share_bounded": 12,
+    "gini_floor": 27,
+    "hh_net_worth_nonnegative": 8,
+    "money_split_shares_valid": 7
+   }
+  },
+  "EL|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "EL|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 3,
+   "fails": {
+    "hh_net_worth_nonnegative": 1,
+    "money_split_shares_valid": 1,
+    "gini_floor": 1
+   }
+  },
+  "ES|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 2
+   }
+  },
+  "ES|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 2,
+   "fails": {
+    "investment_share_bounded": 4,
+    "money_split_shares_valid": 7,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "ES|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "ES|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 17,
+   "fails": {
+    "investment_share_bounded": 29,
+    "gini_floor": 22,
+    "money_split_shares_valid": 12,
+    "hh_net_worth_nonnegative": 6
+   }
+  },
+  "ES|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 1,
+    "money_split_shares_valid": 1
+   }
+  },
+  "ES|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 1,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "FI|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "FI|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 10,
+    "money_split_shares_valid": 12,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "FI|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "FI|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 45,
+    "money_split_shares_valid": 22,
+    "hh_net_worth_nonnegative": 11,
+    "gini_floor": 21
+   }
+  },
+  "FI|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "FI|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "FR|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 3
+   }
+  },
+  "FR|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 7,
+    "money_split_shares_valid": 7,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "FR|pooling": {
+   "runs": 8,
+   "accounting_ok": 8,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 8,
+    "investment_share_bounded": 6,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "FR|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 9,
+   "fails": {
+    "investment_share_bounded": 40,
+    "hh_net_worth_nonnegative": 7,
+    "gini_floor": 20,
+    "money_split_shares_valid": 13
+   }
+  },
+  "FR|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "FR|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "HR|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 7,
+    "money_split_shares_valid": 4,
+    "gini_floor": 3,
+    "hh_net_worth_nonnegative": 2
+   }
+  },
+  "HR|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 11,
+    "money_split_shares_valid": 12,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "HR|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "investment_share_bounded": 2,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "HR|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 6,
+   "fails": {
+    "investment_share_bounded": 47,
+    "money_split_shares_valid": 36,
+    "hh_net_worth_nonnegative": 16,
+    "gini_floor": 20
+   }
+  },
+  "HR|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "HR|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "HU|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 11,
+    "money_split_shares_valid": 8,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 3
+   }
+  },
+  "HU|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 13,
+    "money_split_shares_valid": 13,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 2
+   }
+  },
+  "HU|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 1
+   }
+  },
+  "HU|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 59,
+    "money_split_shares_valid": 56,
+    "hh_net_worth_nonnegative": 19,
+    "gini_floor": 17
+   }
+  },
+  "HU|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2
+   }
+  },
+  "HU|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "IE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 16,
+    "money_split_shares_valid": 12,
+    "hh_net_worth_nonnegative": 3
+   }
+  },
+  "IE|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 13,
+    "money_split_shares_valid": 13,
+    "hh_net_worth_nonnegative": 3
+   }
+  },
+  "IE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 73,
+    "money_split_shares_valid": 73,
+    "hh_net_worth_nonnegative": 20,
+    "gini_floor": 7
+   }
+  },
+  "IE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 2
+   }
+  },
+  "IE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 4,
+    "money_split_shares_valid": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "IT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 2
+   }
+  },
+  "IT|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 1,
+    "hh_net_worth_nonnegative": 3,
+    "money_split_shares_valid": 4,
+    "gini_floor": 3
+   }
+  },
+  "IT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 2,
+   "fails": {
+    "hh_net_worth_nonnegative": 2,
+    "money_split_shares_valid": 2,
+    "gini_floor": 2
+   }
+  },
+  "IT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 33,
+   "fails": {
+    "investment_share_bounded": 15,
+    "gini_floor": 23,
+    "hh_net_worth_nonnegative": 6,
+    "money_split_shares_valid": 8
+   }
+  },
+  "IT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 2,
+   "fails": {
+    "investment_share_bounded": 1
+   }
+  },
+  "IT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 2,
+   "fails": {
+    "investment_share_bounded": 1,
+    "hh_net_worth_nonnegative": 1,
+    "money_split_shares_valid": 1,
+    "gini_floor": 1
+   }
+  },
+  "LT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 7,
+    "money_split_shares_valid": 8,
+    "gini_floor": 2
+   }
+  },
+  "LT|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 13,
+    "money_split_shares_valid": 13,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 2
+   }
+  },
+  "LT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 2,
+    "hh_net_worth_nonnegative": 2
+   }
+  },
+  "LT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 51,
+    "money_split_shares_valid": 51,
+    "hh_net_worth_nonnegative": 9,
+    "gini_floor": 19
+   }
+  },
+  "LT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2
+   }
+  },
+  "LT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "LU|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 12,
+    "owners_mpc_in_unit_interval": 16,
+    "investment_share_bounded": 7,
+    "gini_floor": 2
+   }
+  },
+  "LU|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 7,
+    "owners_mpc_in_unit_interval": 13,
+    "investment_share_bounded": 13,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "LU|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 4,
+    "investment_share_bounded": 4,
+    "money_split_shares_valid": 2,
+    "gini_floor": 1
+   }
+  },
+  "LU|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 51,
+    "owners_mpc_in_unit_interval": 73,
+    "investment_share_bounded": 50,
+    "gini_floor": 19,
+    "hh_net_worth_nonnegative": 3
+   }
+  },
+  "LU|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 2,
+    "owners_mpc_in_unit_interval": 3,
+    "investment_share_bounded": 2
+   }
+  },
+  "LU|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "owners_mpc_in_unit_interval": 4,
+    "investment_share_bounded": 3
+   }
+  },
+  "LV|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 16,
+    "investment_share_bounded": 11,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 2
+   }
+  },
+  "LV|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 13,
+    "investment_share_bounded": 13,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 2
+   }
+  },
+  "LV|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 2,
+    "hh_net_worth_nonnegative": 2
+   }
+  },
+  "LV|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 68,
+    "investment_share_bounded": 55,
+    "hh_net_worth_nonnegative": 25,
+    "gini_floor": 16
+   }
+  },
+  "LV|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "investment_share_bounded": 2
+   }
+  },
+  "LV|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "MT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 3
+   }
+  },
+  "MT|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 13,
+    "money_split_shares_valid": 7,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "MT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 4,
+    "money_split_shares_valid": 4,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "MT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 7,
+   "fails": {
+    "investment_share_bounded": 51,
+    "gini_floor": 21,
+    "money_split_shares_valid": 14,
+    "hh_net_worth_nonnegative": 5
+   }
+  },
+  "MT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "MT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "NL|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 3
+   }
+  },
+  "NL|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 12,
+    "money_split_shares_valid": 5,
+    "gini_floor": 3,
+    "hh_net_worth_nonnegative": 2
+   }
+  },
+  "NL|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 4,
+    "money_split_shares_valid": 3,
+    "gini_floor": 2
+   }
+  },
+  "NL|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 6,
+   "fails": {
+    "investment_share_bounded": 50,
+    "gini_floor": 20,
+    "money_split_shares_valid": 10,
+    "hh_net_worth_nonnegative": 4
+   }
+  },
+  "NL|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2
+   }
+  },
+  "NL|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 3,
+    "money_split_shares_valid": 1,
+    "gini_floor": 1
+   }
+  },
+  "PL|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 7,
+    "money_split_shares_valid": 4,
+    "gini_floor": 3,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "PL|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 7,
+    "money_split_shares_valid": 12,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 3
+   }
+  },
+  "PL|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "investment_share_bounded": 1,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "PL|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 4,
+   "fails": {
+    "investment_share_bounded": 33,
+    "money_split_shares_valid": 37,
+    "hh_net_worth_nonnegative": 18,
+    "gini_floor": 23
+   }
+  },
+  "PL|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "PL|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "PT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 2
+   }
+  },
+  "PT|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 5,
+    "money_split_shares_valid": 9,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "PT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "PT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 14,
+   "fails": {
+    "investment_share_bounded": 29,
+    "hh_net_worth_nonnegative": 7,
+    "money_split_shares_valid": 17,
+    "gini_floor": 20
+   }
+  },
+  "PT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 1,
+    "money_split_shares_valid": 1
+   }
+  },
+  "PT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 1,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "RO|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 16,
+    "investment_share_bounded": 7,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 2
+   }
+  },
+  "RO|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 13,
+    "investment_share_bounded": 10,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 2
+   }
+  },
+  "RO|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 1,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 1
+   }
+  },
+  "RO|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 73,
+    "investment_share_bounded": 45,
+    "hh_net_worth_nonnegative": 36,
+    "gini_floor": 18
+   }
+  },
+  "RO|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "investment_share_bounded": 2
+   }
+  },
+  "RO|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 2,
+    "hh_net_worth_nonnegative": 1
+   }
+  },
+  "SE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 8,
+   "fails": {
+    "investment_share_bounded": 7,
+    "gini_floor": 3
+   }
+  },
+  "SE|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 10,
+    "money_split_shares_valid": 9,
+    "hh_net_worth_nonnegative": 3,
+    "gini_floor": 3
+   }
+  },
+  "SE|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 4,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "SE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 7,
+   "fails": {
+    "investment_share_bounded": 47,
+    "money_split_shares_valid": 17,
+    "hh_net_worth_nonnegative": 9,
+    "gini_floor": 20
+   }
+  },
+  "SE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 1
+   }
+  },
+  "SE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "investment_share_bounded": 2,
+    "money_split_shares_valid": 2,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  },
+  "SI|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 16,
+    "investment_share_bounded": 7,
+    "gini_floor": 3
+   }
+  },
+  "SI|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 13,
+    "investment_share_bounded": 12,
+    "gini_floor": 3,
+    "money_split_shares_valid": 4,
+    "hh_net_worth_nonnegative": 2
+   }
+  },
+  "SI|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 4,
+    "investment_share_bounded": 3,
+    "gini_floor": 2
+   }
+  },
+  "SI|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 73,
+    "investment_share_bounded": 52,
+    "gini_floor": 20,
+    "money_split_shares_valid": 7,
+    "hh_net_worth_nonnegative": 3
+   }
+  },
+  "SI|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 3,
+    "investment_share_bounded": 2
+   }
+  },
+  "SI|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 4,
+    "investment_share_bounded": 3,
+    "gini_floor": 1
+   }
+  },
+  "SK|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 4,
+   "fails": {
+    "money_split_shares_valid": 12,
+    "investment_share_bounded": 11,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 3
+   }
+  },
+  "SK|frontier": {
+   "runs": 13,
+   "accounting_ok": 13,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 13,
+    "investment_share_bounded": 13,
+    "hh_net_worth_nonnegative": 4,
+    "gini_floor": 4
+   }
+  },
+  "SK|pooling": {
+   "runs": 6,
+   "accounting_ok": 6,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 6,
+    "investment_share_bounded": 4,
+    "hh_net_worth_nonnegative": 2,
+    "gini_floor": 2
+   }
+  },
+  "SK|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "money_split_shares_valid": 65,
+    "investment_share_bounded": 54,
+    "hh_net_worth_nonnegative": 30,
+    "gini_floor": 27
+   }
+  },
+  "SK|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 1,
+   "fails": {
+    "money_split_shares_valid": 2,
+    "investment_share_bounded": 2
+   }
+  },
+  "SK|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 1,
+   "fails": {
+    "money_split_shares_valid": 3,
+    "investment_share_bounded": 3,
+    "hh_net_worth_nonnegative": 1,
+    "gini_floor": 1
+   }
+  }
+ },
+ "monte_carlo": {
+  "AT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 103,
+     "investment_share_bounded": 53,
+     "gini_floor": 138,
+     "hh_net_worth_nonnegative": 29
+    },
+    "worst_owner_nw_y0": -2.5126,
+    "worst_owner_money_y0": -2474.9534
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 65,
+    "fails": {
+     "money_split_shares_valid": 124,
+     "investment_share_bounded": 102
+    },
+    "worst_owner_nw_y0": 1.6133,
+    "worst_owner_money_y0": -2936.712
+   }
+  },
+  "BE": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 106,
+     "investment_share_bounded": 70,
+     "hh_net_worth_nonnegative": 42,
+     "gini_floor": 127
+    },
+    "worst_owner_nw_y0": -3.7672,
+    "worst_owner_money_y0": -969.3619
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 63,
+    "fails": {
+     "money_split_shares_valid": 127,
+     "investment_share_bounded": 115,
+     "hh_net_worth_nonnegative": 1
+    },
+    "worst_owner_nw_y0": -0.7595,
+    "worst_owner_money_y0": -1109.1145
+   }
+  },
+  "BG": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 124,
+     "hh_net_worth_nonnegative": 109,
+     "gini_floor": 145,
+     "investment_share_bounded": 29
+    },
+    "worst_owner_nw_y0": -4.2836,
+    "worst_owner_money_y0": -1201792.5694
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 47,
+    "fails": {
+     "money_split_shares_valid": 153,
+     "investment_share_bounded": 63,
+     "hh_net_worth_nonnegative": 1
+    },
+    "worst_owner_nw_y0": -0.7036,
+    "worst_owner_money_y0": -1530508.8161
+   }
+  },
+  "CY": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 80,
+     "hh_net_worth_nonnegative": 92,
+     "gini_floor": 174,
+     "investment_share_bounded": 30
+    },
+    "worst_owner_nw_y0": -4.8093,
+    "worst_owner_money_y0": -761.8872
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 54,
+    "fails": {
+     "money_split_shares_valid": 146,
+     "investment_share_bounded": 73,
+     "hh_net_worth_nonnegative": 4
+    },
+    "worst_owner_nw_y0": -1.4243,
+    "worst_owner_money_y0": -823.0647
+   }
+  },
+  "CZ": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 117,
+     "investment_share_bounded": 58,
+     "hh_net_worth_nonnegative": 98,
+     "gini_floor": 197
+    },
+    "worst_owner_nw_y0": -4.106,
+    "worst_owner_money_y0": -1839679002.6726
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 44,
+    "fails": {
+     "money_split_shares_valid": 155,
+     "investment_share_bounded": 113,
+     "hh_net_worth_nonnegative": 1
+    },
+    "worst_owner_nw_y0": -0.1549,
+    "worst_owner_money_y0": -2203931228.0864
+   }
+  },
+  "DE": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 69,
+     "gini_floor": 164,
+     "investment_share_bounded": 22,
+     "hh_net_worth_nonnegative": 42
+    },
+    "worst_owner_nw_y0": -1.672,
+    "worst_owner_money_y0": -475.287
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 109,
+    "fails": {
+     "money_split_shares_valid": 84,
+     "investment_share_bounded": 51
+    },
+    "worst_owner_nw_y0": 3.3185,
+    "worst_owner_money_y0": -516.4675
+   }
+  },
+  "DK": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 85,
+     "hh_net_worth_nonnegative": 57,
+     "investment_share_bounded": 31,
+     "gini_floor": 165
+    },
+    "worst_owner_nw_y0": -2.5,
+    "worst_owner_money_y0": -8919.5178
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 81,
+    "fails": {
+     "money_split_shares_valid": 108,
+     "investment_share_bounded": 73
+    },
+    "worst_owner_nw_y0": 1.5327,
+    "worst_owner_money_y0": -10687.4689
+   }
+  },
+  "EE": {
+   "ubc": {
+    "n": 200,
+    "used": 199,
+    "skipped": 1,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 147,
+     "investment_share_bounded": 71,
+     "hh_net_worth_nonnegative": 97,
+     "gini_floor": 115
+    },
+    "worst_owner_nw_y0": -4.0213,
+    "worst_owner_money_y0": -38671816982.7842
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 199,
+    "skipped": 1,
+    "plausible": 34,
+    "fails": {
+     "money_split_shares_valid": 165,
+     "investment_share_bounded": 118
+    },
+    "worst_owner_nw_y0": 0.118,
+    "worst_owner_money_y0": -50149342975.5703
+   }
+  },
+  "EL": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "gini_floor": 200,
+     "hh_net_worth_nonnegative": 21,
+     "money_split_shares_valid": 11
+    },
+    "worst_owner_nw_y0": -5.2046,
+    "worst_owner_money_y0": -12.2961
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 163,
+    "fails": {
+     "money_split_shares_valid": 37
+    },
+    "worst_owner_nw_y0": 0.4179,
+    "worst_owner_money_y0": -12.3312
+   }
+  },
+  "ES": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 61,
+     "hh_net_worth_nonnegative": 68,
+     "gini_floor": 187,
+     "investment_share_bounded": 9
+    },
+    "worst_owner_nw_y0": -3.58,
+    "worst_owner_money_y0": -160.7186
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 108,
+    "fails": {
+     "money_split_shares_valid": 92,
+     "investment_share_bounded": 29
+    },
+    "worst_owner_nw_y0": 2.8097,
+    "worst_owner_money_y0": -163.5448
+   }
+  },
+  "FI": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 109,
+     "hh_net_worth_nonnegative": 111,
+     "investment_share_bounded": 33,
+     "gini_floor": 176
+    },
+    "worst_owner_nw_y0": -3.5802,
+    "worst_owner_money_y0": -5105.1683
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 53,
+    "fails": {
+     "money_split_shares_valid": 144,
+     "investment_share_bounded": 80
+    },
+    "worst_owner_nw_y0": 1.6227,
+    "worst_owner_money_y0": -5876.6061
+   }
+  },
+  "FR": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 85,
+     "hh_net_worth_nonnegative": 68,
+     "gini_floor": 152,
+     "investment_share_bounded": 23
+    },
+    "worst_owner_nw_y0": -2.4414,
+    "worst_owner_money_y0": -183.4681
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 89,
+    "fails": {
+     "money_split_shares_valid": 103,
+     "investment_share_bounded": 53
+    },
+    "worst_owner_nw_y0": 2.8715,
+    "worst_owner_money_y0": -203.3121
+   }
+  },
+  "HR": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 111,
+     "hh_net_worth_nonnegative": 121,
+     "investment_share_bounded": 33,
+     "gini_floor": 154
+    },
+    "worst_owner_nw_y0": -4.3942,
+    "worst_owner_money_y0": -2316.4214
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 52,
+    "fails": {
+     "money_split_shares_valid": 148,
+     "investment_share_bounded": 80,
+     "hh_net_worth_nonnegative": 1
+    },
+    "worst_owner_nw_y0": -0.1688,
+    "worst_owner_money_y0": -2602.5848
+   }
+  },
+  "HU": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 125,
+     "investment_share_bounded": 66,
+     "hh_net_worth_nonnegative": 126,
+     "gini_floor": 178
+    },
+    "worst_owner_nw_y0": -5.2127,
+    "worst_owner_money_y0": -622658.0639
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 34,
+    "fails": {
+     "money_split_shares_valid": 166,
+     "investment_share_bounded": 130,
+     "hh_net_worth_nonnegative": 2
+    },
+    "worst_owner_nw_y0": -1.6047,
+    "worst_owner_money_y0": -695233.7552
+   }
+  },
+  "IE": {
+   "ubc": {
+    "n": 200,
+    "used": 190,
+    "skipped": 10,
+    "plausible": 0,
+    "fails": {
+     "investment_share_bounded": 190,
+     "money_split_shares_valid": 172,
+     "hh_net_worth_nonnegative": 38,
+     "gini_floor": 112
+    },
+    "worst_owner_nw_y0": -7.9822,
+    "worst_owner_money_y0": -35777695417.3624
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 189,
+    "skipped": 11,
+    "plausible": 0,
+    "fails": {
+     "investment_share_bounded": 189,
+     "money_split_shares_valid": 187,
+     "hh_net_worth_nonnegative": 7,
+     "gini_floor": 30
+    },
+    "worst_owner_nw_y0": -4.4855,
+    "worst_owner_money_y0": -19113618281.0994
+   }
+  },
+  "IT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "hh_net_worth_nonnegative": 46,
+     "gini_floor": 198,
+     "money_split_shares_valid": 35
+    },
+    "worst_owner_nw_y0": -4.957,
+    "worst_owner_money_y0": -36.3594
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 145,
+    "fails": {
+     "money_split_shares_valid": 55,
+     "investment_share_bounded": 10
+    },
+    "worst_owner_nw_y0": 3.4801,
+    "worst_owner_money_y0": -34.7369
+   }
+  },
+  "LT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 101,
+     "hh_net_worth_nonnegative": 92,
+     "investment_share_bounded": 34,
+     "gini_floor": 155
+    },
+    "worst_owner_nw_y0": -4.7291,
+    "worst_owner_money_y0": -1597739.4058
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 44,
+    "fails": {
+     "money_split_shares_valid": 156,
+     "investment_share_bounded": 87,
+     "hh_net_worth_nonnegative": 2
+    },
+    "worst_owner_nw_y0": -1.0579,
+    "worst_owner_money_y0": -1798873.9762
+   }
+  },
+  "LU": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "owners_mpc_in_unit_interval": 200,
+     "money_split_shares_valid": 133,
+     "gini_floor": 169,
+     "investment_share_bounded": 30
+    },
+    "worst_owner_nw_y0": 1.5588,
+    "worst_owner_money_y0": -8838.8447
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "owners_mpc_in_unit_interval": 200,
+     "investment_share_bounded": 86,
+     "money_split_shares_valid": 42
+    },
+    "worst_owner_nw_y0": 3.2834,
+    "worst_owner_money_y0": -5704.7067
+   }
+  },
+  "LV": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 149,
+     "hh_net_worth_nonnegative": 144,
+     "investment_share_bounded": 48,
+     "gini_floor": 111
+    },
+    "worst_owner_nw_y0": -4.9726,
+    "worst_owner_money_y0": -186274.8611
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 34,
+    "fails": {
+     "money_split_shares_valid": 166,
+     "investment_share_bounded": 97,
+     "hh_net_worth_nonnegative": 2
+    },
+    "worst_owner_nw_y0": -1.2983,
+    "worst_owner_money_y0": -219733.8671
+   }
+  },
+  "MT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 66,
+     "investment_share_bounded": 32,
+     "gini_floor": 196,
+     "hh_net_worth_nonnegative": 45
+    },
+    "worst_owner_nw_y0": -2.3358,
+    "worst_owner_money_y0": -293201.8756
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 81,
+    "fails": {
+     "money_split_shares_valid": 104,
+     "investment_share_bounded": 90
+    },
+    "worst_owner_nw_y0": 0.6978,
+    "worst_owner_money_y0": -255792.34
+   }
+  },
+  "NL": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 68,
+     "investment_share_bounded": 33,
+     "gini_floor": 169,
+     "hh_net_worth_nonnegative": 16
+    },
+    "worst_owner_nw_y0": -1.5725,
+    "worst_owner_money_y0": -1908.9312
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 101,
+    "fails": {
+     "money_split_shares_valid": 79,
+     "investment_share_bounded": 88
+    },
+    "worst_owner_nw_y0": 1.5913,
+    "worst_owner_money_y0": -2235.9725
+   }
+  },
+  "PL": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 92,
+     "hh_net_worth_nonnegative": 92,
+     "gini_floor": 198,
+     "investment_share_bounded": 21
+    },
+    "worst_owner_nw_y0": -4.9197,
+    "worst_owner_money_y0": -100609.4441
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 47,
+    "fails": {
+     "money_split_shares_valid": 153,
+     "investment_share_bounded": 49,
+     "hh_net_worth_nonnegative": 1
+    },
+    "worst_owner_nw_y0": -0.208,
+    "worst_owner_money_y0": -114612.846
+   }
+  },
+  "PT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 65,
+     "hh_net_worth_nonnegative": 77,
+     "gini_floor": 176,
+     "investment_share_bounded": 16
+    },
+    "worst_owner_nw_y0": -4.0814,
+    "worst_owner_money_y0": -123.2134
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 89,
+    "fails": {
+     "money_split_shares_valid": 111,
+     "investment_share_bounded": 36
+    },
+    "worst_owner_nw_y0": 0.6446,
+    "worst_owner_money_y0": -130.7912
+   }
+  },
+  "RO": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 192,
+     "hh_net_worth_nonnegative": 191,
+     "investment_share_bounded": 33,
+     "gini_floor": 152
+    },
+    "worst_owner_nw_y0": -7.4943,
+    "worst_owner_money_y0": -1545031763.6391
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 1,
+    "fails": {
+     "money_split_shares_valid": 199,
+     "investment_share_bounded": 84,
+     "hh_net_worth_nonnegative": 12
+    },
+    "worst_owner_nw_y0": -2.2874,
+    "worst_owner_money_y0": -1922044345.9195
+   }
+  },
+  "SE": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 101,
+     "investment_share_bounded": 35,
+     "hh_net_worth_nonnegative": 60,
+     "gini_floor": 158
+    },
+    "worst_owner_nw_y0": -2.4768,
+    "worst_owner_money_y0": -32414.8565
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 69,
+    "fails": {
+     "money_split_shares_valid": 123,
+     "investment_share_bounded": 84
+    },
+    "worst_owner_nw_y0": 2.1241,
+    "worst_owner_money_y0": -42144.7876
+   }
+  },
+  "SI": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "owners_mpc_in_unit_interval": 152,
+     "money_split_shares_valid": 50,
+     "investment_share_bounded": 42,
+     "gini_floor": 140,
+     "hh_net_worth_nonnegative": 1
+    },
+    "worst_owner_nw_y0": -0.2319,
+    "worst_owner_money_y0": -162.6127
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 24,
+    "fails": {
+     "owners_mpc_in_unit_interval": 152,
+     "money_split_shares_valid": 50,
+     "investment_share_bounded": 90
+    },
+    "worst_owner_nw_y0": 2.3238,
+    "worst_owner_money_y0": -202.4288
+   }
+  },
+  "SK": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "money_split_shares_valid": 131,
+     "hh_net_worth_nonnegative": 136,
+     "investment_share_bounded": 44,
+     "gini_floor": 200
+    },
+    "worst_owner_nw_y0": -6.2524,
+    "worst_owner_money_y0": -3028592.5577
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 25,
+    "fails": {
+     "money_split_shares_valid": 175,
+     "investment_share_bounded": 100,
+     "hh_net_worth_nonnegative": 21
+    },
+    "worst_owner_nw_y0": -3.0378,
+    "worst_owner_money_y0": -3328804.7602
+   }
+  }
+ },
+ "pooling": [
+  {
+   "bloc": "EU bloc (manifesto/dashboard)",
+   "form": "cash_ubi",
+   "n_geos": 26,
+   "n_viable": 26,
+   "gate_consistent": true,
+   "pooled_runs": 26,
+   "pooled_plausible": 7,
+   "national_runs": 26,
+   "national_plausible": 2
+  },
+  {
+   "bloc": "EU bloc (manifesto/dashboard)",
+   "form": "ubc",
+   "n_geos": 26,
+   "n_viable": 26,
+   "gate_consistent": true,
+   "pooled_runs": 26,
+   "pooled_plausible": 0,
+   "national_runs": 26,
+   "national_plausible": 0
+  },
+  {
+   "bloc": "DE+FR+SK (posts)",
+   "form": "cash_ubi",
+   "n_geos": 3,
+   "n_viable": 3,
+   "gate_consistent": true,
+   "pooled_runs": 3,
+   "pooled_plausible": 0,
+   "national_runs": 3,
+   "national_plausible": 0
+  },
+  {
+   "bloc": "DE+FR (posts)",
+   "form": "cash_ubi",
+   "n_geos": 2,
+   "n_viable": 2,
+   "gate_consistent": true,
+   "pooled_runs": 2,
+   "pooled_plausible": 0,
+   "national_runs": 2,
+   "national_plausible": 0
+  }
+ ],
+ "errors": []
+}
