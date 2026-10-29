@@ -280,7 +280,8 @@ def test_sensitivity_bands_and_ranked_drivers():
     b = r["bands"]["gini"]
     assert b["p5"] <= b["p50"] <= b["p95"]                 # ordered band
     d = r["drivers"]
-    assert len(d) == 6 and d[0]["r2"] >= d[-1]["r2"]       # ranked
+    from uncertainty import PRIORS
+    assert len(d) == len(PRIORS) and d[0]["r2"] >= d[-1]["r2"]   # ranked, every prior
     assert abs(sum(x["share"] for x in d) - 1.0) < 0.02    # shares normalise
     assert "sandbox" in r["disclaimer"].lower()
 

@@ -203,7 +203,9 @@ def validate_snapshot(data: Dict[str, float], geo: str, year: int
         p = calibrate(data, geo=geo, base_year=year)
         baseline = make_triad(p, horizon=5)[0]
         res = SFCCore(base_year=year).run(baseline, data)
-        reports = check_run(res, strict=False)
+        # data validity = calibrates + reproduces targets + books balance; model
+        # plausibility is a separate question (consistency law 7, the audit)
+        reports = check_run(res, strict=False, plausibility="audit")
         worst = max(r.max_residual for r in reports)
         m0, t = res.periods[0].reported, p.targets
 

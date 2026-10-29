@@ -159,4 +159,5 @@ def test_crew_sensitivity_bands_and_drivers():
     assert "robustness" in r.report.lower() and "drivers" in r.report.lower()
     assert "Ownership (UBC)" in r.report and "Cash UBI" in r.report
     assert r.payload.get("band_separated") in (True, False)
-    assert len(r.payload.get("drivers", [])) == 6
+    from uncertainty import PRIORS
+    assert len(r.payload.get("drivers", [])) == len(PRIORS)

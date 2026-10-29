@@ -29,6 +29,9 @@ live data and validated against history.
 >    capital owners finance it with unlimited interest-free borrowing from the state.
 >    Their money balance goes negative in over half the policy runs, cash UBI and UBC
 >    alike, and in about a third of UBC runs they end insolvent, owing more than they own.
+>    *Fixed in the engine on 2026-10-29 (Phase 7 step B,
+>    [`docs/AUDIT-2026-10-stepB.md`](docs/AUDIT-2026-10-stepB.md)); the published
+>    numbers above still come from the old engine until they are regenerated.*
 > 3. **No foreign ownership of capital.** All capital, AI capital included, is modelled
 >    as domestically owned, so the model cannot yet say how much of a largely
 >    foreign-owned AI rent European policies can reach.

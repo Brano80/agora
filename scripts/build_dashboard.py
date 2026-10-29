@@ -85,6 +85,8 @@ def geo_data(geo):
         res["sectors"] = None
     fr = []
     for p in o.run_policy_search(horizon=H):
+        if not p.consistent:          # refused by the gate: never charted
+            continue
         mt = p.metrics
         fr.append({"name": p.name, "form": p.form, "gini": round(mt["gini"], 3),
                    "gdp": round(mt["gdp_end"]/1e6, 2), "pov": round(mt["poverty"], 3), "front": bool(p.on_frontier)})

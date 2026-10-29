@@ -121,7 +121,9 @@ def backtest(geo: str, panel: Dict[int, Dict[str, float]]) -> BacktestResult:
                     ai_capex=LeverPath(capex_path),
                     gov_override=LeverPath(gov_path),
                     tax_income=LeverPath(p.theta))
-    res = SFCCore(base_year=start).run(scen, panel[start])
+    # drives ACTUAL historical investment (ai_capex = realised GFCF), which only
+    # the legacy closure accepts; Phase 7 step F makes investment endogenous here.
+    res = SFCCore(base_year=start, investment_closure="legacy").run(scen, panel[start])
 
     mae: Dict[str, float] = {}
     for series, key in (("gdp", "gdp"), ("gov_debt_gdp", "gov_debt_gdp")):

@@ -91,7 +91,10 @@ INSTRUMENTS: Dict[str, Instrument] = {
         Instrument("capital", "Fixed capital stock", 1, real=True,
                    note="Real (non-financial) stock; accumulates investment."),
         Instrument("bills", "Government bills", 2, note="Inactive in Phase 1."),
-        Instrument("loans", "Bank loans", 2, note="Inactive in Phase 1."),
+        Instrument("loans", "Loans to capital owners", 1,
+                   note="Phase 7 B: owners' borrowing to finance investment, capped and "
+                        "interest-bearing. Lender = the public sector as a stand-in until "
+                        "the banks sector is activated (asset of the lender, liability of owners)."),
         Instrument("deposits", "Bank deposits", 2, note="Inactive in Phase 1."),
         Instrument("equity", "Firm equity", 2, note="Inactive in Phase 1."),
         Instrument("reserves", "Central-bank reserves", 2, note="Inactive."),
@@ -133,6 +136,10 @@ FLOWS: Dict[str, Flow] = {
         Flow("interest", "Interest payments", 1, "Interest on government debt to money/bill holders."),
         Flow("dividend_swf", "Sovereign-fund dividend", 1, "Citizens' per-capita dividend from the sovereign fund's capital stake (UBC)."),
         Flow("transfer_intl", "International transfer", 1, "Cross-border secondary income to households (the pooled global dividend); RoW counterpart."),
+        Flow("tax_capital_base", "Baseline capital-income tax", 1, "Phase 6 broad revenue base: general tax on profits (not recycled)."),
+        Flow("loans_chg", "Change in loans", 1, "Phase 7 B: owners' net new borrowing (+) or repayment (-); lender counterpart."),
+        Flow("loan_interest", "Interest on loans", 1, "Phase 7 B: owners pay interest on outstanding loans to the lender."),
+        Flow("debt_assumption", "Debt assumed with equity", 1, "Phase 7 B: under UBC the fund takes net equity, i.e. the diluted capital together with its share of the owners' loans (non-cash)."),
     ]
 }
 

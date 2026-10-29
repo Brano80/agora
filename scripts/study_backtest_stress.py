@@ -50,7 +50,7 @@ def drive(geo, panel):
     scen = Scenario(name="stress-backtest", horizon=H, geo=geo,
                     labour_share=LeverPath(ls_path), ai_capex=LeverPath(cap_path),
                     gov_override=LeverPath(gov_path), tax_income=LeverPath(p.theta))
-    res = SFCCore(base_year=start).run(scen, panel[start])
+    res = SFCCore(base_year=start, investment_closure="legacy").run(scen, panel[start])  # drives actual GFCF
     try:
         dist = DistributionModule(base_year=start).run(scen, panel[start], {"sfc_core": res})
     except Exception:

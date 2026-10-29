@@ -29,6 +29,32 @@ Both arms leave the government's deficit path identical (dH_s = G - tax_w), so
 the comparison is equal-cost. The fund holds no money (pure pass-through), so
 only money + fx remain in the financial gate - the books still close exactly.
 
+Investment closure (Phase 7 step B, 2026-10-29). Two switchable closures:
+  * "behavioural" (default): investment is a DECISION. Each owner of capital
+    invests on the stake it owns: private owners' desired gross investment is
+    (1 - phi) * Y_prev * [i0 + gamma * (pi_eff_prev - pi0)], where pi_eff is the
+    owners' net profit share after taxes and after equity given up (a cash levy
+    or UBC dilution lower it symmetrically), i0 the base-year investment share
+    and gamma the profit-share effect on investment/GDP (Onaran & Galanis 2014,
+    Table 7: euro area-12 0.299, DE 0.376, FR 0.088, IT 0.130; 1962-2007). The AI
+    boom then comes from the higher profit share, not an exogenous capex path.
+    Financing follows a pecking order (Myers & Majluf 1984): saving first, liquid
+    money down to a floor, then loans up to debt_cap x owned capital at
+    loan_rate, and only then less investment (then fewer inventories). Owners'
+    money therefore never goes negative. If owned capital shrinks below what
+    the cap allows, the excess debt is repaid at the rate loans mature
+    (deleverage_rate). Under UBC the fund takes NET equity: the diluted
+    capital comes with its proportional share of the owners' loans, which the
+    fund services (interest + repayment at the maturity rate) out of its
+    profits before paying dividends. The citizens' fund invests the share
+    of its profits it retains (ubc_reinvest / fund_payout).
+    Lender: the public sector as a stand-in until the banks sector exists, so
+    gov_debt is reported NET of these loans (gov_money = gross money issued).
+  * "legacy": the v1.1 behaviour, exactly - an exogenous capex path (ai_capex
+    lever, optionally scaled by inv_elasticity) financed by an unlimited,
+    interest-free money overdraft. Kept ONLY to reproduce published v1.1
+    numbers and for the backtest, which drives actual historical investment.
+
 Emits a complete transaction-flow matrix (columns balance) + balance-sheet
 matrix so the consistency gate validates money AND fx to machine precision.
 TFM convention: tfm[flow][sector] is the signed cash-budget contribution
@@ -40,6 +66,53 @@ from typing import Dict, List, Optional
 
 from modules.interface import Module, Scenario, RunResult, PeriodState
 from calibration import calibrate, SFCParams
+
+
+# --------------------------------------------------------------------------- #
+# Phase 7 B parameters - sourced, inspectable, swappable (also MC priors).
+# --------------------------------------------------------------------------- #
+INVESTMENT_CLOSURES = ("behavioural", "legacy")
+# Marginal effect of a 1-pp rise in the profit share on private investment/GDP
+# (pp). Onaran & Galanis (2014), "Income Distribution and Growth: A Global
+# Model", Environment and Planning A 46(10), Table 7 col. B; 1962-2007.
+PROFIT_RESPONSE = {"DE": 0.376, "FR": 0.088, "IT": 0.130}
+PROFIT_RESPONSE_DEFAULT = 0.299          # euro area-12 estimate, used elsewhere
+# Cap on owners' NEW net borrowing since the base year, as a share of the
+# capital they own. 0.10 ~ 30% of GDP at K/Y = 3, i.e. ~45% of today's whole
+# euro-area NFC debt stock (67.2% of GDP, end-2024, ECB quarterly sector
+# accounts). The base-year balance sheet already nets existing debt.
+DEBT_CAP = 0.10
+# Interest on those loans: ECB composite cost of borrowing for new loans to
+# corporations, 3.57% (Dec 2025, ECB MFI interest rate statistics).
+LOAN_RATE = 0.035
+# Debt above the cap (when owned capital shrinks) is not called in at once: it
+# is repaid as loans mature. 0.2/yr = an ASSUMED 5-year average maturity.
+DELEVERAGE_RATE = 0.2
+# Owners keep liquid money of at least this share of their base-year
+# liquidity ratio (money / owned capital) before borrowing.
+LIQUIDITY_FLOOR = 0.5
+
+
+def profit_response_for(geo: Optional[str]) -> float:
+    return PROFIT_RESPONSE.get((geo or "").upper(), PROFIT_RESPONSE_DEFAULT)
+
+
+def _solve_linear(demand, scale: float) -> float:
+    """Fixed point Y = demand(Y) for a demand LINEAR in Y: two evaluations give
+    intercept and slope, so the solution is exact; a plain iteration guards any
+    non-linear edge case."""
+    f0 = demand(0.0)
+    slope = (demand(scale) - f0) / scale
+    Y = f0 / (1.0 - slope) if abs(1.0 - slope) > 1e-12 else scale
+    if abs(demand(Y) - Y) <= 1e-8 * max(scale, abs(Y)):
+        return Y
+    Y = scale
+    for _ in range(500):
+        Y_new = demand(Y)
+        if abs(Y_new - Y) <= 1e-10 * scale:
+            return Y_new
+        Y = Y_new
+    return Y
 
 
 def _two_class_gini(yd_w: float, yd_k: float, f_w: float) -> float:
@@ -58,7 +131,10 @@ class SFCCore(Module):
     def __init__(self, base_year: int = 2019, calib_kwargs: Optional[dict] = None,
                  inv_elasticity: float = 0.0, fiscal_reaction: float = 0.0,
                  debt_target: Optional[float] = None, i_rate: Optional[float] = None,
-                 fund_payout: float = 0.0):
+                 fund_payout: float = 0.0, investment_closure: str = "behavioural",
+                 profit_response: Optional[float] = None, debt_cap: float = DEBT_CAP,
+                 loan_rate: float = LOAN_RATE, liquidity_floor: float = LIQUIDITY_FLOOR,
+                 deleverage_rate: float = DELEVERAGE_RATE):
         self.base_year = base_year
         self.calib_kwargs = calib_kwargs or {}
         # C1 (enclosure-vs-diffusion): elasticity of investment to owners'
@@ -84,6 +160,17 @@ class SFCCore(Module):
         #   rests on the GPFG/Alaska track record, not the full domestic profit
         #   share. 0.0 keeps the legacy reinvest-split behaviour.
         self.fund_payout = float(fund_payout)
+        # Phase 7 B investment closure (see module docstring).
+        if investment_closure not in INVESTMENT_CLOSURES:
+            raise ValueError(f"investment_closure must be one of {INVESTMENT_CLOSURES}, "
+                             f"got {investment_closure!r}")
+        self.investment_closure = investment_closure
+        self.profit_response = (None if profit_response is None
+                                else float(profit_response))   # None = country default
+        self.debt_cap = float(debt_cap)
+        self.loan_rate = float(loan_rate)
+        self.liquidity_floor = float(liquidity_floor)
+        self.deleverage_rate = float(deleverage_rate)
         self.params: Optional[SFCParams] = None
 
     def declares_inputs(self) -> List[str]:
@@ -108,6 +195,11 @@ class SFCCore(Module):
             "inv_response", "swf_reinvest", "investment_private",
             "reinvest_rate", "capital_traditional", "capital_ai",
             "capital_ai_share", "gov_interest", "gov_interest_gdp",
+            "gov_money", "gov_money_gdp", "loans_owners", "loans_owners_gdp",
+            "owners_borrowing", "loan_interest", "investment_desired",
+            "investment_cut", "financing_regime", "owners_liquidity_floor",
+            "owners_net_profit_share", "loans_fund", "fund_debt_service",
+            "debt_assumed_by_fund", "swf_net_assets",
         ]
 
     def run(self, scenario: Scenario, data: Dict[str, float],
@@ -132,6 +224,14 @@ class SFCCore(Module):
         i_rate_eff = (self.i_rate_override if self.i_rate_override is not None
                       else p.i_rate)
         periods: List[PeriodState] = []
+        behavioural = self.investment_closure == "behavioural"
+        gamma = (self.profit_response if self.profit_response is not None
+                 else profit_response_for(scenario.geo)) if behavioural else 0.0
+        pi0 = (1.0 - p.ls0) * (1.0 - p.theta_k)   # base-year owners' net profit share
+        pi_eff_prev = pi0                          # year 0 invests exactly as observed
+        L = 0.0                                    # owners' loans (new net borrowing)
+        L_sf = 0.0                                 # loans assumed by the fund with equity (UBC)
+        liq_ratio = (self.liquidity_floor * p.M_k0 / p.K0) if p.K0 > 0 else 0.0
 
         for t in range(H):
             ls = scenario.labour_share.at(t, H)
@@ -153,7 +253,7 @@ class SFCCore(Module):
             # Phase 6 fiscal-reaction rule (default OFF): adjusts the LABOUR rate
             # (the usual marginal instrument) to steer debt/GDP toward target.
             if self.fiscal_reaction:
-                debt_gdp_prev = (100.0 * (M_w + M_k) / Y_prev) if Y_prev else debt_target
+                debt_gdp_prev = (100.0 * (M_w + M_k - L - L_sf) / Y_prev) if Y_prev else debt_target
                 delta_theta = self.fiscal_reaction * (debt_gdp_prev - debt_target)
             else:
                 delta_theta = 0.0
@@ -163,6 +263,8 @@ class SFCCore(Module):
             M_w_prev, M_k_prev, K_prev = M_w, M_k, K
             K_trad_prev, K_ai_prev = K_trad, K_ai
             F_w_prev, F_k_prev, E_sf_prev = F_w, F_k, E_sf
+            L_prev, L_sf_prev = L, L_sf
+            own_K_prev0 = max(K_prev - E_sf_prev, 0.0)
 
             # fund's ownership share entering the period drives this year's dividend
             phi = (min(E_sf_prev / K_prev, 1.0)
@@ -176,6 +278,13 @@ class SFCCore(Module):
             inv_signal = (1.0 - phi) if ubc_on else (1.0 - tau)
             inv_mult = inv_signal ** self.inv_elasticity   # applied capex multiplier
             A_priv = base_A * inv_mult                      # privately-financed capex
+            if behavioural:
+                # B1: owners invest on the stake they own; the investment share
+                # responds to last year's net profit share (see docstring).
+                inv_share = max(0.0, p.a_ratio0 + gamma * (pi_eff_prev - pi0))
+                A_priv = (1.0 - phi) * Y_prev * inv_share
+                inv_mult = (inv_share / p.a_ratio0) if p.a_ratio0 else 1.0
+            A_desired = A_priv
             reinvest = scenario.ubc_reinvest.at(t, H) if ubc_on else 0.0
             # interest on government debt (gov money held by households),
             # predetermined from last period's debt; paid out by money share.
@@ -183,6 +292,12 @@ class SFCCore(Module):
             sh_w_m = (M_w_prev / gov_debt_prev) if gov_debt_prev > 0 else 0.5
             interest = i_rate_eff * gov_debt_prev
             int_w, int_k = interest * sh_w_m, interest * (1.0 - sh_w_m)
+            int_L = self.loan_rate * L_prev if behavioural else 0.0   # owners -> lender
+            # the fund's assumed debt: interest + repayment as loans mature
+            # (predetermined, so the demand solve stays linear)
+            int_sf = self.loan_rate * L_sf_prev if behavioural else 0.0
+            rep_sf = self.deleverage_rate * L_sf_prev if behavioural else 0.0
+            fund_service = int_sf + rep_sf
             # inventories+valuables (P52+P53): constant autonomous, owner-
             # financed, NOT added to productive K (closes the identity).
             INV = p.inv0
@@ -201,17 +316,20 @@ class SFCCore(Module):
                     # The fund REINVESTS a fraction and pays out the rest, so as
                     # owners are diluted the fund sustains capex (resolves C1).
                     gross_fund = phi * FP
+                    net_fund = gross_fund - fund_service   # after servicing assumed debt
                     if self.fund_payout > 0.0:
                         # GPFG/Alaska POMV: pay out fund_payout of the fund's VALUE,
                         # reinvest the rest -> the fund compounds like a real SWF.
                         # E_sf_prev is predetermined, so the draw is constant within
                         # the period -> the demand solve stays exactly linear (gate clean).
-                        div_total = self.fund_payout * E_sf_prev
-                        A_fund = gross_fund - div_total
+                        div_total = self.fund_payout * (E_sf_prev - L_sf_prev)
+                        A_fund = net_fund - div_total
                     else:
-                        A_fund = reinvest * gross_fund     # legacy reinvest split
-                        div_total = gross_fund - A_fund
+                        A_fund = reinvest * net_fund       # legacy reinvest split
+                        div_total = net_fund - A_fund
                     owners_profit = (1.0 - phi) * FP
+                    if behavioural:                  # P6 base taxes the owners' share only
+                        tax_k_base = theta_k * owners_profit
                     tax_k = 0.0                      # no cash levy; dilution instead
                     ubi_pool = 0.0
                     transfer_pool = div_total
@@ -239,8 +357,13 @@ class SFCCore(Module):
                     YD_k = FP - tax_k - tax_k_base + int_k + tr_k
                     net_profits = FP - tax_k - tax_k_base
                     gross_fund = A_fund = 0.0
+                if behavioural:
+                    YD_k -= int_L                    # interest on owners' loans
+                    wealth_k = max(0.0, M_k_prev + F_k_prev - L_prev)   # net of debt
+                else:
+                    wealth_k = M_k_prev + F_k_prev
                 C_w = p.a1_w * YD_w + p.a2 * (M_w_prev + F_w_prev)
-                C_k = p.a1_k * YD_k + p.a2 * (M_k_prev + F_k_prev)
+                C_k = p.a1_k * YD_k + p.a2 * wealth_k
                 return dict(WB=WB, FP=FP, tax_w=tax_w, tax_k=tax_k, tax_k_base=tax_k_base,
                             ubi_pool=ubi_pool, transfer_pool=transfer_pool,
                             div_total=div_total, div_w=div_w, div_k=div_k,
@@ -267,6 +390,61 @@ class SFCCore(Module):
                         break
                     Y = Y_new
             b = breakdown(Y)
+            dL, fin_regime, M_floor = 0.0, 0, 0.0
+            if behavioural:
+                # B2 pecking order. Regimes: 1 desired capex (borrow/repay as
+                # needed), 2 loans at the cap and capex cut, 3 no capex and
+                # inventories cut, 4 nothing left to cut. Each is LINEAR in Y,
+                # so each is solved exactly; the first consistent regime holds.
+                own_K_prev = max(K_prev - E_sf_prev, 0.0)
+                M_floor = liq_ratio * own_K_prev
+                cap = self.debt_cap * own_K_prev
+                # room for new borrowing; NEGATIVE = a required repayment of the
+                # excess over the cap, at the rate loans mature
+                headroom = (cap - L_prev if L_prev <= cap
+                            else -self.deleverage_rate * (L_prev - cap))
+                money_prev = M_w_prev + M_k_prev
+                sh_w_fx = (M_w_prev / money_prev) if money_prev > 0 else 0.5
+
+                def cash_before(Yv, bb):
+                    ca = X - p.m_imp * Yv + T_int
+                    return M_k_prev + bb["YD_k"] - bb["C_k"] - ca * (1.0 - sh_w_fx)
+
+                def plan(Yv, regime):
+                    bb = breakdown(Yv)
+                    avail = cash_before(Yv, bb) + headroom - M_floor
+                    if regime == 1:
+                        return bb, A_desired, p.inv0
+                    if regime == 2:
+                        return bb, avail - p.inv0, p.inv0
+                    if regime == 3:
+                        return bb, 0.0, avail
+                    return bb, 0.0, 0.0
+
+                def demand_r(Yv, regime):
+                    bb, ip, iv = plan(Yv, regime)
+                    return (bb["C_w"] + bb["C_k"] + ip + bb["A_fund"] + iv
+                            + G + X - p.m_imp * Yv)
+
+                tol_f = 1e-9 * max(p.Y0, 1.0)
+                for fin_regime in (1, 2, 3, 4):
+                    Y = _solve_linear(lambda v, r=fin_regime: demand_r(v, r), p.Y0)
+                    b, A_priv, INV = plan(Y, fin_regime)
+                    if fin_regime == 1:
+                        needed = M_floor - (cash_before(Y, b) - A_priv - INV)
+                        if needed <= headroom + tol_f:
+                            dL = max(-L_prev, needed)
+                            break
+                    elif fin_regime == 2:
+                        if A_priv >= -tol_f:
+                            dL = headroom
+                            break
+                    elif fin_regime == 3:
+                        if INV >= -tol_f:
+                            dL = headroom
+                            break
+                    else:
+                        dL = headroom
             A = A_priv + b["A_fund"]                # total investment
             C = b["C_w"] + b["C_k"]
             M_imp = p.m_imp * Y                    # imports
@@ -279,6 +457,8 @@ class SFCCore(Module):
             nafa_w = b["YD_w"] - b["C_w"]
             nafa_k = b["YD_k"] - b["C_k"] - A_priv - INV
             dH_s = (G + b["ubi_pool"] + interest) - (b["tax_w"] + b["tax_k"] + b["tax_k_base"])  # gov money issued (incl. debt interest)
+            if behavioural:
+                dH_s += dL - int_L - fund_service   # the public lender issues money to lend
 
             # current account accrues as net foreign assets, split by money wealth
             tot_money = M_w_prev + M_k_prev
@@ -287,6 +467,9 @@ class SFCCore(Module):
             dfx_k = CA * (1.0 - sh_w)
             dM_w = nafa_w - dfx_w
             dM_k = nafa_k - dfx_k
+            if behavioural:
+                dM_k += dL
+                L = L_prev + dL
 
             M_w = M_w_prev + dM_w
             M_k = M_k_prev + dM_k
@@ -308,8 +491,27 @@ class SFCCore(Module):
             blended_delta = ((p.delta * K_trad_prev + p.delta_ai * K_ai_prev) / K_prev
                              if K_prev > 0 else p.delta)
             contrib = (tau * b["FP"]) if ubc_on else 0.0
-            E_sf = min(E_sf_prev * (1.0 - blended_delta) + contrib + b["A_fund"], K)
+            # behavioural: contrib is NET equity - the capital moves with its
+            # share of the owners' debt (lev = owners' leverage). legacy: lev = 0.
+            lev = (min(L_prev / own_K_prev0, 0.95)
+                   if (behavioural and ubc_on and own_K_prev0 > 0) else 0.0)
+            E_pre = E_sf_prev * (1.0 - blended_delta) + b["A_fund"]
+            E_sf = min(E_pre + contrib / (1.0 - lev), K)
+            d_tr = lev * max(0.0, E_sf - E_pre)            # debt assumed by the fund
+            if behavioural:
+                L -= d_tr
+                L_sf = L_sf_prev - rep_sf + d_tr
             owners_K = K - E_sf
+            # owners' net profit share this year (drives next year's investment):
+            # capital income after taxes and after equity/levy given up.
+            own_share = 1.0 - phi
+            if ubc_on:
+                own_income = b["owners_profit"] - b["tax_k_base"] - contrib
+            else:
+                own_income = b["FP"] - b["tax_k"] - b["tax_k_base"]
+            pi_eff = (own_income / (own_share * Y)) if (own_share > 1e-9 and Y > 0) else -1.0
+            if behavioural:
+                pi_eff_prev = pi_eff
 
             tfm = {
                 "wages":           {"hh_workers": b["WB"], "firms": -b["WB"]},
@@ -343,7 +545,7 @@ class SFCCore(Module):
                 tfm["dividend_swf"] = {"hh_workers": b["div_w"],
                                        "hh_owners": b["div_k"],
                                        "sovereign_fund": -b["div_total"]}
-                if b["A_fund"] > 0:
+                if b["A_fund"]:
                     tfm["investment"]["sovereign_fund"] = -b["A_fund"]
             else:
                 tfm["profits"] = {"hh_owners": b["FP"], "firms": -b["FP"]}
@@ -355,6 +557,18 @@ class SFCCore(Module):
                                            "hh_owners": b["ubi_pool"] * f_k,
                                            "government": -b["ubi_pool"]}
 
+            if behavioural:
+                tfm["loans_chg"] = {"hh_owners": dL - d_tr, "government": -(dL - rep_sf)}
+                if L_sf_prev or d_tr:
+                    tfm["loans_chg"]["sovereign_fund"] = d_tr - rep_sf
+                if d_tr:
+                    tfm["debt_assumption"] = {"hh_owners": d_tr, "sovereign_fund": -d_tr}
+                if int_L or int_sf:
+                    tfm["loan_interest"] = {"hh_owners": -int_L,
+                                            "government": int_L + int_sf}
+                    if int_sf:
+                        tfm["loan_interest"]["sovereign_fund"] = -int_sf
+
             bsm = {
                 "money": {"hh_workers": M_w, "hh_owners": M_k,
                           "government": -(M_w + M_k)},
@@ -364,7 +578,12 @@ class SFCCore(Module):
                             if E_sf > 0 else {"hh_owners": K}),
             }
 
-            gov_debt = M_w + M_k
+            if behavioural:
+                bsm["loans"] = {"hh_owners": -L, "government": L + L_sf}
+                if L_sf or L_sf_prev:
+                    bsm["loans"]["sovereign_fund"] = -L_sf
+            gov_money = M_w + M_k
+            gov_debt = gov_money - L - L_sf   # net of the public lender's loans (0 in legacy)
             nfa = F_w + F_k
             interest_gdp = 100.0 * interest / Y if Y else 0.0
             pop = p.population or 1.0
@@ -392,13 +611,24 @@ class SFCCore(Module):
                 "swf_dividend_pc": b["div_total"] / pop,
                 "owners_capital": owners_K,
                 "owners_capital_share": (owners_K / K if K else 0.0),
-                "citizen_wealth_pc": E_sf / pop, "inv_response": inv_mult,
+                "citizen_wealth_pc": (E_sf - L_sf) / pop, "inv_response": inv_mult,
                 "swf_reinvest": b["A_fund"], "investment_private": A_priv,
                 "reinvest_rate": reinvest,
                 "income_workers_pc": b["YD_w"] / (f_w * p.population)
                 if p.population else b["YD_w"] / f_w,
                 "income_owners_pc": b["YD_k"] / (f_k * p.population)
                 if p.population else b["YD_k"] / f_k,
+                "gov_money": gov_money,
+                "gov_money_gdp": 100.0 * gov_money / Y if Y else 0.0,
+                "loans_owners": L, "loans_owners_gdp": 100.0 * L / Y if Y else 0.0,
+                "owners_borrowing": dL, "loan_interest": int_L + int_sf,
+                "loans_fund": L_sf, "fund_debt_service": fund_service,
+                "debt_assumed_by_fund": d_tr, "swf_net_assets": E_sf - L_sf,
+                "investment_desired": A_desired,
+                "investment_cut": A_desired - A_priv,
+                "financing_regime": fin_regime,
+                "owners_liquidity_floor": M_floor,
+                "owners_net_profit_share": pi_eff,
             }
             periods.append(PeriodState(year=p.base_year + t, tfm=tfm, bsm=bsm,
                                        reported=reported))
@@ -407,7 +637,13 @@ class SFCCore(Module):
             module=self.name, scenario=scenario.name, geo=scenario.geo,
             periods=periods,
             meta={
-                "stock_flow_map": {"money": "money_chg", "fx_assets": "fx_chg"},
+                "stock_flow_map": ({"money": "money_chg", "fx_assets": "fx_chg",
+                                    "loans": "loans_chg"} if behavioural
+                                   else {"money": "money_chg", "fx_assets": "fx_chg"}),
+                "investment_closure": self.investment_closure,
+                "profit_response": gamma, "debt_cap": self.debt_cap,
+                "loan_rate": self.loan_rate, "liquidity_floor": self.liquidity_floor,
+                "deleverage_rate": self.deleverage_rate,
                 "params": p.as_dict(), "targets": p.targets,
                 "sources": p.sources, "notes": p.notes, "nx_gap": p.nx_gap,
             },

@@ -14,12 +14,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 
 from orchestrator import AgoraOrchestrator
+
+# Phase 7 B (2026-10-29): these tests pin the PUBLISHED v1.1 results, so they run
+# the legacy investment closure (exogenous capex, unlimited overdraft). They prove
+# v1.1 still reproduces; they are NOT claims about the default behavioural closure,
+# whose findings are re-validated in Phase 7 step F (docs/PHASE7.md, findings ledger).
+V11 = {"investment_closure": "legacy"}
 from schema.accounts import SECTORS, FLOWS
 
 
 @pytest.fixture(scope="module")
 def runs():
-    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    o = AgoraOrchestrator(**V11, geo="DE", year=2019, allow_live=False, strict=True)
     o.load_data()
     return {r.scenario: r for r in o.run_ubc_experiment(horizon=30)}
 
@@ -104,7 +110,7 @@ def test_ubc_wins_late_on_inequality_and_poverty(runs):
 
 def test_fr_ubc_also_gate_clean():
     """Country-agnostic: the fund mechanism closes for France too."""
-    o = AgoraOrchestrator(geo="FR", year=2019, allow_live=False, strict=True)
+    o = AgoraOrchestrator(**V11, geo="FR", year=2019, allow_live=False, strict=True)
     o.load_data()
     runs = {r.scenario: r for r in o.run_ubc_experiment(horizon=30)}
     assert all(r.consistent for r in runs.values())
@@ -113,7 +119,7 @@ def test_fr_ubc_also_gate_clean():
 # --- C1: investment endogenised against owners' retained return ------------- #
 @pytest.fixture(scope="module")
 def runs_eps1():
-    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True,
+    o = AgoraOrchestrator(**V11, geo="DE", year=2019, allow_live=False, strict=True,
                           inv_elasticity=1.0)
     o.load_data()
     return {r.scenario: r for r in o.run_ubc_experiment(horizon=30)}
@@ -168,7 +174,7 @@ def test_equality_verdict_survives_the_disincentive(runs_eps1):
 def reinvest_runs():
     """UBC at eps=1 (disincentive ON) with vs without fund reinvestment, + cash."""
     from scenarios import build_custom, LS_AI_END, CAPEX_AI_GROWTH
-    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True,
+    o = AgoraOrchestrator(**V11, geo="DE", year=2019, allow_live=False, strict=True,
                           inv_elasticity=1.0)
     o.load_data()
     p = o.params()
@@ -237,7 +243,7 @@ def test_investment_migrates_from_owners_to_fund(reinvest_runs):
 # survives once the fund reinvests (the integrated close of crux C1).
 def test_c1_closure_choke_then_cure():
     from orchestrator import AgoraOrchestrator
-    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    o = AgoraOrchestrator(**V11, geo="DE", year=2019, allow_live=False, strict=True)
     o.load_data()
     c = o.c1_closure(horizon=30, inv_elasticity=0.75, reinvest=1.0)
 
@@ -275,7 +281,7 @@ def test_c1_closure_choke_then_cure():
 def test_c1_reinvest_recovery_is_monotone():
     """Higher fund reinvestment -> larger UBC economy (the cure is dose-dependent)."""
     from orchestrator import AgoraOrchestrator
-    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    o = AgoraOrchestrator(**V11, geo="DE", year=2019, allow_live=False, strict=True)
     o.load_data()
 
     def ubc_vs_cash(reinvest):

@@ -41,6 +41,8 @@ from typing import Dict, List, Optional
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+# the audit READS every law's verdict, so nothing may be refused mid-run
+os.environ["AGORA_PLAUSIBILITY"] = "audit"
 
 from calibration import calibrate                                    # noqa: E402
 from consistency.checks import (check_distribution, check_run,      # noqa: E402
@@ -52,7 +54,8 @@ from orchestrator import AgoraOrchestrator                          # noqa: E402
 from scenarios import build_custom                                  # noqa: E402
 from schema.accounts import AGGREGATE_GEOS                          # noqa: E402
 from scout.checks import snapshot_geos                              # noqa: E402
-from uncertainty import PRIORS                                      # noqa: E402
+from scenarios import CAPEX_AI_GROWTH                               # noqa: E402
+from uncertainty import LEGACY_PRIORS, PRIORS, core_kwargs          # noqa: E402
 
 CHECKS = ("hh_net_worth_nonnegative", "money_split_shares_valid",
           "investment_share_bounded", "gini_floor", "owners_mpc_in_unit_interval")
@@ -94,6 +97,8 @@ def _row(family, geo, name, res, dist, reports, **extra):
     nw = [sum(float(col.get("hh_owners", 0.0)) for col in p.bsm.values())
           for p in res.periods]
     mk = [float(p.bsm.get("money", {}).get("hh_owners", 0.0)) for p in res.periods]
+    mw = [float(p.bsm.get("money", {}).get("hh_workers", 0.0)) for p in res.periods]
+    neg_money = [c for c, v in (("workers", min(mw)), ("owners", min(mk))) if v < 0]
     iy = [p.reported["investment"] / p.reported["gdp"] for p in res.periods
           if p.reported.get("gdp")]
     gi = ([p.reported["gini_personal"] for p in dist.periods
@@ -104,7 +109,7 @@ def _row(family, geo, name, res, dist, reports, **extra):
                min_owner_nw_y0=_r(min(nw) / Y0), min_owner_money_y0=_r(min(mk) / Y0),
                max_inv_share=_r(max(iy)) if iy else None,
                min_gini=_r(min(gi)) if gi else None,
-               a1_k=_r(params.get("a1_k")))
+               a1_k=_r(params.get("a1_k")), neg_money=neg_money)
     row.update(extra)
     return row
 
@@ -130,7 +135,7 @@ def _family(rows, errors, geo, family, fn, points=False, rename=None):
         rows.append(_row(family, g, name, run.result, run.dist, run.reports, **extra))
 
 
-def _mc(geo, n, seed=0, tau=0.40, year=2019, horizon=30):
+def _mc(geo, n, seed=0, tau=0.40, year=2019, horizon=30, closure="behavioural"):
     """Mirror uncertainty._run_draws (same priors, seed and order) so these are
     the draws behind the published bands; aggregate per form."""
     rows = DBnomicsConnector(allow_live=False).fetch(geo, year)
@@ -141,14 +146,15 @@ def _mc(geo, n, seed=0, tau=0.40, year=2019, horizon=30):
         agg = dict(n=n, used=0, skipped=0, plausible=0, fails=Counter(),
                    worst_owner_nw_y0=None, worst_owner_money_y0=None)
         for _ in range(n):
-            d = {k: rng.uniform(*v) for k, v in PRIORS.items()}
+            d = {k: rng.uniform(*v) for k, v in
+                 (PRIORS if closure == "behavioural" else LEGACY_PRIORS).items()}
             try:
                 p = calibrate(data, geo=geo, base_year=year, a1_w=d["a1_w"])
                 scen = build_custom(p, labour_share_end=d["labour_share_end"],
-                                    capex_growth=d["capex_growth"], capital_tax=tau,
-                                    horizon=horizon, name="mc", **pol)
-                res = SFCCore(base_year=year, inv_elasticity=d["inv_elasticity"],
-                              calib_kwargs={"a1_w": d["a1_w"]}).run(scen, data)
+                                    capex_growth=d.get("capex_growth", CAPEX_AI_GROWTH),
+                                    capital_tax=tau, horizon=horizon, name="mc", **pol)
+                res = SFCCore(base_year=year, calib_kwargs={"a1_w": d["a1_w"]},
+                              **core_kwargs(d)).run(scen, data)
                 reps = check_run(res, strict=False)
                 if max(r.max_residual for r in reps) > 1.0:   # uncertainty.py's skip rule
                     agg["skipped"] += 1
@@ -177,11 +183,12 @@ def member_geos() -> List[str]:
     return [g for g in snapshot_geos() if g.upper() not in AGGREGATE_GEOS]
 
 
-def run_geos(geos, mc_n):
+def run_geos(geos, mc_n, closure="behavioural"):
     rows, errors, mc = [], [], {}
     for geo in geos:
         t0 = time.time()
-        o = AgoraOrchestrator(geo=geo, allow_live=False, strict=True)
+        o = AgoraOrchestrator(geo=geo, allow_live=False, strict=True,
+                              investment_closure=closure)
         try:
             o.load_data()
             o.params()
@@ -197,21 +204,22 @@ def run_geos(geos, mc_n):
         for rv in C1_LADDER:
             _family(rows, errors, geo, "c1_ladder",
                     lambda rv=rv: o.run_ubc_experiment(inv_elasticity=0.75, reinvest=rv),
-                    rename=lambda s, rv=rv: f"{s} [inv 0.75, reinvest {rv:g}]")
+                    rename=(lambda s, rv=rv: f"{s} [inv 0.75, reinvest {rv:g}]") if closure == "legacy"
+                    else (lambda s, rv=rv: f"{s} [endogenous investment, reinvest {rv:g}]"))
         if mc_n:
-            mc[geo] = _mc(geo, mc_n)
+            mc[geo] = _mc(geo, mc_n, closure=closure)
         print(f"{geo}: done in {time.time() - t0:.1f}s", flush=True)
     return rows, errors, mc
 
 
-def run_pooling():
+def run_pooling(closure="behavioural"):
     from region import MultiRegion
     rows, errors, summary = [], [], []
     bloc = tuple(g for g in member_geos() if g.upper() != "IE")   # manifesto bloc
     for tag, geos, forms in (("EU bloc (manifesto/dashboard)", bloc, ("cash_ubi", "ubc")),
                              ("DE+FR+SK (posts)", ("DE", "FR", "SK"), ("cash_ubi",)),
                              ("DE+FR (posts)", ("DE", "FR"), ("cash_ubi",))):
-        mr = MultiRegion(geos=geos, allow_live=False)
+        mr = MultiRegion(geos=geos, allow_live=False, investment_closure=closure)
         for form in forms:
             global _CAPTURE
             _CAPTURE = []
@@ -275,7 +283,9 @@ def _firsts(rs):
     return ", ".join(f"{SHORT[k]} ({v})" for k, v in c.most_common()) or "none"
 
 
-def build_report(data, date="2026-10-28"):
+def build_report(data, date=None):
+    closure = data.get("closure", "legacy")
+    date = date or ("2026-10-28" if closure == "legacy" else "2026-10-29")
     rows, mc, pool, errors = data["rows"], data["mc"], data["pooling"], data["errors"]
     geos = sorted({r["geo"] for r in rows if r["family"] != "pooling"})
     fams = ["triad", "ubc_experiment", "frontier", "rich_frontier", "c1_ladder", "pooling"]
@@ -289,12 +299,21 @@ def build_report(data, date="2026-10-28"):
     n_pl = sum(r["plausible"] for r in rows)
     mc_used = sum(v[f]["used"] for v in mc.values() for f in v)
     mc_pl = sum(v[f]["plausible"] for v in mc.values() for f in v)
-    add(f"# Plausibility audit — {date} (Phase 7, step A)\n")
-    add("Every scenario family behind AGORA's published numbers, re-run for every "
-        "snapshot country with the engine **unchanged** (commit after 8884d7c), and "
-        "checked against the new plausibility-v2 laws in `consistency/checks.py`. "
-        "The laws run in *audit* mode, so nothing shipped changes; this file reads "
-        "what they flag. Reproduce: `python scripts/audit_plausibility.py`.\n")
+    if closure == "legacy":
+        add(f"# Plausibility audit — {date} (Phase 7, step A)\n")
+        add("Every scenario family behind AGORA's published numbers, re-run for every "
+            "snapshot country with the engine **unchanged** (commit after 8884d7c), and "
+            "checked against the new plausibility-v2 laws in `consistency/checks.py`. "
+            "The laws run in *audit* mode, so nothing shipped changes; this file reads "
+            "what they flag. Reproduce: `python scripts/audit_plausibility.py`.\n")
+    else:
+        add(f"# Plausibility audit — {date} (Phase 7, step B)\n")
+        add("The same scenario families, countries and laws as the step-A audit "
+            "(`docs/AUDIT-2026-10.md`, the v1.1 engine), re-run on the **behavioural "
+            "investment closure**: investment responds to owners' net profit share, "
+            "is financed saving-first with capped, interest-bearing loans, and owners "
+            "invest only on the capital they own. Reproduce: "
+            "`python scripts/audit_plausibility.py` (step A: `--closure legacy`).\n")
     add("| Law | Fails when |\n|---|---|")
     add("| `hh_net_worth_nonnegative` | a household class owes more than it owns (money + foreign assets + capital) |")
     add("| `money_split_shares_valid` | a household class holds negative money (an interest-free overdraft at the state) |")
@@ -342,21 +361,35 @@ def build_report(data, date="2026-10-28"):
     det = [r for r in rows if r["family"] in ("triad", "ubc_experiment", "frontier",
                                               "rich_frontier", "pooling")]
     add("### Insolvency by policy form (deterministic runs, all countries)\n")
-    add("| Policy form | Runs | Owners' money < 0 | Net worth < 0 |")
-    add("|---|---|---|---|")
+    if closure == "legacy":
+        add("| Policy form | Runs | Owners' money < 0 | Net worth < 0 |")
+        add("|---|---|---|---|")
+    else:
+        add("| Policy form | Runs | Owners' money < 0 | Workers' money < 0 | Net worth < 0 |")
+        add("|---|---|---|---|---|")
     for f in ("none", "cash", "ubc"):
         rs = [r for r in det if policy_form(r["scenario"]) == f]
         m = sum("money_split_shares_valid" in r["first_fail"] for r in rs)
         n = sum("hh_net_worth_nonnegative" in r["first_fail"] for r in rs)
-        add(f"| {f} | {len(rs)} | {m} ({_pct(m, len(rs))}) | {n} ({_pct(n, len(rs))}) |")
+        if closure == "legacy":
+            add(f"| {f} | {len(rs)} | {m} ({_pct(m, len(rs))}) | {n} ({_pct(n, len(rs))}) |")
+        else:
+            mo = sum("owners" in r.get("neg_money", []) for r in rs)
+            mw_ = sum("workers" in r.get("neg_money", []) for r in rs)
+            add(f"| {f} | {len(rs)} | {mo} ({_pct(mo, len(rs))}) | {mw_} ({_pct(mw_, len(rs))}) "
+                f"| {n} ({_pct(n, len(rs))}) |")
     mcn = {f: sum(mc[g][f]["fails"].get("hh_net_worth_nonnegative", 0) for g in mc) for f in ("ubc", "cash_ubi")}
     mcu = {f: sum(mc[g][f]["used"] for g in mc) for f in ("ubc", "cash_ubi")}
-    add(f"\nMonte Carlo: net worth < 0 in {mcn['ubc']:,}/{mcu['ubc']:,} UBC draws "
-        f"({_pct(mcn['ubc'], mcu['ubc'])}) and {mcn['cash_ubi']:,}/{mcu['cash_ubi']:,} "
-        f"cash draws ({_pct(mcn['cash_ubi'], mcu['cash_ubi'])}). Cash-UBI owners run "
-        "negative money (an overdraft at the state) but their capital keeps them "
-        "solvent; under UBC the capital passes to the fund, so the overdraft becomes "
-        "insolvency.\n")
+    if closure == "legacy":
+        add(f"\nMonte Carlo: net worth < 0 in {mcn['ubc']:,}/{mcu['ubc']:,} UBC draws "
+            f"({_pct(mcn['ubc'], mcu['ubc'])}) and {mcn['cash_ubi']:,}/{mcu['cash_ubi']:,} "
+            f"cash draws ({_pct(mcn['cash_ubi'], mcu['cash_ubi'])}). Cash-UBI owners run "
+            "negative money (an overdraft at the state) but their capital keeps them "
+            "solvent; under UBC the capital passes to the fund, so the overdraft becomes "
+            "insolvency.\n")
+    else:
+        add(f"\nMonte Carlo: net worth < 0 in {mcn['ubc']:,}/{mcu['ubc']:,} UBC draws "
+            f"and {mcn['cash_ubi']:,}/{mcu['cash_ubi']:,} cash draws.\n")
 
     # --- baselines -------------------------------------------------------- #
     bad = [r for r in by.get("triad", []) if r["scenario"] == "Baseline" and not r["plausible"]]
@@ -448,6 +481,9 @@ def build_report(data, date="2026-10-28"):
             add(f"- **{e['geo']} / {e['family']}:** {e['error']}")
         add("")
     add("## Reading\n")
+    if closure != "legacy":
+        _reading_b(add, rows, mc, by)
+        return "\n".join(L) + "\n"
     add("- Every run counted above passes (or fails) the **accounting** gate exactly as "
         "before; the plausibility laws only add information.")
     add("- The dominant failure is **investment financing**: capex follows an exogenous "
@@ -465,6 +501,51 @@ def build_report(data, date="2026-10-28"):
     add("- Until step B lands, no number in the rows marked implausible should be "
         "quoted; step F re-runs this audit in enforce mode on the fixed engine.")
     return "\n".join(L) + "\n"
+
+
+def _reading_b(add, rows, mc, by):
+    cnt = Counter(k for r in rows for k in r["first_fail"])
+    mcc = Counter()
+    mc_money = Counter()
+    for g in mc:
+        for f in mc[g]:
+            mcc.update(mc[g][f]["fails"])
+            if mc[g][f]["fails"].get("money_split_shares_valid"):
+                mc_money[g] += mc[g][f]["fails"]["money_split_shares_valid"]
+    n_acc = sum(r["accounting_ok"] for r in rows)
+    add(f"- **Accounting:** {n_acc:,} of {len(rows):,} runs balance their books.")
+    nw = [r for r in rows if "hh_net_worth_nonnegative" in r["first_fail"]]
+    add(f"- **Insolvency (the step-B target):** {len(nw)} runs and "
+        f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws"
+        + (": " + "; ".join(f"{r['geo']} {r['scenario']}" for r in nw) if nw else "")
+        + ". In those runs the fund owns all the capital and reinvests everything at "
+        "home, the current-account deficit widens, and the model still assigns the "
+        "capital-less owners a share of the country's foreign debt (external "
+        "positions are allocated by money shares). That rule is replaced in step D. "
+        "The gate now refuses such runs (net worth is a blocking law).")
+    own = sorted({r["geo"] for r in rows if "owners" in r.get("neg_money", [])})
+    wrk = sorted({r["geo"] for r in rows if "workers" in r.get("neg_money", [])})
+    add(f"- **Negative money:** owners in {sum('owners' in r.get('neg_money', []) for r in rows)} "
+        f"runs ({', '.join(own) or 'none'}), workers in "
+        f"{sum('workers' in r.get('neg_money', []) for r in rows)} runs "
+        f"({', '.join(wrk) or 'none'}); Monte-Carlo draws: "
+        + (", ".join(f"{g} {n}" for g, n in sorted(mc_money.items())) or "none")
+        + ". No owner overdraft remains outside countries whose calibration is "
+        "unusable. Workers' overdrafts arise there too, and in trade-linked runs "
+        "from the external-position rule. This law stays advisory until step D.")
+    iy = [r for r in rows if "investment_share_bounded" in r["first_fail"]]
+    iy_fund = sum(1 for r in iy if policy_form(r["scenario"]) == "ubc")
+    add(f"- **Investment above 40% of GDP:** {len(iy)} runs ({iy_fund} of them UBC). "
+        "Where the citizens' fund retains its profits it can only reinvest them in "
+        "domestic fixed capital; a real fund would also buy financial and foreign "
+        "assets. That outlet arrives with step D (the fund may buy foreign equity).")
+    gf = [r for r in rows if "gini_floor" in r["first_fail"]]
+    add(f"- **Gini below 0.15:** {len(gf)} runs and {mcc.get('gini_floor', 0)} draws, "
+        "almost all UBC. This is the distribution layer (two-class lognormal), not "
+        "financing; it is revisited with step E and re-checked in step F.")
+    mpc = sorted({r["geo"] for r in rows if "owners_mpc_in_unit_interval" in r["first_fail"]})
+    add(f"- **Calibration:** owners' MPC outside [0, 1] in {', '.join(mpc) or 'no country'}; "
+        "those countries' results stay unusable under this closure.")
 
 
 def compact(data):
@@ -491,9 +572,14 @@ def main():
     ap.add_argument("--pooling", action="store_true", help="run only the multi-region pooling family")
     ap.add_argument("--part", help="write a partial JSON here instead of the docs")
     ap.add_argument("--assemble", help="merge all *.json parts in this directory into the docs")
-    ap.add_argument("--out", default=os.path.join(ROOT, "docs", "AUDIT-2026-10.md"))
-    ap.add_argument("--json", default=os.path.join(ROOT, "docs", "audit-2026-10.json"))
+    ap.add_argument("--closure", choices=("behavioural", "legacy"), default="behavioural",
+                    help="investment closure to audit (legacy = the v1.1 engine, step A)")
+    ap.add_argument("--out", help="report path (default: docs/AUDIT-2026-10[-stepB].md)")
+    ap.add_argument("--json", help="summary path (default: docs/audit-2026-10[-stepB].json)")
     a = ap.parse_args()
+    sfx = "" if a.closure == "legacy" else "-stepB"
+    a.out = a.out or os.path.join(ROOT, "docs", f"AUDIT-2026-10{sfx}.md")
+    a.json = a.json or os.path.join(ROOT, "docs", f"audit-2026-10{sfx}.json")
 
     if a.assemble:
         data = dict(rows=[], errors=[], mc={}, pooling=[])
@@ -505,15 +591,16 @@ def main():
     else:
         data = dict(rows=[], errors=[], mc={}, pooling=[])
         if a.pooling:
-            data["rows"], data["errors"], data["pooling"] = run_pooling()
+            data["rows"], data["errors"], data["pooling"] = run_pooling(a.closure)
         else:
             geos = [g.strip().upper() for g in a.geos.split(",")] if a.geos else member_geos()
-            data["rows"], data["errors"], data["mc"] = run_geos(geos, a.mc)
+            data["rows"], data["errors"], data["mc"] = run_geos(geos, a.mc, a.closure)
             if not a.geos and not a.part:
-                pr, pe, ps = run_pooling()
+                pr, pe, ps = run_pooling(a.closure)
                 data["rows"] += pr
                 data["errors"] += pe
                 data["pooling"] = ps
+    data.setdefault("closure", a.closure)
     data["generated"] = time.strftime("%Y-%m-%d %H:%M")
     if a.part:
         os.makedirs(os.path.dirname(os.path.abspath(a.part)), exist_ok=True)

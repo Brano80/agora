@@ -56,6 +56,55 @@ estimates for focused work.
 - **B4.** Under UBC the fund invests its retained share, and private owners invest according to the return on what they still own. Total I = private + fund.
 - **B5.** Revisit the Monte-Carlo prior: drop `inv_elasticity = 0` or justify it.
 - **Done when:** there are zero insolvent owners across the A3 sweep and all MC draws, year 0 still reproduces, and the gate is exact.
+- **Status: DONE 2026-10-29** (two runs remain, assigned to step D; see residuals). Audit: `docs/AUDIT-2026-10-stepB.md`.
+
+#### What was built
+- **Two switchable investment closures** in `modules/sfc_core.py`. `behavioural` is the new default; `legacy` is the v1.1 engine, kept only to reproduce published numbers and for the backtests, which feed in actual investment. The step-A audit still reproduces byte-for-byte with `--closure legacy`.
+- **Investment rule (B1, B3, B4).** Owners invest on the stake they own: desired gross investment = (1 − fund share) × last year's output × [base-year investment share + γ × (owners' net profit share − its base-year value)]. A cash levy and UBC dilution lower the net profit share in the same way. The AI boom now comes from the higher profit share, not a fixed +6%/yr path. The fund invests the part of its profits it retains.
+- **Financing (B2).** Pecking order: saving first, liquid money down to a floor, then loans up to a cap on owned capital at the loan rate, and only then less investment (then fewer inventories). Debt above the cap is repaid as loans mature. Each regime is linear in output and solved exactly.
+- **Lender:** the public sector as a stand-in (decided 2026-10-29; banks replace it before step F). `gov_debt` is reported net of these loans; `gov_money` is the gross figure.
+- **UBC takes net equity.** The diluted capital comes with its share of the owners' loans, and the fund services that debt from its profits. The schema gains the `loans` instrument plus the `loans_chg`, `loan_interest`, `debt_assumption` and `tax_capital_base` flows.
+- **Staged gate** (`consistency/checks.py`). The net-worth law now blocks; the others stay advisory until their step lands (`ENFORCED_LAWS`, `STAGING`). Legacy runs default to audit mode. The policy search records refused candidates instead of aborting.
+- **Monte-Carlo prior (B5).** The exogenous capex growth and the dilution elasticity are gone. Added: profit response, debt cap, loan rate. `LEGACY_PRIORS` reproduces the v1.1 bands.
+
+#### Parameters and sources
+| Parameter | Default | MC range | Source |
+|---|---|---|---|
+| Profit-share effect on investment/GDP (γ) | DE 0.376, FR 0.088, IT 0.130, others 0.299 (EA-12) | 0.088–0.376 | Onaran & Galanis (2014), *Environment and Planning A* 46(10), Table 7, 1962–2007 |
+| Cap on new borrowing / owned capital | 0.10 (≈30% of GDP) | 0–0.22 | Euro-area NFC debt 67.2% of GDP end-2024 (ECB); upper bound = the size of today's stock |
+| Loan rate | 3.5% | 1.5–5.5% | ECB composite cost of borrowing, new loans to corporations, 3.57% (Dec 2025) |
+| Debt repaid above the cap | 20%/yr | — | **Assumption** (5-year average maturity); not sourced |
+| Liquidity floor | 50% of base-year owners' money/capital | — | Assumption |
+
+#### Result (DE, 30 years, legacy → behavioural)
+| | v1.1 engine | Step B engine |
+|---|---|---|
+| GDP, AI shift with no policy (× 2019) | 2.28 | 1.63 |
+| GDP, cash UBI / UBC (× 2019) | 2.75 / 3.51 | 1.80 / 1.92 |
+| Investment/GDP at the end: no policy / cash / UBC | 0.50 / 0.42 / 0.33 | 0.33 / 0.23 / 0.00 |
+| UBC: fund's share of capital | 79% | 100% (with no reinvestment, nobody else invests) |
+| Frontier (13-point search) | UBC 20–50% only | 9 points: no policy, cash UBI 10–60%, UBC 20–30% |
+| C1, endogenous investment: UBC GDP / cash GDP | 0.805 | 1.065 |
+| All 27 countries: runs passing every plausibility law | 13% | 48% |
+| Runs with an insolvent household class | 479 | 2 |
+
+#### Findings changed by step B (input to the step-F ledger)
+The tests that encode these now run on the legacy closure, which proves v1.1 still reproduces. They make no claim about the new engine.
+- **"Doing nothing is never on the frontier"** fails: no policy is now non-dominated (stability axis).
+- **"The frontier is UBC-only" (F20, fixed regime)** fails: cash UBI is on the frontier at every τ.
+- **C1 / F6 "endogenous investment chokes UBC"** reverses: UBC ends larger than cash (1.065). Without a supply side, zero investment costs no output; step C decides this.
+- **F20 "a responsive government compresses the debt spread"** no longer holds under the default parameters.
+- **UBC endowment grows monotonically** fails: with no investment the fund's capital depreciates.
+- **Unchanged:** the accounting, year 0 everywhere, and the wealth result (UBC top-10% wealth share 0.10 vs cash 0.61).
+
+#### Residuals and which step owns them
+- **SK, UBC τ=55–60% with full fund reinvestment (2 runs).** Owners hold no capital, yet still carry a share of the country's foreign debt, because external positions are allocated by money shares. The staged gate refuses these runs. **Step D.**
+- **Negative money** (advisory): LU (unusable calibration), IE Monte-Carlo draws, and trade-linked runs caused by the same external-position rule. **Step D.**
+- **Investment above 40% of GDP** (499 runs, mostly UBC): a fund that retains profits can only reinvest at home. **Step D** (the fund may buy foreign assets). The same applies to the Norway-style payout option (`fund_payout`), which pushes investment to 59% of GDP.
+- **Gini below 0.15** (mostly UBC): the distribution layer. **Step E.**
+- **LU, SI** (owners' MPC < 0) and **IE** (investment above 40% of GDP in 2019): unusable under this closure. **Step F** calibration review.
+- **Romania's owners save too little** to fund baseline investment and hit the borrowing cap. Real financing comes from FDI and EU funds. **Step D.**
+- The backtests stay on the legacy closure (**step F1**). The Streamlit slider `inv_elasticity` has no effect under the behavioural closure (**step G**).
 
 ### C. Add a supply side and a price level (~3–5 days)
 - **C1.** Capacity from the two capital stocks (traditional + AI) and labour; utilisation u = Y/Y*. **Decision:** Leontief capacity Y* = K/v (stays in the post-Keynesian SFC tradition, ~3 days; recommended now), or CES production fed by the Acemoglu–Restrepo task block already in `ai_shock.py` (more mainstream, ~1 week; a good later swappable module).
@@ -82,6 +131,11 @@ estimates for focused work.
 - **E3.** Turn the Phase-6 fiscal block ON by default (broad base + fiscal reaction), so debt comparisons mean something.
 - **E4.** Frontier: filtered for plausibility, with the investment regime shown explicitly. Flag any point that wins on ≥4/5 objectives, since that signals a missing cost.
 - **Done when:** the frontier shows genuine trade-offs and every lever is sourced.
+
+### Banks (between E and F, ~2–3 days; added 2026-10-29)
+- Replace the public-sector stand-in lender with a banking sector, activating the reserved `banks` sector and the `deposits` instrument. Loans equal deposits, households hold deposits next to (or instead of) government money, and loan interest goes to banks and depositors, not the state.
+- Re-check the fiscal accounts once the government no longer carries the loans, and re-run the step-B tests.
+- **Done when:** loans have a private counterpart, the gate is exact, and the step-B solvency results hold.
 
 ### F. Re-validate (~2 days)
 - **F1.** Backtest with investment and consumption endogenous, driving only government spending and world demand. Report GDP, I, C and debt errors against a naive trend/random-walk benchmark; the model must beat it.
@@ -114,5 +168,5 @@ A–G: about 2.5–3.5 focused weeks. A+B alone (~4 days) remove the critical de
 
 ## Decisions for Brano
 1. Supply side: Leontief capacity now (recommended), or CES now.
-2. Credit: a borrowing cap (recommended), or the banks layer.
+2. Credit: a borrowing cap (recommended), or the banks layer. **Decided 2026-10-29:** borrowing cap with a public-sector stand-in lender now; banks as their own step before F.
 3. Step 0 stopgap README note today (recommended: yes).

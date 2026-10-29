@@ -17,9 +17,10 @@ gated by exactly these laws. It enforces the Godley-Lavoie accounting identities
   7. Plausibility v2 (Phase 7 A) — solvency and scale: household net worth
                            >= 0 per class, investment/GDP bounded, household
                            money holdings >= 0, owners' calibrated MPC in [0,1],
-                           personal Gini above a floor. ADVISORY in "audit"
-                           mode (the default until Phase 7 B), blocking in
-                           "enforce" mode.
+                           personal Gini above a floor. Staged: each law
+                           blocks once the Phase-7 step that fixes it lands
+                           (see ENFORCED_LAWS); "audit" reports only,
+                           "enforce" blocks all.
 
 Convention (AGORA TFM): tfm[flow][sector] is the signed contribution to that
 sector's cash budget (inflow +, outflow -). For a stock-driving flow,
@@ -47,29 +48,54 @@ class ConsistencyError(AssertionError):
 # owners ending deeply insolvent (DE UBC: owners' money -4.2x GDP; SK -140x) in
 # runs that passed every accounting law. These checks ALWAYS run; the MODE
 # decides whether a failure blocks the gate:
-#   "audit"   (default until Phase 7 step B fixes the investment closure):
-#             failures are ADVISORY - listed by ConsistencyReport.advisories()
-#             but they change neither .passed, .max_residual nor strict
-#             raising, so every shipped result runs exactly as before;
-#   "enforce": they count like every other law.
-# Per call: plausibility="enforce". Process-wide: env AGORA_PLAUSIBILITY.
+#   "audit":   every failure is ADVISORY - listed by
+#              ConsistencyReport.advisories() but changing neither .passed,
+#              .max_residual nor strict raising;
+#   "staged":  (default since Phase 7 step B) the laws in ENFORCED_LAWS block,
+#              the rest stay advisory until the step that fixes them lands;
+#   "enforce": every law blocks.
+# Runs of the LEGACY investment closure default to "audit" so the published
+# v1.1 numbers still reproduce (their pathologies are reported, not raised).
+# Per call: plausibility="...". Process-wide: env AGORA_PLAUSIBILITY (wins).
 # Thresholds are inspectable, swappable assumptions.
 # --------------------------------------------------------------------------- #
-PLAUSIBILITY_MODES = ("audit", "enforce")
-DEFAULT_PLAUSIBILITY = "audit"
+PLAUSIBILITY_MODES = ("audit", "staged", "enforce")
+DEFAULT_PLAUSIBILITY = "staged"
+# Laws that block in "staged" mode, and when the others join (docs/PHASE7.md).
+ENFORCED_LAWS = frozenset({
+    "hh_net_worth_nonnegative",     # step B: investment is financed, nobody insolvent
+})
+# The rest stay advisory until the step that removes their remaining causes:
+STAGING = {"money_split_shares_valid": "step D (external positions are no longer "
+                                       "allocated to households by money shares)",
+           "investment_share_bounded": "step D (the fund can invest abroad)",
+           "gini_floor": "step E (distribution layer + real policy designs)",
+           "owners_mpc_in_unit_interval": "step F (calibration review: LU, SI)"}
 MAX_INVESTMENT_SHARE = 0.40   # investment/GDP; EU GFCF/GDP peaks ~0.25-0.30 (IE aside)
 MIN_PERSONAL_GINI = 0.15      # lowest EU disposable Gini in the snapshots: SK 0.228 (2019)
 HOUSEHOLD_SECTORS = ("hh_workers", "hh_owners")
 
 
-def _plaus_advisory(mode: Optional[str]) -> bool:
-    """True if plausibility-v2 failures are advisory (audit mode)."""
-    m = mode if mode is not None else os.environ.get("AGORA_PLAUSIBILITY",
-                                                      DEFAULT_PLAUSIBILITY)
+def resolve_plausibility(mode: Optional[str] = None,
+                         closure: Optional[str] = None) -> str:
+    """Explicit mode > env AGORA_PLAUSIBILITY > closure default (legacy runs:
+    audit; everything else: DEFAULT_PLAUSIBILITY)."""
+    m = mode if mode is not None else (
+        os.environ.get("AGORA_PLAUSIBILITY")
+        or ("audit" if closure == "legacy" else DEFAULT_PLAUSIBILITY))
     if m not in PLAUSIBILITY_MODES:
         raise ValueError(f"plausibility mode must be one of {PLAUSIBILITY_MODES}, "
                          f"got {m!r}")
-    return m == "audit"
+    return m
+
+
+def _advisory(mode: str, law: str) -> bool:
+    """True if a failure of `law` is reported only (does not block)."""
+    if mode == "audit":
+        return True
+    if mode == "enforce":
+        return False
+    return law not in ENFORCED_LAWS
 
 
 @dataclass
@@ -249,7 +275,7 @@ def check_period(
     # may borrow, but one whose liabilities exceed everything it owns is
     # insolvent: the model is then financing its spending with an unlimited,
     # interest-free overdraft at the state. Advisory in audit mode. ------- #
-    adv = _plaus_advisory(plausibility)
+    mode = resolve_plausibility(plausibility)
     gdp_scale = abs(scale) if scale else 1.0
     worst_nw, worst_sec, seen = 0.0, "", False
     for sec in HOUSEHOLD_SECTORS:
@@ -265,7 +291,7 @@ def check_period(
             "hh_net_worth_nonnegative", ok, 0.0 if ok else float("inf"),
             "ok" if ok else (f"'{worst_sec}' net worth {worst_nw:.6g} "
                              f"= {worst_nw / gdp_scale:.3g} x GDP"),
-            advisory=adv))
+            advisory=_advisory(mode, "hh_net_worth_nonnegative")))
 
     inv, gdp = rv.get("investment"), rv.get("gdp")
     if (isinstance(inv, (int, float)) and isinstance(gdp, (int, float))
@@ -275,7 +301,7 @@ def check_period(
         rep.checks.append(CheckResult(
             "investment_share_bounded", ok, 0.0 if ok else float("inf"),
             f"investment/GDP {share:.4f} (max {MAX_INVESTMENT_SHARE:.2f})",
-            advisory=adv))
+            advisory=_advisory(mode, "investment_share_bounded")))
 
     money = bsm.get("money", {})
     if all(sec in money for sec in HOUSEHOLD_SECTORS):
@@ -285,12 +311,12 @@ def check_period(
             "money_split_shares_valid", ok, 0.0 if ok else float("inf"),
             f"money held: workers {mw:.6g}, owners {mk:.6g} (interest and the "
             "current account are split by these shares, so both must be >= 0)",
-            advisory=adv))
+            advisory=_advisory(mode, "money_split_shares_valid")))
 
     return rep
 
 
-def _calibration_check(result, advisory: bool) -> Optional[CheckResult]:
+def _calibration_check(result, mode: str) -> Optional[CheckResult]:
     """Owners' marginal propensity to consume is solved as a calibration
     RESIDUAL so that year 0 reproduces GDP. Outside [0, 1] it is not a
     behaviour but a sign the closure does not fit the country."""
@@ -302,7 +328,7 @@ def _calibration_check(result, advisory: bool) -> Optional[CheckResult]:
     return CheckResult(
         "owners_mpc_in_unit_interval", ok, 0.0 if ok else float("inf"),
         f"owners' MPC a1_k = {a1_k:.3f} (calibration residual; must lie in [0, 1])",
-        advisory=advisory)
+        advisory=_advisory(mode, "owners_mpc_in_unit_interval"))
 
 
 def check_run(result, stock_flow_map=None, strict: bool = False,
@@ -313,7 +339,9 @@ def check_run(result, stock_flow_map=None, strict: bool = False,
     that prevents a leaky model from being trusted.
     """
     stock_flow_map = stock_flow_map or result.meta.get("stock_flow_map", {})
-    calib = _calibration_check(result, _plaus_advisory(plausibility))
+    plausibility = resolve_plausibility(plausibility,
+                                        (result.meta or {}).get("investment_closure"))
+    calib = _calibration_check(result, plausibility)
     reports: List[ConsistencyReport] = []
     prev = None
     for i, p in enumerate(result.periods):
@@ -342,7 +370,7 @@ def check_distribution(dist_result, n_deciles: int = 10,
     """Per period: Σ decile incomes == hh_disposable, and shares sum to 1.
     Plus (law 7, advisory in audit mode) the personal Gini stays above a floor
     no real economy has gone below."""
-    adv = _plaus_advisory(plausibility)
+    mode = resolve_plausibility(plausibility)
     reports = []
     for p in dist_result.periods:
         rep = p.reported
@@ -365,7 +393,8 @@ def check_distribution(dist_result, n_deciles: int = 10,
             r.checks.append(CheckResult(
                 "gini_floor", ok, 0.0 if ok else float("inf"),
                 f"personal Gini {g:.3f} (floor {MIN_PERSONAL_GINI:.2f}; lowest "
-                "EU member in the 2019 snapshots: SK 0.228)", advisory=adv))
+                "EU member in the 2019 snapshots: SK 0.228)",
+                advisory=_advisory(mode, "gini_floor")))
         reports.append(r)
     return reports
 

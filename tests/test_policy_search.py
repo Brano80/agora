@@ -13,12 +13,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 
 from orchestrator import AgoraOrchestrator
+
+# Phase 7 B (2026-10-29): these tests pin the PUBLISHED v1.1 results, so they run
+# the legacy investment closure (exogenous capex, unlimited overdraft). They prove
+# v1.1 still reproduces; they are NOT claims about the default behavioural closure,
+# whose findings are re-validated in Phase 7 step F (docs/PHASE7.md, findings ledger).
+V11 = {"investment_closure": "legacy"}
 from policy_search import _dominates, pareto_front, PolicyPoint, OBJECTIVES
 
 
 @pytest.fixture(scope="module")
 def points():
-    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    o = AgoraOrchestrator(**V11, geo="DE", year=2019, allow_live=False, strict=True)
     o.load_data()
     return o.run_policy_search(horizon=30)
 
@@ -104,7 +110,7 @@ def test_phase6_fiscal_block_makes_debt_a_realistic_objective():
 
     def run(fiscal_on):
         kw = dict(capital_tax_share=0.2, fiscal_reaction=0.01) if fiscal_on else {}
-        o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True, **kw)
+        o = AgoraOrchestrator(**V11, geo="DE", year=2019, allow_live=False, strict=True, **kw)
         o.load_data()
         pts = o.run_policy_search(horizon=30)
         assert all(p.consistent for p in pts)                       # gate holds both ways
@@ -123,7 +129,7 @@ def test_rich_policy_search_reopens_form_tradeoff():
     ENDOGENOUS (dilution bites) the cash-vs-UBC form trade-off RE-OPENS (F23)."""
     from orchestrator import AgoraOrchestrator
     from policy_search import pareto_front
-    o = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    o = AgoraOrchestrator(**V11, geo="DE", year=2019, allow_live=False, strict=True)
     o.load_data()
     pts = o.rich_policy_search(horizon=30)
     assert pts and all(p.consistent for p in pts)          # every candidate gated

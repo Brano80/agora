@@ -195,7 +195,8 @@ def test_phase6_broad_base_and_full_block_via_orchestrator():
     assert debt_on < debt_off - 20                        # the block tames the runaway
 
 
-def test_swf_pomv_payout_grounds_the_dividend(orch):
+@pytest.mark.parametrize("closure", ["legacy", "behavioural"])
+def test_swf_pomv_payout_grounds_the_dividend(orch, closure):
     """SWF calibration: a GPFG/Alaska percent-of-market-value (POMV) payout makes the
     citizens' fund pay a rule-based draw of its VALUE and REINVEST the rest, so it
     compounds like a real sovereign wealth fund instead of paying out the full
@@ -207,14 +208,15 @@ def test_swf_pomv_payout_grounds_the_dividend(orch):
            if "Universal Basic Capital" in s.name][0]
 
     def run(fp):
-        res = SFCCore(base_year=2019, fund_payout=fp).run(ubc, orch._data)
+        res = SFCCore(base_year=2019, fund_payout=fp,
+                      investment_closure=closure).run(ubc, orch._data)
         assert max(r.max_residual for r in check_run(res, strict=False)) < 1.0   # gate exact
         e = res.periods[-1].reported
-        return e["transfer_pool"] / pop * 1e6, e["swf_share"]
+        return e["transfer_pool"] / pop * 1e6, e["swf_stake"]
 
-    div_legacy, share_legacy = run(0.0)
-    div_pomv, share_pomv = run(0.03)            # Norway GPFG 3% fiscal rule
-    assert share_pomv > share_legacy            # POMV reinvests the rest -> fund compounds further
+    div_legacy, stake_legacy = run(0.0)
+    div_pomv, stake_pomv = run(0.03)            # Norway GPFG 3% fiscal rule
+    assert stake_pomv > stake_legacy            # POMV reinvests the rest -> fund compounds further
     assert div_pomv < div_legacy                # a rule-based draw, not the full profit share
 
 

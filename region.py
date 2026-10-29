@@ -75,13 +75,15 @@ class MultiRegion:
     """A bloc of separately-calibrated, individually-gated open economies."""
 
     def __init__(self, geos: Tuple[str, ...] = ("DE", "FR"), year: int = 2019,
-                 allow_live: bool = False, inv_elasticity: float = 0.0):
+                 allow_live: bool = False, inv_elasticity: float = 0.0,
+                 investment_closure: str = "behavioural"):
         self.geos = list(geos)
         self.year = year
         self.orchs: Dict[str, AgoraOrchestrator] = {}
         for g in self.geos:
             o = AgoraOrchestrator(geo=g, year=year, allow_live=allow_live,
-                                  strict=True, inv_elasticity=inv_elasticity)
+                                  strict=True, inv_elasticity=inv_elasticity,
+                                  investment_closure=investment_closure)
             o.load_data()
             self.orchs[g] = o
 

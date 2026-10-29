@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from modules.interface import Module, Scenario, RunResult
-from modules.sfc_core import SFCCore
+from modules.sfc_core import (SFCCore, DEBT_CAP, LOAN_RATE, LIQUIDITY_FLOOR)
 from modules.distribution import DistributionModule
 from modules.input_output import InputOutputModule
 from calibration import calibrate, SFCParams
@@ -77,7 +77,10 @@ class AgoraOrchestrator:
                  allow_live: bool = True, strict: bool = True,
                  inv_elasticity: float = 0.0, fiscal_reaction: float = 0.0,
                  debt_target: Optional[float] = None, i_rate: Optional[float] = None,
-                 capital_tax_share: float = 0.0, fund_payout: float = 0.0):
+                 capital_tax_share: float = 0.0, fund_payout: float = 0.0,
+                 investment_closure: str = "behavioural",
+                 profit_response: Optional[float] = None, debt_cap: float = DEBT_CAP,
+                 loan_rate: float = LOAN_RATE, liquidity_floor: float = LIQUIDITY_FLOOR):
         self.geo = geo
         self.year = year
         self.inv_elasticity = float(inv_elasticity)
@@ -87,12 +90,18 @@ class AgoraOrchestrator:
         self.i_rate = i_rate
         self.capital_tax_share = float(capital_tax_share)
         self.fund_payout = float(fund_payout)   # SWF POMV draw (GPFG 3% / Alaska 5%); 0 = legacy
+        # Phase 7 B investment closure ("behavioural" default; "legacy" = v1.1)
+        self.investment_closure = investment_closure
+        self.profit_response = profit_response
+        self.debt_cap, self.loan_rate = float(debt_cap), float(loan_rate)
+        self.liquidity_floor = float(liquidity_floor)
         self.modules = modules or [SFCCore(base_year=year,
                                            inv_elasticity=inv_elasticity,
                                            fiscal_reaction=fiscal_reaction,
                                            debt_target=debt_target, i_rate=i_rate,
                                            fund_payout=fund_payout,
-                                           calib_kwargs={"capital_tax_share": capital_tax_share}),
+                                           calib_kwargs={"capital_tax_share": capital_tax_share},
+                                           **self._closure_kwargs()),
                                    DistributionModule(base_year=year),
                                    InputOutputModule(base_year=year)]
         self.store = store
@@ -100,6 +109,30 @@ class AgoraOrchestrator:
         self.strict = strict
         self._data: Optional[Dict[str, float]] = None
         self._sources: Dict[str, str] = {}
+
+    def _closure_kwargs(self, profit_response: Optional[float] = None) -> dict:
+        kw = dict(investment_closure=self.investment_closure,
+                  profit_response=(self.profit_response if profit_response is None
+                                   else profit_response),
+                  debt_cap=self.debt_cap, loan_rate=self.loan_rate,
+                  liquidity_floor=self.liquidity_floor)
+        return kw
+
+    def _regime_core(self, inv_elasticity: float) -> SFCCore:
+        """SFC module for an EXPLICIT investment regime (the C1 / F23 tools).
+        Legacy closure: inv_elasticity is the v1.1 dilution elasticity on the
+        exogenous capex path. Behavioural closure: inv_elasticity selects the
+        regime - 0 = investment share does not respond to owners' net profit
+        share ("fixed"); > 0 = the calibrated profit response ("endogenous")."""
+        if self.investment_closure == "legacy":
+            return SFCCore(base_year=self.year, inv_elasticity=float(inv_elasticity),
+                           investment_closure="legacy")
+        return SFCCore(base_year=self.year, fiscal_reaction=self.fiscal_reaction,
+                       debt_target=self.debt_target, i_rate=self.i_rate,
+                       fund_payout=self.fund_payout,
+                       calib_kwargs={"capital_tax_share": self.capital_tax_share},
+                       **self._closure_kwargs(
+                           profit_response=0.0 if float(inv_elasticity) == 0.0 else None))
 
     def load_data(self) -> Dict[str, float]:
         conn = DBnomicsConnector(allow_live=self.allow_live)
@@ -165,13 +198,14 @@ class AgoraOrchestrator:
         reinvestment cure it?"""
         p = self.params()
         scens = make_ubc_experiment(p, horizon=horizon, reinvest=reinvest)
-        if inv_elasticity is None or inv_elasticity == self.inv_elasticity:
+        if inv_elasticity is None or (self.investment_closure == "legacy"
+                                      and inv_elasticity == self.inv_elasticity):
             return [self.run_scenario(s) for s in scens]
-        # Endogenous-investment override: swap in a module chain with the new
-        # elasticity for the duration of this run, then restore.
+        # Explicit investment regime: swap in a module chain for the duration
+        # of this run, then restore.
         saved = self.modules
         self.modules = [
-            SFCCore(base_year=self.year, inv_elasticity=float(inv_elasticity)),
+            self._regime_core(inv_elasticity),
             DistributionModule(base_year=self.year),
             InputOutputModule(base_year=self.year)]
         try:
@@ -240,11 +274,11 @@ class AgoraOrchestrator:
 
         def runner_for(inv_e: float):
             def run(scen):
-                if inv_e == self.inv_elasticity:
+                if self.investment_closure == "legacy" and inv_e == self.inv_elasticity:
                     return self.run_scenario(scen)
                 saved = self.modules
                 self.modules = [
-                    SFCCore(base_year=self.year, inv_elasticity=float(inv_e)),
+                    self._regime_core(inv_e),
                     DistributionModule(base_year=self.year),
                     InputOutputModule(base_year=self.year)]
                 try:

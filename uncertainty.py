@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Tuple
 from calibration import calibrate
 from modules.sfc_core import SFCCore
 from modules.distribution import DistributionModule
-from scenarios import build_custom
+from scenarios import build_custom, CAPEX_AI_GROWTH
 from consistency.checks import check_run
 from data.connectors.dbnomics import DBnomicsConnector
 
@@ -27,8 +27,13 @@ from data.connectors.dbnomics import DBnomicsConnector
 # assumptions the headline numbers are conditional on.
 PRIORS: Dict[str, Tuple[float, float]] = {
     "labour_share_end": (0.30, 0.55),   # how deep the AI labour-share fall goes
-    "capex_growth":     (0.03, 0.09),   # how big the AI investment boom is
-    "inv_elasticity":   (0.0, 1.5),     # how much diluting owners deters capex (C1)
+    # Phase 7 B: investment is behavioural, so the exogenous capex growth and the
+    # v1.1 dilution elasticity are gone. The investment assumptions are now:
+    "profit_response":  (0.088, 0.376), # profit-share effect on I/Y, Onaran & Galanis
+                                        # (2014) European range (FR 0.088 .. DE 0.376)
+    "debt_cap":         (0.0, 0.22),    # owners' new borrowing / owned capital: 0 (no
+                                        # credit) .. the size of today's NFC debt stock
+    "loan_rate":        (0.015, 0.055), # +-2pp around the ECB NFC cost of borrowing (3.57%)
     # beta is UNIDENTIFIED in macro data (disposable-Gini cross-section R2=.02;
     # FE panel 2010-24 beta=.05 R2=.006 - redistribution absorbs the shift). The
     # OECD IDD market Gini (2026-06-14) removes that confound and QUANTIFIES it:
@@ -49,6 +54,12 @@ PRIORS: Dict[str, Tuple[float, float]] = {
     # distribution module, not an assumed compression elasticity)
     "a1_w":             (0.90, 0.98),   # workers' marginal propensity to consume
 }
+# The v1.1 prior (published F12 bands), kept to reproduce them with the legacy
+# investment closure: core_kwargs() routes any draw carrying inv_elasticity to it.
+LEGACY_PRIORS: Dict[str, Tuple[float, float]] = {
+    "labour_share_end": (0.30, 0.55), "capex_growth": (0.03, 0.09),
+    "inv_elasticity": (0.0, 1.5), "beta": (0.1, 1.0), "omega": (0.0, 0.40),
+    "a1_w": (0.90, 0.98)}
 _OUT_KEYS = ("gini", "poverty", "citizen_wealth_pc", "dividend_pc", "gdp_end")
 _POLICY = {"ubc": dict(ubc=True), "cash_ubi": dict(ubi=True), "none": dict()}
 
@@ -63,6 +74,14 @@ class Band:
 
     def as_tuple(self) -> Tuple[float, float, float]:
         return (self.p5, self.p50, self.p95)
+
+
+def core_kwargs(d: Dict[str, float]) -> Dict[str, object]:
+    """SFC-core settings for one draw. A prior set that still carries the v1.1
+    `inv_elasticity` runs the legacy closure (reproduces the published bands)."""
+    if "inv_elasticity" in d:
+        return {"investment_closure": "legacy", "inv_elasticity": d["inv_elasticity"]}
+    return {k: d[k] for k in ("profit_response", "debt_cap", "loan_rate") if k in d}
 
 
 def _pctile(xs: List[float], q: float) -> float:
@@ -96,10 +115,10 @@ def _run_draws(geo: str, form: str, tau: float, year: int, horizon: int,
         try:
             p = calibrate(data, geo=geo, base_year=year, a1_w=d["a1_w"])
             scen = build_custom(p, labour_share_end=d["labour_share_end"],
-                                capex_growth=d["capex_growth"], capital_tax=tau,
-                                horizon=horizon, name="mc", **pol)
-            core = SFCCore(base_year=year, inv_elasticity=d["inv_elasticity"],
-                           calib_kwargs={"a1_w": d["a1_w"]})
+                                capex_growth=d.get("capex_growth", CAPEX_AI_GROWTH),
+                                capital_tax=tau, horizon=horizon, name="mc", **pol)
+            core = SFCCore(base_year=year, calib_kwargs={"a1_w": d["a1_w"]},
+                           **core_kwargs(d))
             res = core.run(scen, data)
             if max(r.max_residual for r in check_run(res, strict=False)) > 1.0:
                 skipped += 1

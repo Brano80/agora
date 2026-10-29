@@ -54,8 +54,9 @@ def test_sensitivity_ranks_drivers_and_shares_sum_to_one():
     from uncertainty import sensitivity
     s = sensitivity("DE", form="ubc", horizon=20, n=150, seed=2, metric="gini")
     drivers = s["drivers"]
-    assert {d["param"] for d in drivers} >= {"beta", "omega", "inv_elasticity",
-                                             "capex_growth", "labour_share_end", "a1_w"}
+    from uncertainty import PRIORS
+    assert {d["param"] for d in drivers} == set(PRIORS)      # every prior is ranked
+    assert {"profit_response", "debt_cap", "loan_rate"} <= set(PRIORS)   # Phase 7 B
     # ranked descending by explained variance
     r2s = [d["r2"] for d in drivers]
     assert r2s == sorted(r2s, reverse=True)

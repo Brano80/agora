@@ -29,6 +29,7 @@ from statistics import pstdev
 from typing import Dict, List, Optional, Tuple
 
 from calibration import SFCParams
+from consistency.checks import ConsistencyError
 from scenarios import build_custom, LS_AI_END, CAPEX_AI_GROWTH
 
 # objective key -> (human label, the raw reported metric it derives from)
@@ -56,6 +57,7 @@ class PolicyPoint:
     on_frontier: bool = False
     inv_regime: str = "fixed"        # "fixed" | "endogenous" (investment axis)
     ubc_reinvest: float = 0.0        # fund reinvestment fraction (UBC only)
+    refusal: str = ""                # why the gate refused it (then never on the frontier)
 
     def as_dict(self) -> Dict[str, object]:
         return {"form": self.form, "capital_tax": self.capital_tax,
@@ -63,7 +65,7 @@ class PolicyPoint:
                 "on_frontier": self.on_frontier,
                 "inv_regime": self.inv_regime,
                 "ubc_reinvest": self.ubc_reinvest,
-                "max_residual": self.max_residual,
+                "max_residual": self.max_residual, "refusal": self.refusal,
                 **{f"m_{k}": v for k, v in self.metrics.items()},
                 **{f"o_{k}": v for k, v in self.objectives.items()}}
 
@@ -89,6 +91,24 @@ def _score(run) -> Tuple[Dict[str, float], Dict[str, float]]:
     objectives = {"growth": gdp[-1], "equality": -gini, "stability": -vol,
                   "fiscal": -debt, "resilience": -poverty}
     return metrics, objectives
+
+
+_METRIC_KEYS = ("gdp_end", "gini", "growth_vol", "debt_gdp", "poverty", "swf_share")
+
+
+def _evaluate(run_fn, scen):
+    """Run one candidate through the gated runner. A candidate the gate REFUSES
+    (strict ConsistencyError, e.g. owners insolvent) is recorded as inconsistent
+    with NaN metrics - so it can never reach the frontier - instead of aborting
+    the whole search. -> (consistent, max_residual, metrics, objectives, refusal)"""
+    try:
+        run = run_fn(scen)
+    except ConsistencyError as e:
+        nan = float("nan")
+        return (False, float("inf"), {k: nan for k in _METRIC_KEYS},
+                {k: float("-inf") for k, _ in OBJECTIVES}, str(e)[:300])
+    m, o = _score(run)
+    return run.consistent, run.max_residual, m, o, ""
 
 
 def _dominates(a: Dict[str, float], b: Dict[str, float], eps: float = 1e-9) -> bool:
@@ -127,12 +147,11 @@ def search_policies(run_scenario, p: SFCParams, taus: Optional[List[float]] = No
         scen = build_custom(p, labour_share_end=LS_AI_END,
                             capex_growth=CAPEX_AI_GROWTH, capital_tax=tau,
                             horizon=horizon, name=name, **kw)
-        run = run_scenario(scen)
-        metrics, objectives = _score(run)
+        ok, resid, metrics, objectives, why = _evaluate(run_scenario, scen)
         points.append(PolicyPoint(
             form=form, capital_tax=tau, name=name,
-            consistent=run.consistent, max_residual=run.max_residual,
-            metrics=metrics, objectives=objectives))
+            consistent=ok, max_residual=resid,
+            metrics=metrics, objectives=objectives, refusal=why))
     pareto_front(points)                       # sets on_frontier in place
     return points
 
@@ -165,13 +184,11 @@ def search_policies_rich(runner_for, p: SFCParams,
         scen = build_custom(p, labour_share_end=LS_AI_END,
                             capex_growth=CAPEX_AI_GROWTH, capital_tax=tau,
                             horizon=horizon, name=name, ubc_reinvest=reinv, **kw)
-        run = run_fn(scen)
-        m, o = _score(run)
+        ok, resid, m, o, why = _evaluate(run_fn, scen)
         pts.append(PolicyPoint(form=form, capital_tax=tau, name=name,
-                               consistent=run.consistent,
-                               max_residual=run.max_residual, metrics=m,
+                               consistent=ok, max_residual=resid, metrics=m,
                                objectives=o, inv_regime=regime,
-                               ubc_reinvest=reinv))
+                               ubc_reinvest=reinv, refusal=why))
 
     add("none", 0.0, dict(ubi=False, ubc=False), "No policy", "fixed", 0.0, fixed_run)
     for tau in taus:
