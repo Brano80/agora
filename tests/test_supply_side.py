@@ -74,13 +74,15 @@ def test_switch_on_jump_is_bounded_by_capacity_headroom():
     assert jump <= headroom + 1e-9                         # legacy: +10.6% with no bound
 
 
-@pytest.mark.parametrize("geo", ["DE", "FR", "IT", "ES", "PL", "SK", "NL"])
+@pytest.mark.parametrize("geo", ["DE", "FR", "IT", "ES", "PL", "SK", "NL", "LT", "HU"])
 def test_baseline_is_anchored(geo):
     per = _run(_orch(geo), "base").result.periods
     infl = [s.reported["inflation"] for s in per[1:]]
     util = [s.reported["utilisation"] for s in per]
+    u = cap.capacity_utilisation_for(geo)
     assert abs(statistics.mean(infl) - INFLATION_TARGET) < 0.005, geo
-    assert 0.76 <= min(util) and max(util) <= 0.90, geo
+    lo = u["min"] if u.get("min") is not None else 0.70     # the country's 2005-2019 trough
+    assert lo <= min(util) and max(util) <= u["max"], geo
     assert statistics.pstdev(util) < 0.02, geo
 
 
@@ -138,16 +140,54 @@ def test_nominal_is_real_times_prices_and_legacy_has_no_price_level():
 def test_capacity_connector_summary_and_flagged_default(tmp_path):
     out = cap.summarise([str(y) for y in range(2015, 2022)],
                         [80, 82, 84, 86, 81, "NaN", 70], base_year=2019)
-    assert out["base"] == 0.81 and out["max"] == 0.86            # nothing after 2019 used
+    assert out["base"] == 0.81 and out["max"] == 0.86 and out["min"] == 0.80
     assert out["normal"] == pytest.approx((80 + 82 + 84 + 86 + 81) / 5 / 100, abs=1e-4)
+    assert "2020" not in out["series"] and "2021" not in out["series"]   # nothing after 2019
     assert cap.summarise(["2015", "2016"], [80, 81], base_year=2019) is None
+    # "normal" is the recent window, not the transition years
+    long = cap.summarise([str(y) for y in range(1990, 2020)],
+                         [50] * 15 + [80] * 15, base_year=2019)
+    assert long["normal"] == 0.80 and long["normal_window"] == "2005-2019"
+    assert long["max"] == 0.80 and long["min"] == 0.80
     d = cap.capacity_utilisation_for("XX", cache_path=str(tmp_path / "missing.json"))
     assert d["flag"] == "default" and d["normal"] == 0.837 and d["max"] == 0.897
     f = tmp_path / "cu.json"
-    f.write_text(json.dumps({"countries": {"DE": {"normal": 0.83, "base": 0.86,
-                                                  "max": 0.865, "source": "test"}}}))
+    f.write_text(json.dumps({"countries": {
+        "DE": {"normal": 0.83, "base": 0.86, "max": 0.865, "source": "test"},
+        "LT": {**long, "normal": 0.65, "source": "test"}}}))
     live = cap.capacity_utilisation_for("de", cache_path=str(f))
     assert live["flag"] == "live" and live["max"] == pytest.approx(0.86 + cap.MIN_HEADROOM)
+    lt = cap.capacity_utilisation_for("LT", cache_path=str(f))
+    assert lt["normal"] == 0.80          # re-derived from the stored series at load time
+
+
+def test_capacity_parsers_quarterly_jsonstat_and_dbnomics():
+    q = [f"{y}-Q{i}" for y in (2018, 2019) for i in (1, 2, 3, 4)] + ["2017-Q4"]
+    v = [80, 81, 82, 83, 84, None, 86, 88, 70]
+    ann = cap.annualise(q, v)
+    assert ann[2018] == pytest.approx(81.5) and ann[2019] == pytest.approx(86.0)
+    assert 2017 not in ann                               # one quarter is not a year
+    js = {"id": ["freq", "indic", "s_adj", "geo", "time"], "size": [1, 1, 1, 1, 8],
+          "dimension": {"time": {"category": {"index": {p: i for i, p in enumerate(q[:8])}}}},
+          "value": {str(i): x for i, x in enumerate(v[:8]) if x is not None}}
+    per, val = cap.parse_jsonstat(js)
+    assert per == q[:8] and val[5] is None and val[7] == 88
+    docs = [{"dimensions": {"geo": "PL"}, "period": q[:8], "value": v[:8]},
+            {"dimensions": {"geo": "XX"}, "period": ["2018-Q1"], "value": [80]}]
+    recs = cap.from_dbnomics_docs(docs, 2019)
+    assert set(recs) == {"PL"} and recs["PL"]["base"] == 0.86
+    assert recs["PL"]["route"] == "Eurostat/DBnomics SA" and "ei_bsin_q_r2" in recs["PL"]["source"]
+
+
+def test_capacity_cache_covers_every_member_from_one_source():
+    doc = json.load(open(cap.CACHE, encoding="utf-8"))
+    members = {"AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "EL", "ES", "FI", "FR", "HR",
+               "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK"}
+    assert set(doc["countries"]) == members
+    for g, rec in doc["countries"].items():
+        assert rec["series"] and max(int(y) for y in rec["series"]) == 2019, g
+        u = cap.capacity_utilisation_for(g)
+        assert u["flag"] == "live" and 0.40 < u["min"] <= u["normal"] < u["max"] < 1.0, g
 
 
 def test_fund_invests_by_rule_up_to_its_payout_budget():

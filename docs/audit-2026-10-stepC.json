@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-29 09:24",
+ "generated": "2026-10-29 09:40",
  "thresholds": {
   "max_investment_share": 0.4,
   "min_personal_gini": 0.15
@@ -1276,8 +1276,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.5139,
-    "worst_owner_money_y0": 0.4677
+    "worst_owner_nw_y0": 1.5078,
+    "worst_owner_money_y0": 0.4678
    },
    "cash_ubi": {
     "n": 200,
@@ -1288,7 +1288,7 @@
      "gini_floor": 45
     },
     "worst_owner_nw_y0": 3.5776,
-    "worst_owner_money_y0": 0.2956
+    "worst_owner_money_y0": 0.3
    }
   },
   "BE": {
@@ -1300,8 +1300,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.4465,
-    "worst_owner_money_y0": 0.6426
+    "worst_owner_nw_y0": 1.448,
+    "worst_owner_money_y0": 0.643
    },
    "cash_ubi": {
     "n": 200,
@@ -1312,7 +1312,7 @@
      "gini_floor": 88
     },
     "worst_owner_nw_y0": 3.7306,
-    "worst_owner_money_y0": 0.4187
+    "worst_owner_money_y0": 0.421
    }
   },
   "BG": {
@@ -1324,8 +1324,8 @@
     "fails": {
      "gini_floor": 183
     },
-    "worst_owner_nw_y0": 0.5972,
-    "worst_owner_money_y0": 0.0751
+    "worst_owner_nw_y0": 0.6362,
+    "worst_owner_money_y0": 0.076
    },
    "cash_ubi": {
     "n": 200,
@@ -1334,7 +1334,7 @@
     "plausible": 200,
     "fails": {},
     "worst_owner_nw_y0": 3.1379,
-    "worst_owner_money_y0": 0.0719
+    "worst_owner_money_y0": 0.0735
    }
   },
   "CY": {
@@ -1346,8 +1346,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 0.972,
-    "worst_owner_money_y0": 0.5173
+    "worst_owner_nw_y0": 1.0122,
+    "worst_owner_money_y0": 0.52
    },
    "cash_ubi": {
     "n": 200,
@@ -1355,8 +1355,8 @@
     "skipped": 0,
     "plausible": 200,
     "fails": {},
-    "worst_owner_nw_y0": 3.6397,
-    "worst_owner_money_y0": 0.37
+    "worst_owner_nw_y0": 3.6406,
+    "worst_owner_money_y0": 0.3723
    }
   },
   "CZ": {
@@ -1368,8 +1368,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.2647,
-    "worst_owner_money_y0": 0.1474
+    "worst_owner_nw_y0": 1.2734,
+    "worst_owner_money_y0": 0.1483
    },
    "cash_ubi": {
     "n": 200,
@@ -1392,7 +1392,7 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.523,
+    "worst_owner_nw_y0": 1.5369,
     "worst_owner_money_y0": 0.3859
    },
    "cash_ubi": {
@@ -1402,7 +1402,7 @@
     "plausible": 200,
     "fails": {},
     "worst_owner_nw_y0": 3.4665,
-    "worst_owner_money_y0": 0.2402
+    "worst_owner_money_y0": 0.2417
    }
   },
   "DK": {
@@ -1414,7 +1414,7 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.3895,
+    "worst_owner_nw_y0": 1.4001,
     "worst_owner_money_y0": 0.2471
    },
    "cash_ubi": {
@@ -1438,7 +1438,7 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.0261,
+    "worst_owner_nw_y0": 1.0292,
     "worst_owner_money_y0": 0.0328
    },
    "cash_ubi": {
@@ -1462,8 +1462,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.0585,
-    "worst_owner_money_y0": 1.2135
+    "worst_owner_nw_y0": 1.0904,
+    "worst_owner_money_y0": 1.2089
    },
    "cash_ubi": {
     "n": 200,
@@ -1471,8 +1471,8 @@
     "skipped": 0,
     "plausible": 200,
     "fails": {},
-    "worst_owner_nw_y0": 3.4957,
-    "worst_owner_money_y0": 0.841
+    "worst_owner_nw_y0": 3.5717,
+    "worst_owner_money_y0": 0.838
    }
   },
   "ES": {
@@ -1484,8 +1484,8 @@
     "fails": {
      "gini_floor": 199
     },
-    "worst_owner_nw_y0": 1.3679,
-    "worst_owner_money_y0": 0.665
+    "worst_owner_nw_y0": 1.3812,
+    "worst_owner_money_y0": 0.6651
    },
    "cash_ubi": {
     "n": 200,
@@ -1494,7 +1494,7 @@
     "plausible": 200,
     "fails": {},
     "worst_owner_nw_y0": 3.7169,
-    "worst_owner_money_y0": 0.4225
+    "worst_owner_money_y0": 0.4289
    }
   },
   "FI": {
@@ -1506,8 +1506,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.089,
-    "worst_owner_money_y0": 0.4076
+    "worst_owner_nw_y0": 1.0962,
+    "worst_owner_money_y0": 0.4078
    },
    "cash_ubi": {
     "n": 200,
@@ -1518,7 +1518,7 @@
      "gini_floor": 86
     },
     "worst_owner_nw_y0": 3.504,
-    "worst_owner_money_y0": 0.2601
+    "worst_owner_money_y0": 0.2603
    }
   },
   "FR": {
@@ -1530,8 +1530,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.2142,
-    "worst_owner_money_y0": 0.6308
+    "worst_owner_nw_y0": 1.2096,
+    "worst_owner_money_y0": 0.6314
    },
    "cash_ubi": {
     "n": 200,
@@ -1542,7 +1542,7 @@
      "gini_floor": 2
     },
     "worst_owner_nw_y0": 3.7037,
-    "worst_owner_money_y0": 0.4097
+    "worst_owner_money_y0": 0.4178
    }
   },
   "HR": {
@@ -1554,8 +1554,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 0.9297,
-    "worst_owner_money_y0": 0.4064
+    "worst_owner_nw_y0": 0.9496,
+    "worst_owner_money_y0": 0.4106
    },
    "cash_ubi": {
     "n": 200,
@@ -1566,7 +1566,7 @@
      "gini_floor": 13
     },
     "worst_owner_nw_y0": 3.5049,
-    "worst_owner_money_y0": 0.2787
+    "worst_owner_money_y0": 0.2806
    }
   },
   "HU": {
@@ -1578,8 +1578,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.1152,
-    "worst_owner_money_y0": 0.2745
+    "worst_owner_nw_y0": 1.1282,
+    "worst_owner_money_y0": 0.267
    },
    "cash_ubi": {
     "n": 200,
@@ -1590,7 +1590,7 @@
      "gini_floor": 88
     },
     "worst_owner_nw_y0": 3.5486,
-    "worst_owner_money_y0": 0.2691
+    "worst_owner_money_y0": 0.2712
    }
   },
   "IE": {
@@ -1604,8 +1604,8 @@
      "money_split_shares_valid": 79,
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.7559,
-    "worst_owner_money_y0": -0.5034
+    "worst_owner_nw_y0": 1.7629,
+    "worst_owner_money_y0": -0.5195
    },
    "cash_ubi": {
     "n": 200,
@@ -1614,11 +1614,11 @@
     "plausible": 0,
     "fails": {
      "investment_share_bounded": 200,
-     "money_split_shares_valid": 40,
+     "money_split_shares_valid": 38,
      "gini_floor": 125
     },
     "worst_owner_nw_y0": 3.7852,
-    "worst_owner_money_y0": -18.7783
+    "worst_owner_money_y0": -37.5167
    }
   },
   "IT": {
@@ -1630,7 +1630,7 @@
     "fails": {
      "gini_floor": 199
     },
-    "worst_owner_nw_y0": 1.6145,
+    "worst_owner_nw_y0": 1.6289,
     "worst_owner_money_y0": 0.9352
    },
    "cash_ubi": {
@@ -1640,7 +1640,7 @@
     "plausible": 200,
     "fails": {},
     "worst_owner_nw_y0": 3.959,
-    "worst_owner_money_y0": 0.6397
+    "worst_owner_money_y0": 0.6579
    }
   },
   "LT": {
@@ -1652,8 +1652,8 @@
     "fails": {
      "gini_floor": 198
     },
-    "worst_owner_nw_y0": 1.1602,
-    "worst_owner_money_y0": 0.2189
+    "worst_owner_nw_y0": 1.2164,
+    "worst_owner_money_y0": 0.2193
    },
    "cash_ubi": {
     "n": 200,
@@ -1662,7 +1662,7 @@
     "plausible": 200,
     "fails": {},
     "worst_owner_nw_y0": 3.3007,
-    "worst_owner_money_y0": 0.1352
+    "worst_owner_money_y0": 0.1368
    }
   },
   "LU": {
@@ -1677,7 +1677,7 @@
      "gini_floor": 200
     },
     "worst_owner_nw_y0": 3.424,
-    "worst_owner_money_y0": 0.1183
+    "worst_owner_money_y0": 0.1234
    },
    "cash_ubi": {
     "n": 200,
@@ -1689,7 +1689,7 @@
      "owners_mpc_in_unit_interval": 200
     },
     "worst_owner_nw_y0": 3.424,
-    "worst_owner_money_y0": 0.1585
+    "worst_owner_money_y0": 0.1587
    }
   },
   "LV": {
@@ -1701,8 +1701,8 @@
     "fails": {
      "gini_floor": 198
     },
-    "worst_owner_nw_y0": 0.631,
-    "worst_owner_money_y0": 0.1379
+    "worst_owner_nw_y0": 0.6889,
+    "worst_owner_money_y0": 0.1429
    },
    "cash_ubi": {
     "n": 200,
@@ -1711,7 +1711,7 @@
     "plausible": 200,
     "fails": {},
     "worst_owner_nw_y0": 3.2732,
-    "worst_owner_money_y0": 0.1423
+    "worst_owner_money_y0": 0.1427
    }
   },
   "MT": {
@@ -1723,8 +1723,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 2.0376,
-    "worst_owner_money_y0": 0.1403
+    "worst_owner_nw_y0": 2.0251,
+    "worst_owner_money_y0": 0.1401
    },
    "cash_ubi": {
     "n": 200,
@@ -1735,7 +1735,7 @@
      "gini_floor": 66
     },
     "worst_owner_nw_y0": 3.4269,
-    "worst_owner_money_y0": 0.201
+    "worst_owner_money_y0": 0.1996
    }
   },
   "NL": {
@@ -1747,7 +1747,7 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.9333,
+    "worst_owner_nw_y0": 1.9315,
     "worst_owner_money_y0": 0.3351
    },
    "cash_ubi": {
@@ -1759,7 +1759,7 @@
      "gini_floor": 67
     },
     "worst_owner_nw_y0": 3.434,
-    "worst_owner_money_y0": 0.1988
+    "worst_owner_money_y0": 0.2114
    }
   },
   "PL": {
@@ -1771,8 +1771,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 0.8062,
-    "worst_owner_money_y0": 0.1303
+    "worst_owner_nw_y0": 0.8348,
+    "worst_owner_money_y0": 0.1242
    },
    "cash_ubi": {
     "n": 200,
@@ -1783,7 +1783,7 @@
      "gini_floor": 47
     },
     "worst_owner_nw_y0": 3.3361,
-    "worst_owner_money_y0": 0.17
+    "worst_owner_money_y0": 0.1764
    }
   },
   "PT": {
@@ -1795,8 +1795,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.1956,
-    "worst_owner_money_y0": 0.7669
+    "worst_owner_nw_y0": 1.1861,
+    "worst_owner_money_y0": 0.7661
    },
    "cash_ubi": {
     "n": 200,
@@ -1804,8 +1804,8 @@
     "skipped": 0,
     "plausible": 200,
     "fails": {},
-    "worst_owner_nw_y0": 3.8024,
-    "worst_owner_money_y0": 0.4947
+    "worst_owner_nw_y0": 3.7999,
+    "worst_owner_money_y0": 0.4915
    }
   },
   "RO": {
@@ -1817,8 +1817,8 @@
     "fails": {
      "gini_floor": 199
     },
-    "worst_owner_nw_y0": 0.1331,
-    "worst_owner_money_y0": 0.0484
+    "worst_owner_nw_y0": 0.1125,
+    "worst_owner_money_y0": 0.0454
    },
    "cash_ubi": {
     "n": 200,
@@ -1826,8 +1826,8 @@
     "skipped": 0,
     "plausible": 200,
     "fails": {},
-    "worst_owner_nw_y0": 2.7609,
-    "worst_owner_money_y0": 0.1234
+    "worst_owner_nw_y0": 2.6653,
+    "worst_owner_money_y0": 0.1203
    }
   },
   "SE": {
@@ -1839,8 +1839,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 1.2469,
-    "worst_owner_money_y0": 0.2198
+    "worst_owner_nw_y0": 1.2427,
+    "worst_owner_money_y0": 0.22
    },
    "cash_ubi": {
     "n": 200,
@@ -1851,7 +1851,7 @@
      "gini_floor": 48
     },
     "worst_owner_nw_y0": 3.3185,
-    "worst_owner_money_y0": 0.1362
+    "worst_owner_money_y0": 0.1419
    }
   },
   "SI": {
@@ -1864,8 +1864,8 @@
      "owners_mpc_in_unit_interval": 146,
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 2.2705,
-    "worst_owner_money_y0": 0.4446
+    "worst_owner_nw_y0": 2.2741,
+    "worst_owner_money_y0": 0.4447
    },
    "cash_ubi": {
     "n": 200,
@@ -1877,7 +1877,7 @@
      "gini_floor": 70
     },
     "worst_owner_nw_y0": 3.5279,
-    "worst_owner_money_y0": 0.2769
+    "worst_owner_money_y0": 0.2855
    }
   },
   "SK": {
@@ -1889,8 +1889,8 @@
     "fails": {
      "gini_floor": 200
     },
-    "worst_owner_nw_y0": 0.4927,
-    "worst_owner_money_y0": 0.0657
+    "worst_owner_nw_y0": 0.5166,
+    "worst_owner_money_y0": 0.0522
    },
    "cash_ubi": {
     "n": 200,
@@ -1901,55 +1901,11 @@
      "gini_floor": 160
     },
     "worst_owner_nw_y0": 3.3483,
-    "worst_owner_money_y0": 0.1822
+    "worst_owner_money_y0": 0.1827
    }
   }
  },
  "pooling": [
-  {
-   "bloc": "EU bloc (manifesto/dashboard)",
-   "form": "cash_ubi",
-   "n_geos": 26,
-   "n_viable": 26,
-   "gate_consistent": true,
-   "pooled_runs": 26,
-   "pooled_plausible": 24,
-   "national_runs": 26,
-   "national_plausible": 24
-  },
-  {
-   "bloc": "EU bloc (manifesto/dashboard)",
-   "form": "ubc",
-   "n_geos": 26,
-   "n_viable": 26,
-   "gate_consistent": true,
-   "pooled_runs": 26,
-   "pooled_plausible": 2,
-   "national_runs": 26,
-   "national_plausible": 0
-  },
-  {
-   "bloc": "DE+FR+SK (posts)",
-   "form": "cash_ubi",
-   "n_geos": 3,
-   "n_viable": 3,
-   "gate_consistent": true,
-   "pooled_runs": 3,
-   "pooled_plausible": 3,
-   "national_runs": 3,
-   "national_plausible": 3
-  },
-  {
-   "bloc": "DE+FR (posts)",
-   "form": "cash_ubi",
-   "n_geos": 2,
-   "n_viable": 2,
-   "gate_consistent": true,
-   "pooled_runs": 2,
-   "pooled_plausible": 2,
-   "national_runs": 2,
-   "national_plausible": 2
-  },
   {
    "bloc": "EU bloc (manifesto/dashboard)",
    "form": "cash_ubi",

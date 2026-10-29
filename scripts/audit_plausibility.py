@@ -116,7 +116,8 @@ def _row(family, geo, name, res, dist, reports, **extra):
                    min_inflation=_r(min(infl)) if infl else None,
                    ceiling_share=_r(sum(p.reported["excess_imports"] > 0
                                         for p in res.periods) / len(res.periods)),
-                   min_utilisation=_r(min(p.reported["utilisation"] for p in res.periods)))
+                   min_utilisation=_r(min(p.reported["utilisation"] for p in res.periods)),
+                   util_trough=(res.meta.get("capacity_utilisation") or {}).get("min"))
     row.update(extra)
     return row
 
@@ -622,9 +623,19 @@ def _reading_c(add, rows, mc):
     add("- **Capacity ceiling binds** (demand met by extra imports): " + "; ".join(cells)
         + ". Baselines at the ceiling: " + (", ".join(hot) or "none")
         + " (uniform K/Y = 3 calibration; step F).")
-    low = sorted({r["geo"] for r in sup if r["min_utilisation"] < 0.70})
-    add(f"- **Utilisation below 0.70** (below the 2009 trough): "
-        f"{sum(r['min_utilisation'] < 0.70 for r in sup)} runs, in {', '.join(low) or 'none'}.")
+    def _below(r):
+        lo = r.get("util_trough")
+        return lo is not None and r["min_utilisation"] < lo - 0.005
+    low = Counter(r["geo"] for r in sup if _below(r))
+    lowf = Counter(policy_form(r["scenario"]) for r in sup if _below(r))
+    add(f"- **Utilisation below the country's 2005-2019 trough** (the 2009 slump): "
+        f"{sum(low.values())} runs"
+        + (" (" + ", ".join(f"{g} {n}" for g, n in sorted(low.items())) + ")" if low else "")
+        + (f"; by policy: UBC {lowf.get('ubc', 0)}, cash {lowf.get('cash', 0)}, none "
+           f"{lowf.get('none', 0)}. Under UBC with retained profits the fund keeps "
+           "building as the profit share climbs (the profit response is applied far "
+           "outside its sample; step F); with no policy, demand falls short under "
+           "the AI shift." if low else ""))
     add("- Interest rates are still fixed (no monetary-policy response until the "
         "banks step), so demand-led growth is not yet leaned against.")
 

@@ -127,7 +127,10 @@ The tests that encode these now run on the legacy closure, which proves v1.1 sti
 - **Citizens' fund.** It invests by the owners' rule on its stake, up to what its payout policy retains. Like any owner, it first retains the depreciation allowance on its stake. So `ubc_reinvest` is the share of *net* profit retained, and a POMV draw cannot consume capital. This fixes two problems:
   - Before, `reinvest = 0` paid out gross profit, depreciation included, so the fund's capital wore out (DE real GDP 0.39× by 2049 with 8% inflation).
   - Before, `reinvest = 1` sank every retained euro into domestic capital, with investment up to 70% of GDP.
-- **Utilisation data.** `data/connectors/capacity.py` and `scripts/build_capacity.py` pull EC business-survey manufacturing capacity utilisation via DBnomics (Bundesbank mirror). Until the script runs on Brano's machine (DBnomics is blocked in the sandbox), every country uses the flagged DE default.
+- **Utilisation data.** `data/connectors/capacity.py` and `scripts/build_capacity.py` read EC business-survey manufacturing capacity utilisation for all 27 members in one call: Eurostat `ei_bsin_q_r2`, indicator BS-ICU-PC, seasonally adjusted, via DBnomics. The Bundesbank mirror and the Eurostat API are fallbacks; the Bundesbank's annual values equal the Eurostat annual means for the 21 members both cover. The cache keeps the annual series to 2019, and the calibration is derived from it at load time:
+  - **Normal** is the 2005–2019 mean, not the full history. In BG, LT and LV the 1990s transition years sit 10–25 pp below anything seen since. A full-history mean would read 2019 as a 20% boom and give those baselines ~3.5% inflation for 30 years.
+  - **Max** is the historical maximum, and at least 2019 + 2 pp.
+  - **Min** is the 2005–2019 trough (2009). It is used only as a plausibility range.
 - **Monte-Carlo priors added:** AI productivity, Phillips slope, export elasticity, utilisation response.
 - **Monetary policy is deferred to the banks step** (decided). Rates stay fixed; the audit flags it.
 
@@ -139,15 +142,15 @@ The tests that encode these now run on the legacy closure, which proves v1.1 sti
 | Export price elasticity | 0.75 | 0.3–1.0 | Christodoulopoulou & Tkačevs (2013), ECB/CompNet: ~0.8 goods, ~0.7 services |
 | Investment/GDP response per pp of output gap | 0.25 | 0.1–0.35 | **Assumption.** Utilisation drives euro-area investment (Gallo & Barbieri Goes 2023, *Economia Politica* 40), but no coefficient is published. Set so that baselines stay inside the observed utilisation range; from ~0.5, FR, IT and ES run ±8 pp 15-year cycles the data rule out |
 | AI productivity | 0.3 pp/yr for 10 years | 0–0.6 pp | OECD, Filippucci, Gal & Schief (2024): 0.25–0.6 pp/yr in the US, lower in Europe. Acemoglu (2024): ~0.07 |
-| Normal / maximum utilisation | 83.7% / 89.7% (DE default for all countries, flagged) | — | EC BCS manufacturing survey 1985–2025, via DBnomics |
+| Normal / maximum utilisation | per country: 2005–2019 mean / historical maximum (DE 84.1% / 89.6%) | — | EC BCS manufacturing survey, Eurostat `ei_bsin_q_r2` BS-ICU-PC (SA), via DBnomics, retrieved 2026-10-29 |
 | Baseline TFP growth | balanced growth, bounded 0.1–0.7%/yr | — | IMF WP/24/258 (EU-KLEMS) |
 
 #### Result (DE, 30 years, real GDP × 2019)
 | | v1.1 engine | Step B | Step C |
 |---|---|---|---|
-| AI shift, no policy | 2.28 | 1.63 | 1.65 |
-| Cash UBI / UBC (pinned experiment: the fund pays out all its profit) | 2.75 / 3.51 | 1.80 / 1.92 | 1.64 / 1.16 |
-| Cash UBI at switch-on vs no policy | +10.6% (2019, unbounded) | — | +8.6% (2020, at the capacity ceiling) |
+| AI shift, no policy | 2.28 | 1.63 | 1.64 |
+| Cash UBI / UBC (pinned experiment: the fund pays out all its profit) | 2.75 / 3.51 | 1.80 / 1.92 | 1.63 / 1.14 |
+| Cash UBI at switch-on vs no policy | +10.6% (2019, unbounded) | — | +7.5% (2020, at the capacity ceiling) |
 | Investment/GDP at the end: no policy / cash / UBC | 0.50 / 0.42 / 0.33 | 0.33 / 0.23 / 0.00 | 0.31 / 0.22 / 0.14 |
 | Peak inflation: no policy / cash / UBC | — | — | 2.0% / 2.7% / 3.8% |
 | C1, endogenous investment: UBC GDP / cash GDP, fund retains none | 0.805 | 1.065 | 0.70 |
@@ -166,14 +169,14 @@ The tests that encode these now run on the legacy closure, which proves v1.1 sti
 Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real GDP in 2049 against no policy.
 
 - **Cash UBI:** median −2%.
-  - Range: EL −23% to FR +18%. Clearly higher only in the wage-led FR (+18%), IT (+12%) and SE (+3%).
-  - In the switch-on year: median +7.8%, at the ceiling. Peak inflation: median 2.6%, max 3.7%.
+  - Range: EL −20% to FR +18%. Clearly higher only in the wage-led FR (+18%), IT (+9%) and SE (+2%).
+  - In the switch-on year: median +4.9%, capped by each country's spare capacity. Peak inflation: median 2.8%, max 3.8%.
   - Mechanism: the levy cuts owners' retained profit and hence investment. Where investment responds strongly to profits, that costs more capacity than the demand boost adds.
 - **UBC, the fund pays out all its net profit** (the pinned experiment): median −28%.
-  - Range −38% to −9%; higher in 0 of 24.
+  - Range −38% to −10%; higher in 0 of 24.
   - The fund owns all capital by about 2034 and only replaces it. Its dividends push demand into the ceiling in 70% of years.
 - **UBC, the fund retains 60% and invests by the owners' rule:** median +10%.
-  - Range: RO −4% to FR +37%; higher in 23 of 24.
+  - Range: RO −5% to FR +37%; higher in 23 of 24.
   - A Norway/Alaska POMV draw (3–5%) gives the same path here, because the investment rule binds before the budget does.
 - **Recorded finding:** "redistribution raises GDP" was a property of the demand-only closure. With capacity, the cash result is roughly neutral and the UBC result depends on the fund's payout rule.
 - **Caveats, carried into step F:**
@@ -185,7 +188,7 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 #### Done-when check
 - **Real GDP bounded by capacity:** met (tested in `tests/test_supply_side.py`).
 - **Triad and backtest pass:** met. The backtests stay on the legacy closure until F1.
-- **No instant GDP jump at switch-on: partly met.** 2019 is identical in every arm, and the jump is capped by spare capacity (DE cash: +8.6% in 2020, at the ceiling, against +10.6% unbounded before). What still drives it is the MPC gap with no monetary response. Owners: the banks step (policy rate) and step F (owners' MPC calibration).
+- **No instant GDP jump at switch-on: partly met.** 2019 is identical in every arm, and the jump is capped by spare capacity (DE cash: +7.5% in 2020, at the ceiling, against +10.6% unbounded before). What still drives it is the MPC gap with no monetary response. Owners: the banks step (policy rate) and step F (owners' MPC calibration).
 
 #### Findings changed by step C (input to the step-F ledger)
 - **Crux C4:** answered above.
@@ -202,7 +205,7 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 - **Debt:** with no fiscal reaction, the AI shift takes DE debt to 151% of GDP by 2049 (step B: 183%; inflation now erodes nominal debt). The fiscal block stays off by default until E3.
 
 #### Residuals and which step owns them
-- **Utilisation data:** all countries use the flagged DE default until `python scripts/build_capacity.py --write` runs on Brano's machine. Then re-run the audit.
+- **Utilisation below the country's 2009 trough** in 497 runs. 381 are UBC with retained profits: the fund keeps building as the profit share climbs, because the profit response is extrapolated far outside its sample. 56 have no policy: demand falls short under the AI shift. **Step F** (profit-response sensitivity) and **step D** (the fund can invest abroad).
 - **EL baseline** sits at the ceiling in 90% of years (uniform K/Y = 3 calibration). **Step F.**
 - **IE:** deflation and utilisation below 0.70 (unusable calibration). **Step F.**
 - **No monetary policy.** **Banks step.**
