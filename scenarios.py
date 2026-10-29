@@ -51,15 +51,19 @@ def build_custom(p: SFCParams, *, labour_share_end: Optional[float] = None,
                  ubc_reinvest: float = 0.0, adoption: str = "ramp",
                  automation_rate: Optional[float] = None,
                  reinstatement_rate: float = 0.02,
+                 ai_productivity: Optional[float] = None,
                  horizon: int = 30, name: str = "Custom") -> Scenario:
     """Build a bespoke scenario from AI-shock + policy parameters (scenario
-    builder). `labour_share_end=None` holds the baseline labour share."""
+    builder). `labour_share_end=None` holds the baseline labour share.
+    `ai_productivity` = AI's pp/yr productivity contribution while adopting
+    (None = the sourced default, modules.ai_shock.AI_PRODUCTIVITY)."""
+    extra = {} if ai_productivity is None else {"ai_productivity_gain": ai_productivity}
     return to_scenario(
         p,
         AIShock("AI shift", labour_share_end=labour_share_end,
                 capex_growth=capex_growth, adoption=adoption,
                 automation_rate=automation_rate,
-                reinstatement_rate=reinstatement_rate),
+                reinstatement_rate=reinstatement_rate, **extra),
         Policy("custom", capital_tax=capital_tax, ubi=ubi, ubc=ubc,
                ubc_reinvest=ubc_reinvest),
         name=name, horizon=horizon)

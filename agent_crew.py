@@ -218,7 +218,7 @@ def template_report(payload: Dict[str, Any]) -> str:
                 continue
             s = r.get("summary", {})
             lines.append(
-                f"  - {r['scenario']}: GDP {_fmt(s.get('gdp_end'))}, "
+                f"  - {r['scenario']}: real GDP {_fmt(s.get('gdp_real_end', s.get('gdp_end')))}, "
                 f"Gini {_fmt(s.get('gini_personal_end'))}, "
                 f"poverty {_fmt(s.get('poverty_rate_end'))}, "
                 f"top10 wealth {_fmt(s.get('top10_wealth_share_end'))}.")
@@ -234,7 +234,8 @@ def template_report(payload: Dict[str, Any]) -> str:
     return (f"AGORA crew -- {payload.get('scenario')} on {payload.get('geo')} "
             f"({len(payload.get('years', []))}y). Gate passed "
             f"(residual {g.get('max_residual', 0):.1e}). End state: "
-            f"GDP {_fmt(s.get('gdp_end'))}, Gini {_fmt(s.get('gini_personal_end'))}, "
+            f"real GDP {_fmt(s.get('gdp_real_end', s.get('gdp_end')))}, "
+            f"Gini {_fmt(s.get('gini_personal_end'))}, "
             f"poverty {_fmt(s.get('poverty_rate_end'))}, "
             f"debt/GDP {_fmt(s.get('gov_debt_gdp_end'))}. "
             f"Sandbox, not a forecast.")

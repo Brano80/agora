@@ -226,8 +226,8 @@ class AgoraOrchestrator:
 
         def _metrics(by: Dict[str, ScenarioRun], arm: str) -> Dict[str, float]:
             run = by[arm]
-            gdp = run.result.periods[-1].reported.get(
-                "gdp", run.result.periods[-1].reported.get("Y", 0.0))
+            end = run.result.periods[-1].reported
+            gdp = end.get("gdp_real", end.get("gdp", end.get("Y", 0.0)))   # real (Phase 7 C)
             rep = run.dist.periods[-1].reported
             return {"gdp_end": gdp, "gini_end": rep["gini_personal"],
                     "wealth_top10_end": rep["top10_wealth_share"],

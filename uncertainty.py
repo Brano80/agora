@@ -20,6 +20,7 @@ from calibration import calibrate
 from modules.sfc_core import SFCCore
 from modules.distribution import DistributionModule
 from scenarios import build_custom, CAPEX_AI_GROWTH
+from modules.ai_shock import AI_PRODUCTIVITY
 from consistency.checks import check_run
 from data.connectors.dbnomics import DBnomicsConnector
 
@@ -34,6 +35,11 @@ PRIORS: Dict[str, Tuple[float, float]] = {
     "debt_cap":         (0.0, 0.22),    # owners' new borrowing / owned capital: 0 (no
                                         # credit) .. the size of today's NFC debt stock
     "loan_rate":        (0.015, 0.055), # +-2pp around the ECB NFC cost of borrowing (3.57%)
+    # Phase 7 C: supply side and prices
+    "ai_productivity":  (0.0, 0.006),   # AI pp/yr while adopting: 0 .. OECD 2024 US upper 0.6
+    "phillips_slope":   (0.01, 0.15),   # ECB WP 3133 slope range (0.02-0.19 per pp u) x Okun
+    "export_elasticity": (0.3, 1.0),    # Christodoulopoulou & Tkacevs 2013 country range
+    "utilisation_response": (0.1, 0.35),  # assumption; >~0.5 gives cycles the data rule out
     # beta is UNIDENTIFIED in macro data (disposable-Gini cross-section R2=.02;
     # FE panel 2010-24 beta=.05 R2=.006 - redistribution absorbs the shift). The
     # OECD IDD market Gini (2026-06-14) removes that confound and QUANTIFIES it:
@@ -81,7 +87,9 @@ def core_kwargs(d: Dict[str, float]) -> Dict[str, object]:
     `inv_elasticity` runs the legacy closure (reproduces the published bands)."""
     if "inv_elasticity" in d:
         return {"investment_closure": "legacy", "inv_elasticity": d["inv_elasticity"]}
-    return {k: d[k] for k in ("profit_response", "debt_cap", "loan_rate") if k in d}
+    return {k: d[k] for k in ("profit_response", "debt_cap", "loan_rate",
+                              "phillips_slope", "export_elasticity",
+                              "utilisation_response") if k in d}
 
 
 def _pctile(xs: List[float], q: float) -> float:
@@ -116,6 +124,7 @@ def _run_draws(geo: str, form: str, tau: float, year: int, horizon: int,
             p = calibrate(data, geo=geo, base_year=year, a1_w=d["a1_w"])
             scen = build_custom(p, labour_share_end=d["labour_share_end"],
                                 capex_growth=d.get("capex_growth", CAPEX_AI_GROWTH),
+                                ai_productivity=d.get("ai_productivity"),
                                 capital_tax=tau, horizon=horizon, name="mc", **pol)
             core = SFCCore(base_year=year, calib_kwargs={"a1_w": d["a1_w"]},
                            **core_kwargs(d))
@@ -134,8 +143,8 @@ def _run_draws(geo: str, form: str, tau: float, year: int, horizon: int,
         acc["gini"].append(dd["gini_personal"])
         acc["poverty"].append(dd["poverty_rate"])
         acc["citizen_wealth_pc"].append(m["swf_stake"] * 1e6 / pop)
-        acc["dividend_pc"].append(m["transfer_pool"] * 1e6 / pop)
-        acc["gdp_end"].append(m["gdp"])
+        acc["dividend_pc"].append(m["transfer_pool"] / m.get("price_level", 1.0) * 1e6 / pop)
+        acc["gdp_end"].append(m.get("gdp_real", m["gdp"]))      # real (Phase 7 C)
         inputs.append(d)
         used += 1
     return inputs, acc, used, skipped

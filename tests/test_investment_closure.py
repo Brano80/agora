@@ -48,10 +48,12 @@ def _solvency_failures(res):
 
 @pytest.mark.parametrize("geo", ["DE", "FR", "SK", "RO", "PL"])
 def test_year0_identical_to_legacy(geo):
+    """Every behavioural arm reproduces the observed base year: policies switch
+    on in 2020 (Phase 7 C), so year 0 equals the legacy BASELINE in all arms."""
     ob, ol = _orch(geo), _orch(geo, investment_closure="legacy")
-    for sb, sl in zip(make_ubc_experiment(ob.params()), make_ubc_experiment(ol.params())):
+    vl = ol.run_scenario(make_ubc_experiment(ol.params())[0]).result.periods[0].reported
+    for sb in make_ubc_experiment(ob.params()):
         vb = ob.run_scenario(sb).result.periods[0].reported
-        vl = ol.run_scenario(sl).result.periods[0].reported
         for k in YEAR0_KEYS:
             assert vb[k] == pytest.approx(vl[k], rel=1e-12, abs=1e-6), (geo, sb.name, k)
 
@@ -92,10 +94,11 @@ def test_investment_responds_to_owners_net_profit_share():
     iy = lambda res, t: res.periods[t].reported["investment"] / res.periods[t].reported["gdp"]
     # the AI shift raises the profit share -> a higher investment share (no exogenous path)
     assert iy(ai, 15) > iy(base, 15) + 0.02
-    # a 40% profit levy lowers owners' net profit share -> less investment from year 1
-    assert cash.periods[1].reported["investment"] < ai.periods[1].reported["investment"]
-    assert (cash.periods[0].reported["owners_net_profit_share"]
-            < ai.periods[0].reported["owners_net_profit_share"])
+    # a 40% profit levy (from 2020) lowers owners' net profit share in year 1,
+    # and with it next year's investment
+    assert (cash.periods[1].reported["owners_net_profit_share"]
+            < ai.periods[1].reported["owners_net_profit_share"])
+    assert cash.periods[2].reported["investment"] < ai.periods[2].reported["investment"]
     # baseline: the investment share stays near the observed base-year share
     assert abs(iy(base, 29) - iy(base, 0)) < 0.02
 
@@ -112,7 +115,11 @@ def test_owners_invest_on_owned_stake_and_fund_on_retained_profits():
     priv = [s.reported["investment_private"] for s in r0.periods]
     share = [s.reported["swf_share"] for s in r0.periods]
     assert share[10] > share[2] and priv[10] < priv[2]       # diluted owners invest less
-    assert all(s.reported["swf_reinvest"] == 0.0 for s in r0.periods)
+    # paying out all net profit: the fund only replaces what wears out (step C)
+    dep = max(p.delta, p.delta_ai)
+    assert all(s.reported["swf_reinvest"] <= dep * s.reported["price_level"]
+               * prev.reported["swf_stake"] * (1 + 1e-9)
+               for prev, s in zip(r0.periods, r0.periods[1:]))
     assert sum(s.reported["swf_reinvest"] for s in r1.periods) > 0.0
     assert r1.periods[15].reported["investment"] > r0.periods[15].reported["investment"]
 
@@ -127,7 +134,8 @@ def test_pecking_order_borrowing_is_capped_priced_and_netted():
     assert max(loans) > 0.0
     assert {s.reported["financing_regime"] for s in per} >= {1, 2}   # the cap binds
     for t in range(1, len(per)):
-        cap = DEBT_CAP * per[t - 1].reported["owners_capital"]
+        # the cap is on owned capital valued at this year's prices
+        cap = DEBT_CAP * per[t].reported["price_level"] * per[t - 1].reported["owners_capital"]
         # within the cap, or repaying the excess at the maturity rate
         allowed = (cap if loans[t - 1] <= cap
                    else loans[t - 1] - DELEVERAGE_RATE * (loans[t - 1] - cap))
@@ -198,7 +206,8 @@ def test_fund_takes_net_equity_with_its_share_of_debt():
             (LOAN_RATE + DELEVERAGE_RATE) * rp["loans_fund"])
         assert r["gov_debt"] == pytest.approx(
             r["gov_money"] - r["loans_owners"] - r["loans_fund"])
-        assert r["swf_net_assets"] == pytest.approx(r["swf_stake"] - r["loans_fund"])
+        assert r["swf_net_assets"] == pytest.approx(
+            r["price_level"] * r["swf_stake"] - r["loans_fund"])     # stake is real
         assert sum(per[t].bsm["loans"].values()) == pytest.approx(0.0, abs=1e-9)
 
 
@@ -233,13 +242,18 @@ def test_behavioural_ubc_passes_the_staged_gate_with_advisories():
 
 
 def test_policy_search_records_refused_candidates_without_aborting():
-    """Two extreme Slovak candidates (UBC t=55-60%, full fund reinvestment) are
-    refused by the staged gate: an external-position artifact (owners who own no
-    capital carry a share of the foreign debt), fixed in step D. The search must
-    record them and carry on; they can never reach the frontier."""
-    o = _orch("SK")
-    pts = o.rich_policy_search(horizon=30)
+    """A candidate the gate refuses (strict ConsistencyError) is recorded as
+    inconsistent, never reaches the frontier, and does not abort the search."""
+    from consistency.checks import ConsistencyError
+    from policy_search import search_policies
+    o = _orch("DE")
+
+    def runner(scen):
+        if scen.name == "UBC τ=30%":
+            raise ConsistencyError("[sfc_core/test] year 2030 FAILED: hh_net_worth_nonnegative(inf)")
+        return o.run_scenario(scen)
+    pts = search_policies(runner, o.params(), horizon=30)
     refused = [p for p in pts if not p.consistent]
-    assert refused and all(p.refusal and not p.on_frontier for p in refused)
-    assert all("hh_net_worth_nonnegative" in p.refusal for p in refused)
-    assert any(p.on_frontier for p in pts)
+    assert [p.name for p in refused] == ["UBC τ=30%"]
+    assert refused[0].refusal.startswith("[sfc_core/test]") and not refused[0].on_frontier
+    assert len(pts) == 13 and any(p.on_frontier for p in pts)

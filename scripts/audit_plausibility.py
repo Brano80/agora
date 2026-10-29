@@ -110,6 +110,13 @@ def _row(family, geo, name, res, dist, reports, **extra):
                max_inv_share=_r(max(iy)) if iy else None,
                min_gini=_r(min(gi)) if gi else None,
                a1_k=_r(params.get("a1_k")), neg_money=neg_money)
+    if res.periods and "utilisation" in res.periods[0].reported:   # step C supply side
+        infl = [p.reported["inflation"] for p in res.periods[1:]]
+        row.update(max_inflation=_r(max(infl)) if infl else None,
+                   min_inflation=_r(min(infl)) if infl else None,
+                   ceiling_share=_r(sum(p.reported["excess_imports"] > 0
+                                        for p in res.periods) / len(res.periods)),
+                   min_utilisation=_r(min(p.reported["utilisation"] for p in res.periods)))
     row.update(extra)
     return row
 
@@ -152,6 +159,7 @@ def _mc(geo, n, seed=0, tau=0.40, year=2019, horizon=30, closure="behavioural"):
                 p = calibrate(data, geo=geo, base_year=year, a1_w=d["a1_w"])
                 scen = build_custom(p, labour_share_end=d["labour_share_end"],
                                     capex_growth=d.get("capex_growth", CAPEX_AI_GROWTH),
+                                    ai_productivity=d.get("ai_productivity"),
                                     capital_tax=tau, horizon=horizon, name="mc", **pol)
                 res = SFCCore(base_year=year, calib_kwargs={"a1_w": d["a1_w"]},
                               **core_kwargs(d)).run(scen, data)
@@ -285,6 +293,7 @@ def _firsts(rs):
 
 def build_report(data, date=None):
     closure = data.get("closure", "legacy")
+    step = data.get("step", "B")
     date = date or ("2026-10-28" if closure == "legacy" else "2026-10-29")
     rows, mc, pool, errors = data["rows"], data["mc"], data["pooling"], data["errors"]
     geos = sorted({r["geo"] for r in rows if r["family"] != "pooling"})
@@ -306,6 +315,16 @@ def build_report(data, date=None):
             "checked against the new plausibility-v2 laws in `consistency/checks.py`. "
             "The laws run in *audit* mode, so nothing shipped changes; this file reads "
             "what they flag. Reproduce: `python scripts/audit_plausibility.py`.\n")
+    elif step == "C":
+        add(f"# Plausibility audit — {date} (Phase 7, step C)\n")
+        add("The same scenario families, countries and laws as the step-A audit "
+            "(`docs/AUDIT-2026-10.md`, the v1.1 engine) and the step-B audit "
+            "(`docs/AUDIT-2026-10-stepB.md`), re-run on the engine with a **supply "
+            "side and prices**: real output is capped by installed capital, excess "
+            "demand leaks into imports, inflation follows a Phillips curve around "
+            "the ECB 2% target, AI raises productivity, and policies switch on in "
+            "2020 so 2019 reproduces in every arm. Reproduce: "
+            "`python scripts/audit_plausibility.py` (step A: `--closure legacy`).\n")
     else:
         add(f"# Plausibility audit — {date} (Phase 7, step B)\n")
         add("The same scenario families, countries and laws as the step-A audit "
@@ -482,7 +501,9 @@ def build_report(data, date=None):
         add("")
     add("## Reading\n")
     if closure != "legacy":
-        _reading_b(add, rows, mc, by)
+        _reading_b(add, rows, mc, by, step)
+        if step == "C":
+            _reading_c(add, rows, mc)
         return "\n".join(L) + "\n"
     add("- Every run counted above passes (or fails) the **accounting** gate exactly as "
         "before; the plausibility laws only add information.")
@@ -503,7 +524,7 @@ def build_report(data, date=None):
     return "\n".join(L) + "\n"
 
 
-def _reading_b(add, rows, mc, by):
+def _reading_b(add, rows, mc, by, step="B"):
     cnt = Counter(k for r in rows for k in r["first_fail"])
     mcc = Counter()
     mc_money = Counter()
@@ -515,14 +536,22 @@ def _reading_b(add, rows, mc, by):
     n_acc = sum(r["accounting_ok"] for r in rows)
     add(f"- **Accounting:** {n_acc:,} of {len(rows):,} runs balance their books.")
     nw = [r for r in rows if "hh_net_worth_nonnegative" in r["first_fail"]]
-    add(f"- **Insolvency (the step-B target):** {len(nw)} runs and "
-        f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws"
-        + (": " + "; ".join(f"{r['geo']} {r['scenario']}" for r in nw) if nw else "")
-        + ". In those runs the fund owns all the capital and reinvests everything at "
-        "home, the current-account deficit widens, and the model still assigns the "
-        "capital-less owners a share of the country's foreign debt (external "
-        "positions are allocated by money shares). That rule is replaced in step D. "
-        "The gate now refuses such runs (net worth is a blocking law).")
+    if step == "C":
+        add(f"- **Insolvency:** {len(nw)} runs and "
+            f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws (step B: 2 "
+            "runs). The SK runs that failed in step B reinvested without limit; with a "
+            "capacity ceiling the fund invests by the owners' rule and the "
+            "current-account deficit no longer compounds. The external-position "
+            "rule behind them is still replaced in step D.")
+    else:
+        add(f"- **Insolvency (the step-B target):** {len(nw)} runs and "
+            f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws"
+            + (": " + "; ".join(f"{r['geo']} {r['scenario']}" for r in nw) if nw else "")
+            + ". In those runs the fund owns all the capital and reinvests everything at "
+            "home, the current-account deficit widens, and the model still assigns the "
+            "capital-less owners a share of the country's foreign debt (external "
+            "positions are allocated by money shares). That rule is replaced in step D. "
+            "The gate now refuses such runs (net worth is a blocking law).")
     own = sorted({r["geo"] for r in rows if "owners" in r.get("neg_money", [])})
     wrk = sorted({r["geo"] for r in rows if "workers" in r.get("neg_money", [])})
     add(f"- **Negative money:** owners in {sum('owners' in r.get('neg_money', []) for r in rows)} "
@@ -535,17 +564,69 @@ def _reading_b(add, rows, mc, by):
         "from the external-position rule. This law stays advisory until step D.")
     iy = [r for r in rows if "investment_share_bounded" in r["first_fail"]]
     iy_fund = sum(1 for r in iy if policy_form(r["scenario"]) == "ubc")
-    add(f"- **Investment above 40% of GDP:** {len(iy)} runs ({iy_fund} of them UBC). "
-        "Where the citizens' fund retains its profits it can only reinvest them in "
-        "domestic fixed capital; a real fund would also buy financial and foreign "
-        "assets. That outlet arrives with step D (the fund may buy foreign equity).")
+    if step == "C":
+        iy_geo = sorted({r["geo"] for r in iy})
+        add(f"- **Investment above 40% of GDP:** {len(iy)} runs ({iy_fund} of them UBC), "
+            f"all in {', '.join(iy_geo) or 'no country'} (step B: 385 in the rich "
+            "frontier alone). The fund now invests by the owners' rule, which "
+            "responds to profitability and spare capacity, instead of sinking every "
+            "retained euro into domestic capital.")
+    else:
+        add(f"- **Investment above 40% of GDP:** {len(iy)} runs ({iy_fund} of them UBC). "
+            "Where the citizens' fund retains its profits it can only reinvest them in "
+            "domestic fixed capital; a real fund would also buy financial and foreign "
+            "assets. That outlet arrives with step D (the fund may buy foreign equity).")
     gf = [r for r in rows if "gini_floor" in r["first_fail"]]
-    add(f"- **Gini below 0.15:** {len(gf)} runs and {mcc.get('gini_floor', 0)} draws, "
-        "almost all UBC. This is the distribution layer (two-class lognormal), not "
-        "financing; it is revisited with step E and re-checked in step F.")
+    if step == "C":
+        cash_g = sum(mc[g]["cash_ubi"]["fails"].get("gini_floor", 0)
+                     for g in mc if "cash_ubi" in mc[g])
+        add(f"- **Gini below 0.15:** {len(gf):,} runs and {mcc.get('gini_floor', 0):,} "
+            f"draws, {cash_g:,} of them cash UBI (step B: 1,039 runs; 35 cash draws). "
+            "Not a supply-side effect: "
+            "until now every policy arm anchored its distribution on a year 0 with "
+            "the policy already on, so the observed 2019 Gini was assigned to an "
+            "economy paying a 40% levy and a UBI. With policies from 2020 the anchor "
+            "is the real 2019 economy, and a double count in the distribution layer "
+            "shows: the levy lowers the net capital share that drives *market* "
+            "inequality and is also counted as a transfer. Fixed in step E.")
+    else:
+        add(f"- **Gini below 0.15:** {len(gf)} runs and {mcc.get('gini_floor', 0)} draws, "
+            "almost all UBC. This is the distribution layer (two-class lognormal), not "
+            "financing; it is revisited with step E and re-checked in step F.")
     mpc = sorted({r["geo"] for r in rows if "owners_mpc_in_unit_interval" in r["first_fail"]})
     add(f"- **Calibration:** owners' MPC outside [0, 1] in {', '.join(mpc) or 'no country'}; "
         "those countries' results stay unusable under this closure.")
+
+
+def _reading_c(add, rows, mc):
+    sup = [r for r in rows if r.get("max_inflation") is not None]
+    if not sup:
+        return
+    form = defaultdict(list)
+    for r in sup:
+        form[policy_form(r["scenario"])].append(r)
+    base = [r for r in sup if r["family"] == "triad" and r["scenario"] == "Baseline"]
+    hot = [r["geo"] for r in base if r["ceiling_share"] > 0.25]
+    add(f"- **Prices:** peak inflation above 5% in "
+        f"{sum(r['max_inflation'] > 0.05 for r in sup)} of {len(sup):,} runs and above "
+        f"10% in {sum(r['max_inflation'] > 0.10 for r in sup)}; deflation in "
+        f"{sum(r['min_inflation'] < 0 for r in sup)} runs, all in "
+        f"{', '.join(sorted({r['geo'] for r in sup if r['min_inflation'] < 0})) or 'none'}.")
+    cells = []
+    for k in ("none", "cash", "ubc"):
+        rs = form.get(k, [])
+        if rs:
+            cells.append(f"{k} {sum(r['ceiling_share'] > 0 for r in rs)}/{len(rs)} "
+                         f"({sum(r['ceiling_share'] > 0.25 for r in rs)} for over a "
+                         "quarter of the years)")
+    add("- **Capacity ceiling binds** (demand met by extra imports): " + "; ".join(cells)
+        + ". Baselines at the ceiling: " + (", ".join(hot) or "none")
+        + " (uniform K/Y = 3 calibration; step F).")
+    low = sorted({r["geo"] for r in sup if r["min_utilisation"] < 0.70})
+    add(f"- **Utilisation below 0.70** (below the 2009 trough): "
+        f"{sum(r['min_utilisation'] < 0.70 for r in sup)} runs, in {', '.join(low) or 'none'}.")
+    add("- Interest rates are still fixed (no monetary-policy response until the "
+        "banks step), so demand-led growth is not yet leaned against.")
 
 
 def compact(data):
@@ -574,10 +655,12 @@ def main():
     ap.add_argument("--assemble", help="merge all *.json parts in this directory into the docs")
     ap.add_argument("--closure", choices=("behavioural", "legacy"), default="behavioural",
                     help="investment closure to audit (legacy = the v1.1 engine, step A)")
-    ap.add_argument("--out", help="report path (default: docs/AUDIT-2026-10[-stepB].md)")
-    ap.add_argument("--json", help="summary path (default: docs/audit-2026-10[-stepB].json)")
+    ap.add_argument("--step", default="C",
+                    help="Phase 7 step the behavioural audit documents (file suffix)")
+    ap.add_argument("--out", help="report path (default: docs/AUDIT-2026-10[-step<S>].md)")
+    ap.add_argument("--json", help="summary path (default: docs/audit-2026-10[-step<S>].json)")
     a = ap.parse_args()
-    sfx = "" if a.closure == "legacy" else "-stepB"
+    sfx = "" if a.closure == "legacy" else f"-step{a.step}"
     a.out = a.out or os.path.join(ROOT, "docs", f"AUDIT-2026-10{sfx}.md")
     a.json = a.json or os.path.join(ROOT, "docs", f"audit-2026-10{sfx}.json")
 
@@ -601,6 +684,7 @@ def main():
                 data["errors"] += pe
                 data["pooling"] = ps
     data.setdefault("closure", a.closure)
+    data.setdefault("step", a.step)
     data["generated"] = time.strftime("%Y-%m-%d %H:%M")
     if a.part:
         os.makedirs(os.path.dirname(os.path.abspath(a.part)), exist_ok=True)

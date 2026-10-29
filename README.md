@@ -25,6 +25,11 @@ live data and validated against history.
 >    level, so redistribution raises GDP mechanically. The growth claims below ("the UBC
 >    economy ends larger", "predistribution needn't cost growth") follow from this
 >    closure; they are not findings.
+>    *Fixed in the engine on 2026-10-29 (Phase 7 step C,
+>    [`docs/AUDIT-2026-10-stepC.md`](docs/AUDIT-2026-10-stepC.md)): real output is now
+>    capped by capacity, with prices. Over 30 years cash UBI is roughly neutral for real
+>    output and UBC depends on whether the fund reinvests; the numbers above are not yet
+>    regenerated.*
 > 2. **Unconstrained investment financing.** Investment follows an assumed path, and
 >    capital owners finance it with unlimited interest-free borrowing from the state.
 >    Their money balance goes negative in over half the policy runs, cash UBI and UBC

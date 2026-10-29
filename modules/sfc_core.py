@@ -50,6 +50,25 @@ Investment closure (Phase 7 step B, 2026-10-29). Two switchable closures:
     of its profits it retains (ubc_reinvest / fund_payout).
     Lender: the public sector as a stand-in until the banks sector exists, so
     gov_debt is reported NET of these loans (gov_money = gross money issued).
+    Supply side and prices (Phase 7 step C, 2026-10-29). Full-capacity real
+    output = AI productivity level x installed capital / v, with v calibrated
+    so the base year sits at the observed utilisation (EC survey,
+    data/connectors/capacity.py). Real output cannot exceed the historical
+    maximum utilisation; demand beyond it is met by extra imports. Values are
+    in current euros with a price level P (2019 = 1): inflation = the ECB 2%
+    target + a Phillips slope x last year's output gap (demand pressure). The
+    real rules (government spending, the investment share) are indexed to
+    P, exports lose competitiveness when P outruns the world's 2% path,
+    capital is real and valued at P on balance sheets, and nominal money,
+    loans and debt erode with inflation. Interest rates are fixed (no
+    monetary-policy rule yet: the banks step). Policies switch on in year 1
+    (2020) so the base year reproduces in every arm. Investment also responds
+    to the output gap, so capacity keeps up with demand. The citizens' fund
+    invests by the SAME rule on the stake it owns, up to what its payout
+    policy lets it retain, and pays out the rest. Like any owner it first
+    retains the depreciation allowance on its stake (replacement), so
+    ubc_reinvest is the share of NET profits retained and a POMV draw cannot
+    consume capital. Until step D it cannot hold financial or foreign assets.
   * "legacy": the v1.1 behaviour, exactly - an exogenous capex path (ai_capex
     lever, optionally scaled by inv_elasticity) financed by an unlimited,
     interest-free money overdraft. Kept ONLY to reproduce published v1.1
@@ -66,6 +85,7 @@ from typing import Dict, List, Optional
 
 from modules.interface import Module, Scenario, RunResult, PeriodState
 from calibration import calibrate, SFCParams
+from data.connectors.capacity import capacity_utilisation_for
 
 
 # --------------------------------------------------------------------------- #
@@ -91,6 +111,31 @@ DELEVERAGE_RATE = 0.2
 # Owners keep liquid money of at least this share of their base-year
 # liquidity ratio (money / owned capital) before borrowing.
 LIQUIDITY_FLOOR = 0.5
+
+
+# Phase 7 C supply side and prices.
+INFLATION_TARGET = 0.02      # ECB price-stability target
+# pp of inflation per pp of output gap: ECB WP 3133 (Beschin, Paredes,
+# Polichetti & Renault 2025) regional euro-area slope ~0.19 per pp of
+# unemployment, times an Okun coefficient of ~0.4 (Ball, Leigh & Loungani 2017).
+PHILLIPS_SLOPE = 0.08
+# Long-run export elasticity to the real exchange rate: ~0.8 goods, ~0.7
+# services (Christodoulopoulou & Tkacevs 2013, ECB CompNet).
+EXPORT_ELASTICITY = 0.75
+# ASSUMPTION (no published coefficient found): pp of investment/GDP per pp of
+# output gap. Utilisation drives short-run euro-area investment (Gallo &
+# Barbieri Goes 2023, Economia Politica 40). Calibrated to a stylised fact:
+# survey utilisation is stationary with small swings (DE sd 3.5 pp, 1985-2025,
+# shocks included). At 0.25 every baseline stays within ~79-87%; from ~0.5 the
+# multiplier-accelerator loop drives 15-year cycles of +-8 pp (FR, IT, ES),
+# which the data rule out. MC range 0.1-0.35.
+UTILISATION_RESPONSE = 0.25
+POLICY_START = 1             # policies switch on in 2020: 2019 reproduces in every arm
+# Baseline technical progress on capacity, calibrated per country so that the
+# no-shock baseline grows in balance (capacity keeps pace with trend demand),
+# bounded by the EU range of TFP growth: 0.1%/yr 2009-2019, 0.7%/yr 1996-2007
+# (IMF WP/24/258, "Chasing the Dream", from EU-KLEMS).
+TFP_BOUNDS = (0.001, 0.007)
 
 
 def profit_response_for(geo: Optional[str]) -> float:
@@ -134,7 +179,13 @@ class SFCCore(Module):
                  fund_payout: float = 0.0, investment_closure: str = "behavioural",
                  profit_response: Optional[float] = None, debt_cap: float = DEBT_CAP,
                  loan_rate: float = LOAN_RATE, liquidity_floor: float = LIQUIDITY_FLOOR,
-                 deleverage_rate: float = DELEVERAGE_RATE):
+                 deleverage_rate: float = DELEVERAGE_RATE,
+                 inflation_target: float = INFLATION_TARGET,
+                 phillips_slope: float = PHILLIPS_SLOPE,
+                 export_elasticity: float = EXPORT_ELASTICITY,
+                 utilisation_response: float = UTILISATION_RESPONSE,
+                 policy_start: int = POLICY_START,
+                 capacity: Optional[dict] = None):
         self.base_year = base_year
         self.calib_kwargs = calib_kwargs or {}
         # C1 (enclosure-vs-diffusion): elasticity of investment to owners'
@@ -171,6 +222,13 @@ class SFCCore(Module):
         self.loan_rate = float(loan_rate)
         self.liquidity_floor = float(liquidity_floor)
         self.deleverage_rate = float(deleverage_rate)
+        # Phase 7 C supply side / prices (behavioural closure only)
+        self.inflation_target = float(inflation_target)
+        self.phillips_slope = float(phillips_slope)
+        self.export_elasticity = float(export_elasticity)
+        self.utilisation_response = float(utilisation_response)
+        self.policy_start = int(policy_start)
+        self.capacity = capacity          # {normal, base, max} override; None = data
         self.params: Optional[SFCParams] = None
 
     def declares_inputs(self) -> List[str]:
@@ -200,6 +258,8 @@ class SFCCore(Module):
             "investment_cut", "financing_regime", "owners_liquidity_floor",
             "owners_net_profit_share", "loans_fund", "fund_debt_service",
             "debt_assumed_by_fund", "swf_net_assets",
+            "gdp_real", "price_level", "inflation", "capacity", "utilisation",
+            "output_gap", "excess_imports",
         ]
 
     def run(self, scenario: Scenario, data: Dict[str, float],
@@ -232,9 +292,30 @@ class SFCCore(Module):
         L = 0.0                                    # owners' loans (new net borrowing)
         L_sf = 0.0                                 # loans assumed by the fund with equity (UBC)
         liq_ratio = (self.liquidity_floor * p.M_k0 / p.K0) if p.K0 > 0 else 0.0
+        # Phase 7 C: supply side and prices (behavioural only; legacy keeps P = 1)
+        cu = dict(self.capacity) if self.capacity else capacity_utilisation_for(scenario.geo)
+        u_n, u_0, u_max = float(cu["normal"]), float(cu["base"]), float(cu["max"])
+        v_cap = (u_0 * p.K0 / p.Y0) if p.Y0 else 1.0   # capital per unit of full-capacity output
+        gap0 = u_0 / u_n - 1.0                          # base-year output gap (0 by default)
+        gap_prev = gap0
+        P = P_prev = 1.0
+        ls_prev = p.ls0
+        g_K0 = (p.a_ratio0 * p.Y0 / p.K0 - p.delta) if p.K0 else 0.0   # base-year capital growth
+        g_tfp = min(max((1.0 + p.world_growth) / (1.0 + g_K0) - 1.0, TFP_BOUNDS[0]),
+                    TFP_BOUNDS[1])
+        infl = self.inflation_target if behavioural else 0.0
 
         for t in range(H):
             ls = scenario.labour_share.at(t, H)
+            if behavioural:
+                if t > 0:      # price setting reacts to last year's demand pressure
+                    infl = self.inflation_target + self.phillips_slope * gap_prev
+                    P = P_prev * (1.0 + infl)
+                pfac = P / P_prev                       # real rules keep their real meaning
+                P_world = (1.0 + self.inflation_target) ** t
+            else:
+                pfac = P_world = 1.0
+            Pk = P                                      # 1.0 in legacy
             base_A = scenario.ai_capex.at(t, H) * p.Y0   # autonomous AI-capex
             G = (scenario.gov_override.at(t, H)
                  if scenario.gov_override is not None
@@ -247,9 +328,16 @@ class SFCCore(Module):
             X = (scenario.exports_override.at(t, H)
                  if scenario.exports_override is not None
                  else p.export_ratio * p.Y0 * (1.0 + p.world_growth) ** t)
+            if behavioural:
+                if scenario.gov_override is None:
+                    G *= pfac
+                if scenario.exports_override is None:   # competitiveness vs the world's 2% path
+                    X *= P * (P / P_world) ** (-self.export_elasticity)
             tau = scenario.tax_capital.at(t, H)
             ubi_on = scenario.ubi_on.at(t, H) >= 0.5
             ubc_on = scenario.ubc_on.at(t, H) >= 0.5
+            if behavioural and t < self.policy_start:
+                tau, ubi_on, ubc_on = 0.0, False, False
             # Phase 6 fiscal-reaction rule (default OFF): adjusts the LABOUR rate
             # (the usual marginal instrument) to steer debt/GDP toward target.
             if self.fiscal_reaction:
@@ -281,11 +369,39 @@ class SFCCore(Module):
             if behavioural:
                 # B1: owners invest on the stake they own; the investment share
                 # responds to last year's net profit share (see docstring).
-                inv_share = max(0.0, p.a_ratio0 + gamma * (pi_eff_prev - pi0))
-                A_priv = (1.0 - phi) * Y_prev * inv_share
+                inv_share = max(0.0, p.a_ratio0 + gamma * (pi_eff_prev - pi0)
+                                + self.utilisation_response * (gap_prev - gap0))
+                A_priv = (1.0 - phi) * Y_prev * pfac * inv_share
+                # the part driven by a HIGHER net profit share (the AI boom)
+                ai_desired = (1.0 - phi) * Y_prev * pfac * max(0.0, gamma * (pi_eff_prev - pi0))
                 inv_mult = (inv_share / p.a_ratio0) if p.a_ratio0 else 1.0
             A_desired = A_priv
             reinvest = scenario.ubc_reinvest.at(t, H) if ubc_on else 0.0
+            fund_capex = 0.0
+            if behavioural and ubc_on:
+                # the fund invests on its stake by the owners' rule (its return is
+                # the gross profit share: it pays no levy on itself), up to the
+                # budget its payout policy retains, planned on last year's profits.
+                fund_share = max(0.0, p.a_ratio0
+                                 + gamma * ((1.0 - ls_prev) * (1.0 - p.theta_k) - pi0)
+                                 + self.utilisation_response * (gap_prev - gap0))
+                fund_desired = phi * Y_prev * pfac * fund_share
+                expected_net = phi * (1.0 - ls_prev) * Y_prev * pfac - (
+                    self.loan_rate + self.deleverage_rate) * L_sf_prev
+                # Replacement comes out of the depreciation allowance (CFC) before
+                # any dividend: owners do not pay out capital consumption and
+                # neither does the fund, so `reinvest` applies to NET profits and
+                # a POMV draw cannot eat into replacement.
+                dep_prev = ((p.delta * K_trad_prev + p.delta_ai * K_ai_prev) / K_prev
+                            if K_prev > 0 else p.delta)
+                cfc_fund = dep_prev * Pk * E_sf_prev
+                if self.fund_payout > 0.0:
+                    budget = max(cfc_fund, expected_net
+                                 - self.fund_payout * (Pk * E_sf_prev - L_sf_prev))
+                else:
+                    budget = cfc_fund + reinvest * max(0.0, expected_net - cfc_fund)
+                budget = min(budget, max(0.0, expected_net))   # cannot retain more than it earns
+                fund_capex = max(0.0, min(budget, fund_desired))
             # interest on government debt (gov money held by households),
             # predetermined from last period's debt; paid out by money share.
             gov_debt_prev = M_w_prev + M_k_prev
@@ -300,7 +416,9 @@ class SFCCore(Module):
             fund_service = int_sf + rep_sf
             # inventories+valuables (P52+P53): constant autonomous, owner-
             # financed, NOT added to productive K (closes the identity).
-            INV = p.inv0
+            INV = p.inv0 * Pk
+            INV_d = INV                                 # desired inventories (nominal)
+            excess = 0.0                                # demand met by extra imports at the ceiling
             # cross-border secondary income (pooled global dividend), per capita
             T_int = (scenario.intl_transfer.at(t, H)
                      if scenario.intl_transfer is not None else 0.0)
@@ -317,12 +435,15 @@ class SFCCore(Module):
                     # owners are diluted the fund sustains capex (resolves C1).
                     gross_fund = phi * FP
                     net_fund = gross_fund - fund_service   # after servicing assumed debt
-                    if self.fund_payout > 0.0:
+                    if behavioural:
+                        A_fund = fund_capex               # predetermined -> solve stays linear
+                        div_total = net_fund - A_fund
+                    elif self.fund_payout > 0.0:
                         # GPFG/Alaska POMV: pay out fund_payout of the fund's VALUE,
                         # reinvest the rest -> the fund compounds like a real SWF.
                         # E_sf_prev is predetermined, so the draw is constant within
                         # the period -> the demand solve stays exactly linear (gate clean).
-                        div_total = self.fund_payout * (E_sf_prev - L_sf_prev)
+                        div_total = self.fund_payout * (Pk * E_sf_prev - L_sf_prev)
                         A_fund = net_fund - div_total
                     else:
                         A_fund = reinvest * net_fund       # legacy reinvest split
@@ -396,7 +517,7 @@ class SFCCore(Module):
                 # needed), 2 loans at the cap and capex cut, 3 no capex and
                 # inventories cut, 4 nothing left to cut. Each is LINEAR in Y,
                 # so each is solved exactly; the first consistent regime holds.
-                own_K_prev = max(K_prev - E_sf_prev, 0.0)
+                own_K_prev = max(K_prev - E_sf_prev, 0.0) * Pk   # at current prices
                 M_floor = liq_ratio * own_K_prev
                 cap = self.debt_cap * own_K_prev
                 # room for new borrowing; NEGATIVE = a required repayment of the
@@ -414,9 +535,9 @@ class SFCCore(Module):
                     bb = breakdown(Yv)
                     avail = cash_before(Yv, bb) + headroom - M_floor
                     if regime == 1:
-                        return bb, A_desired, p.inv0
+                        return bb, A_desired, INV_d
                     if regime == 2:
-                        return bb, avail - p.inv0, p.inv0
+                        return bb, avail - INV_d, INV_d
                     if regime == 3:
                         return bb, 0.0, avail
                     return bb, 0.0, 0.0
@@ -427,9 +548,17 @@ class SFCCore(Module):
                             + G + X - p.m_imp * Yv)
 
                 tol_f = 1e-9 * max(p.Y0, 1.0)
+                # C1 ceiling: real output <= max utilisation x full capacity
+                y_cap = ((1.0 + g_tfp) ** t * scenario.ai_productivity.at(t, H)
+                         * (K_trad_prev + K_ai_prev) / v_cap)
+                Y_ceiling = P * u_max * y_cap
                 for fin_regime in (1, 2, 3, 4):
                     Y = _solve_linear(lambda v, r=fin_regime: demand_r(v, r), p.Y0)
+                    capped = Y > Y_ceiling
+                    if capped:
+                        Y = Y_ceiling
                     b, A_priv, INV = plan(Y, fin_regime)
+                    excess = (demand_r(Y, fin_regime) - Y) if capped else 0.0
                     if fin_regime == 1:
                         needed = M_floor - (cash_before(Y, b) - A_priv - INV)
                         if needed <= headroom + tol_f:
@@ -445,9 +574,12 @@ class SFCCore(Module):
                             break
                     else:
                         dL = headroom
+            if behavioural:
+                u_d = ((Y + excess) / P) / y_cap if y_cap > 0 else u_0   # demand pressure
+                gap_now = u_d / u_n - 1.0
             A = A_priv + b["A_fund"]                # total investment
             C = b["C_w"] + b["C_k"]
-            M_imp = p.m_imp * Y                    # imports
+            M_imp = p.m_imp * Y + excess           # imports (+ excess demand met abroad)
             NX = X - M_imp                          # trade balance
             CA = NX + T_int                         # current account (incl. transfers)
             Y_prev = Y
@@ -481,9 +613,14 @@ class SFCCore(Module):
             # capital, which obsolesces fast (delta_ai). Both are real stocks.
             trad_target = p.a_ratio0 * Y          # baseline investment ratio of output
             ai_A = max(0.0, A - trad_target)
+            if behavioural:
+                # only the profit-driven (AI-boom) part builds fast-obsolescing AI
+                # capital; capacity-driven and fund investment is traditional
+                ai_A = (min(A, ai_desired * (A_priv / A_desired))
+                        if A_desired > 0 else 0.0)
             trad_A = A - ai_A
-            K_trad = K_trad_prev * (1.0 - p.delta) + trad_A
-            K_ai = K_ai_prev * (1.0 - p.delta_ai) + ai_A
+            K_trad = K_trad_prev * (1.0 - p.delta) + trad_A / Pk     # real stocks
+            K_ai = K_ai_prev * (1.0 - p.delta_ai) + ai_A / Pk
             K = K_trad + K_ai
             # UBC: convert an equal-valued claim (tau*FP) into the citizens'
             # endowment in kind each year; capped at full ownership of K. The
@@ -493,11 +630,11 @@ class SFCCore(Module):
             contrib = (tau * b["FP"]) if ubc_on else 0.0
             # behavioural: contrib is NET equity - the capital moves with its
             # share of the owners' debt (lev = owners' leverage). legacy: lev = 0.
-            lev = (min(L_prev / own_K_prev0, 0.95)
+            lev = (min(L_prev / (Pk * own_K_prev0), 0.95)
                    if (behavioural and ubc_on and own_K_prev0 > 0) else 0.0)
-            E_pre = E_sf_prev * (1.0 - blended_delta) + b["A_fund"]
-            E_sf = min(E_pre + contrib / (1.0 - lev), K)
-            d_tr = lev * max(0.0, E_sf - E_pre)            # debt assumed by the fund
+            E_pre = E_sf_prev * (1.0 - blended_delta) + b["A_fund"] / Pk
+            E_sf = min(E_pre + contrib / Pk / (1.0 - lev), K)    # real claim on capital
+            d_tr = lev * Pk * max(0.0, E_sf - E_pre)       # debt assumed by the fund (nominal)
             if behavioural:
                 L -= d_tr
                 L_sf = L_sf_prev - rep_sf + d_tr
@@ -574,8 +711,8 @@ class SFCCore(Module):
                           "government": -(M_w + M_k)},
                 "fx_assets": {"hh_workers": F_w, "hh_owners": F_k,
                               "rest_of_world": -(F_w + F_k)},
-                "capital": ({"hh_owners": owners_K, "sovereign_fund": E_sf}
-                            if E_sf > 0 else {"hh_owners": K}),
+                "capital": ({"hh_owners": Pk * owners_K, "sovereign_fund": Pk * E_sf}
+                            if E_sf > 0 else {"hh_owners": Pk * K}),   # at current prices
             }
 
             if behavioural:
@@ -611,7 +748,8 @@ class SFCCore(Module):
                 "swf_dividend_pc": b["div_total"] / pop,
                 "owners_capital": owners_K,
                 "owners_capital_share": (owners_K / K if K else 0.0),
-                "citizen_wealth_pc": (E_sf - L_sf) / pop, "inv_response": inv_mult,
+                "citizen_wealth_pc": (Pk * E_sf - L_sf) / Pk / pop,   # real (2019 prices)
+                "inv_response": inv_mult,
                 "swf_reinvest": b["A_fund"], "investment_private": A_priv,
                 "reinvest_rate": reinvest,
                 "income_workers_pc": b["YD_w"] / (f_w * p.population)
@@ -623,13 +761,20 @@ class SFCCore(Module):
                 "loans_owners": L, "loans_owners_gdp": 100.0 * L / Y if Y else 0.0,
                 "owners_borrowing": dL, "loan_interest": int_L + int_sf,
                 "loans_fund": L_sf, "fund_debt_service": fund_service,
-                "debt_assumed_by_fund": d_tr, "swf_net_assets": E_sf - L_sf,
+                "debt_assumed_by_fund": d_tr, "swf_net_assets": Pk * E_sf - L_sf,
+                "gdp_real": Y / Pk, "price_level": P, "inflation": infl,
                 "investment_desired": A_desired,
                 "investment_cut": A_desired - A_priv,
                 "financing_regime": fin_regime,
                 "owners_liquidity_floor": M_floor,
                 "owners_net_profit_share": pi_eff,
             }
+            if behavioural:
+                reported.update({"capacity": y_cap,
+                                 "utilisation": ((Y / P) / y_cap) if y_cap > 0 else 0.0,
+                                 "output_gap": gap_now, "excess_imports": excess})
+                gap_prev, P_prev = gap_now, P
+                ls_prev = ls
             periods.append(PeriodState(year=p.base_year + t, tfm=tfm, bsm=bsm,
                                        reported=reported))
 
@@ -644,6 +789,13 @@ class SFCCore(Module):
                 "profit_response": gamma, "debt_cap": self.debt_cap,
                 "loan_rate": self.loan_rate, "liquidity_floor": self.liquidity_floor,
                 "deleverage_rate": self.deleverage_rate,
+                "inflation_target": self.inflation_target,
+                "phillips_slope": self.phillips_slope,
+                "export_elasticity": self.export_elasticity,
+                "utilisation_response": self.utilisation_response,
+                "policy_start": self.policy_start,
+                "capacity_utilisation": cu if behavioural else None,
+                "baseline_tfp_growth": g_tfp if behavioural else None,
                 "params": p.as_dict(), "targets": p.targets,
                 "sources": p.sources, "notes": p.notes, "nx_gap": p.nx_gap,
             },

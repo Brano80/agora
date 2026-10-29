@@ -77,7 +77,9 @@ def _growth_volatility(gdp: List[float]) -> float:
 
 def _score(run) -> Tuple[Dict[str, float], Dict[str, float]]:
     macro = run.result
-    gdp = [p.reported["gdp"] for p in macro.periods]
+    # growth is judged on REAL GDP (Phase 7 C: values are in current euros);
+    # legacy runs report gdp_real == gdp (no price level)
+    gdp = [p.reported.get("gdp_real", p.reported["gdp"]) for p in macro.periods]
     end = macro.periods[-1].reported
     gini = (run.dist.periods[-1].reported["gini_personal"]
             if run.dist is not None else end["gini"])

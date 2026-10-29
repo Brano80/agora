@@ -54,7 +54,8 @@ def test_capital_accumulation_identity(orch):
     for i in range(1, len(res.periods)):
         cur, prv = res.periods[i].reported, res.periods[i - 1].reported
         dep = p.delta * prv["capital_traditional"] + p.delta_ai * prv["capital_ai"]
-        expected = prv["capital"] - dep + cur["investment"]
+        # capital is REAL: nominal investment is deflated by this year's price level
+        expected = prv["capital"] - dep + cur["investment"] / cur["price_level"]
         assert abs(cur["capital"] - expected) < 1e-6
     # AI capital is built only by the boom (excess over the baseline ratio) and
     # obsolesces fast, so it stays a minority of the stock here.
@@ -152,18 +153,23 @@ def test_phase6_fiscal_reaction_and_interest(orch):
     base = make_triad(p, horizon=40)[0]
     data = orch._data
 
-    def debt_end(fiscal_reaction=0.0, target=None, i_rate=None):
+    def debt_end(fiscal_reaction=0.0, target=None, i_rate=None, tail=1):
         res = SFCCore(base_year=2019, fiscal_reaction=fiscal_reaction,
                       debt_target=target, i_rate=i_rate).run(base, data)
         worst = max(r.max_residual for r in check_run(res, strict=False))
         assert worst < 1.0                                  # gate exact in every config
-        return res.periods[-1].reported["gov_debt_gdp"]
+        path = [q.reported["gov_debt_gdp"] for q in res.periods][-tail:]
+        return sum(path) / len(path)
 
-    off = debt_end()                                        # legacy (rule off, interest off)
-    low = debt_end(0.006, target=40.0)                      # force consolidation
-    high = debt_end(0.006, target=90.0)                     # force expansion
-    assert low < off < high                                 # the rule steers BOTH ways
-    assert abs(low - 40.0) < 5 and abs(high - 90.0) < 5     # and converges near the target
+    off = debt_end()                                        # rule off, interest off
+    # averages over the last 15 years: with capacity + inflation the controlled
+    # ratio oscillates around the target instead of settling (Phase 7 C)
+    low = debt_end(0.006, target=40.0, tail=15)             # force consolidation
+    high = debt_end(0.006, target=90.0, tail=15)            # force expansion
+    # the rule steers BOTH ways (Phase 7 C: with 2% inflation the no-rule ratio
+    # erodes on its own, so it no longer has to lie between the two targets)
+    assert low < high
+    assert abs(low - 40.0) < 8 and abs(high - 90.0) < 8     # and holds near the target
     # interest switch (no reaction) raises the debt path — the snowball term
     assert debt_end(i_rate=0.04) > off
 
@@ -212,12 +218,18 @@ def test_swf_pomv_payout_grounds_the_dividend(orch, closure):
                       investment_closure=closure).run(ubc, orch._data)
         assert max(r.max_residual for r in check_run(res, strict=False)) < 1.0   # gate exact
         e = res.periods[-1].reported
-        return e["transfer_pool"] / pop * 1e6, e["swf_stake"]
+        return e["transfer_pool"] / e["price_level"] / pop * 1e6, e["swf_stake"]   # real
 
     div_legacy, stake_legacy = run(0.0)
     div_pomv, stake_pomv = run(0.03)            # Norway GPFG 3% fiscal rule
     assert stake_pomv > stake_legacy            # POMV reinvests the rest -> fund compounds further
-    assert div_pomv < div_legacy                # a rule-based draw, not the full profit share
+    if closure == "legacy":
+        assert div_pomv < div_legacy            # a rule-based draw, not the full profit share
+    else:
+        # with a supply side, a fund that pays out all its NET profit only
+        # replaces the capital it owns; the retaining (POMV) fund grows it and
+        # so pays a larger REAL dividend by the horizon (Phase 7 C)
+        assert div_pomv > div_legacy
 
 
 def test_phase6_interest_reproduces_year0():

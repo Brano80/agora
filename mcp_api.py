@@ -36,7 +36,10 @@ DISCLAIMER = (
     "they are NOT forecasts. Every result passed the stock-flow consistency "
     "gate before being returned.")
 
-DEFAULT_SERIES = ["gdp", "consumption", "investment", "labour_share",
+# Phase 7 C: values are in current euros; gdp_real (2019 prices) is the size
+# measure, inflation and utilisation show the supply side.
+DEFAULT_SERIES = ["gdp", "gdp_real", "consumption", "investment", "labour_share",
+                  "inflation", "utilisation",
                   "gini_personal", "poverty_rate", "top10_wealth_share"]
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))

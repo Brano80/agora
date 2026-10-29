@@ -31,6 +31,15 @@ from typing import Optional
 from modules.interface import Scenario, LeverPath
 from calibration import SFCParams
 
+# Phase 7 C: AI's contribution to annual productivity growth while it is being
+# adopted. OECD (Filippucci, Gal & Schief 2024, "Miracle or Myth?", OECD AI
+# Papers No. 29): 0.25-0.6 pp/yr of TFP growth in the US over the next decade,
+# "somewhat lower" elsewhere -> 0.3 pp/yr for Europe. Acemoglu (2024, "The
+# Simple Macroeconomics of AI") is far lower (~0.07 pp/yr). The total LEVEL gain
+# is a decade of that growth, phased in with adoption (the labour-share path).
+AI_PRODUCTIVITY = 0.003
+AI_PRODUCTIVITY_YEARS = 10
+
 
 @dataclass
 class AIShock:
@@ -44,6 +53,8 @@ class AIShock:
     # toward ls0*(1 - theta*), theta* = automation/(automation + reinstatement).
     automation_rate: Optional[float] = None     # tasks AI automates per year
     reinstatement_rate: float = 0.02            # new labour tasks created per year
+    ai_productivity_gain: float = AI_PRODUCTIVITY   # pp/yr of productivity growth while adopting
+    ai_productivity_years: int = AI_PRODUCTIVITY_YEARS
     note: str = ""
 
 
@@ -95,14 +106,32 @@ def _labour_share_path(p: SFCParams, ai: AIShock) -> LeverPath:
     return LeverPath.ramp(start, end, "labour share (ramp)")
 
 
+def _ai_productivity_path(p: SFCParams, ai: AIShock, ls_path: LeverPath) -> LeverPath:
+    """Capacity multiplier (1 + g)^(years * adoption), adoption = how far the
+    labour share has travelled toward its end point (0 with no AI shift)."""
+    g, years = float(ai.ai_productivity_gain), float(ai.ai_productivity_years)
+    if g == 0.0:
+        return LeverPath(1.0, "AI productivity (off)")
+
+    def f(t: int, H: int) -> float:
+        drop = p.ls0 - ls_path.at(H - 1, H)
+        if drop <= 1e-9:
+            return 1.0
+        s = min(max((p.ls0 - ls_path.at(t, H)) / drop, 0.0), 1.0)
+        return (1.0 + g) ** (years * s)
+    return LeverPath(f, "AI productivity (level, phased with adoption)")
+
+
 def to_scenario(p: SFCParams, ai: AIShock, pol: Policy,
                 name: Optional[str] = None, horizon: int = 30,
                 geo: Optional[str] = None) -> Scenario:
     """Compose an (AIShock, Policy) into a Scenario the SFC core can run."""
+    ls_path = _labour_share_path(p, ai)
     return Scenario(
         name=name or f"{ai.name} + {pol.name}",
         horizon=horizon, geo=geo or p.geo,
-        labour_share=_labour_share_path(p, ai),
+        labour_share=ls_path,
+        ai_productivity=_ai_productivity_path(p, ai, ls_path),
         ai_capex=LeverPath.grow(p.a_ratio0, ai.capex_growth, "AI capex"),
         gov_ratio=LeverPath(p.g_ratio, "gov / Y0"),
         tax_income=LeverPath(p.theta, "income tax (calibrated)"),

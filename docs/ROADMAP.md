@@ -102,7 +102,7 @@ LLM steps via MCP sampling + wire scout/optimiser as crew tools.
 
 **Effort.** investigate ~0.5-1d · minimal server ~2-3d · Elicitation/Sampling +~1d each · MCP Apps out of spike scope. Record the outcome here + in `STATE.md` when run.
 
-### Phase 7 — Credibility fixes (IN PROGRESS: 0, A, B done 2026-10-29)
+### Phase 7 — Credibility fixes (IN PROGRESS: 0, A, B, C done 2026-10-29)
 Review found the headline results rest on gate-clean but economically implausible runs: no supply side, unconstrained investment financing (owners insolvent), no foreign ownership of AI capital, book-value equity transfer. Step-by-step plan, evidence and acceptance criteria: `docs/PHASE7.md`.
 
 ## Standing principles (apply to every phase)

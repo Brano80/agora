@@ -94,7 +94,8 @@ def test_wealth_distribution_only_ubc_compresses_it():
     # With the endogenous wealth channel (omega>0), the capital-share rise
     # concentrates wealth EQUALLY across no-policy and cash (flows don't touch
     # ownership), so cash TRACKS no-policy - it does not socialise capital.
-    assert abs(cash_end - nopol_end) < 0.01    # cash UBI tracks no-policy on WEALTH
+    # (Phase 7 C: with a supply side the levy's investment effect moves it ~1.5 pp)
+    assert abs(cash_end - nopol_end) < 0.03    # cash UBI tracks no-policy on WEALTH
     assert cash_end >= w0 - 0.01               # cash does NOT reduce concentration (rises with capital share)
     assert ubc_end < nopol_end - 0.2           # only UBC collapses the top-wealth share
     assert ubc_end < w0 - 0.2                  # UBC ends far below baseline
