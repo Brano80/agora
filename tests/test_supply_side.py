@@ -82,7 +82,7 @@ def test_baseline_is_anchored(geo):
     u = cap.capacity_utilisation_for(geo)
     assert abs(statistics.mean(infl) - INFLATION_TARGET) < 0.005, geo
     lo = u["min"] if u.get("min") is not None else 0.70     # the country's 2005-2019 trough
-    assert lo <= min(util) and max(util) <= u["max"], geo
+    assert lo <= min(util) and max(util) <= u["max"] + 1e-9, geo
     assert statistics.pstdev(util) < 0.02, geo
 
 

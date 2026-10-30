@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Tuple
 
 from modules.interface import Module, Scenario, RunResult
 from modules.sfc_core import (SFCCore, DEBT_CAP, LOAN_RATE, LIQUIDITY_FLOOR,
-                              AI_FOREIGN_SHARE, LEVY_PASS_THROUGH)
+                              AI_FOREIGN_SHARE, LEVY_PASS_THROUGH, fiscal_calibration)
 from modules.distribution import DistributionModule
 from modules.input_output import InputOutputModule
 from calibration import calibrate, SFCParams
@@ -76,9 +76,9 @@ class AgoraOrchestrator:
                  modules: Optional[List[Module]] = None,
                  store: Optional[Store] = None,
                  allow_live: bool = True, strict: bool = True,
-                 inv_elasticity: float = 0.0, fiscal_reaction: float = 0.0,
+                 inv_elasticity: float = 0.0, fiscal_reaction: Optional[float] = None,
                  debt_target: Optional[float] = None, i_rate: Optional[float] = None,
-                 capital_tax_share: float = 0.0, fund_payout: float = 0.0,
+                 capital_tax_share: Optional[float] = None, fund_payout: float = 0.0,
                  investment_closure: str = "behavioural",
                  profit_response: Optional[float] = None, debt_cap: float = DEBT_CAP,
                  loan_rate: float = LOAN_RATE, liquidity_floor: float = LIQUIDITY_FLOOR,
@@ -88,10 +88,12 @@ class AgoraOrchestrator:
         self.year = year
         self.inv_elasticity = float(inv_elasticity)
         # Phase 6 fiscal block (all default OFF -> exact legacy behaviour)
-        self.fiscal_reaction = float(fiscal_reaction)
+        # None = the closure default (Phase 7 E: on for the behavioural closure)
+        self.fiscal_reaction = None if fiscal_reaction is None else float(fiscal_reaction)
         self.debt_target = debt_target
         self.i_rate = i_rate
-        self.capital_tax_share = float(capital_tax_share)
+        self.capital_tax_share = (None if capital_tax_share is None
+                                  else float(capital_tax_share))
         self.fund_payout = float(fund_payout)   # SWF POMV draw (GPFG 3% / Alaska 5%); 0 = legacy
         # Phase 7 B investment closure ("behavioural" default; "legacy" = v1.1)
         self.investment_closure = investment_closure
@@ -163,8 +165,9 @@ class AgoraOrchestrator:
             self.load_data()
         return calibrate(self._data, geo=self.geo, base_year=self.year,
                          sources=self._sources,
-                         capital_tax_share=self.capital_tax_share,
-                         i_rate=(self.i_rate if self.i_rate is not None else 0.0))
+                         **fiscal_calibration(self.geo, self.investment_closure,
+                                              i_rate=self.i_rate,
+                                              capital_tax_share=self.capital_tax_share))
 
     def run_scenario(self, scenario: Scenario) -> ScenarioRun:
         if self._data is None:
@@ -337,8 +340,8 @@ class AgoraOrchestrator:
 
 def build(geo: str = "DE", year: int = 2019, allow_live: bool = True,
           db_path: Optional[str] = None, strict: bool = True,
-          fiscal_reaction: float = 0.0, debt_target: Optional[float] = None,
-          i_rate: Optional[float] = None, capital_tax_share: float = 0.0,
+          fiscal_reaction: Optional[float] = None, debt_target: Optional[float] = None,
+          i_rate: Optional[float] = None, capital_tax_share: Optional[float] = None,
           fund_payout: float = 0.0) -> AgoraOrchestrator:
     store = Store(db_path) if db_path is not None else None
     return AgoraOrchestrator(geo=geo, year=year, store=store,

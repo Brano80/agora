@@ -43,6 +43,8 @@ PRIORS: Dict[str, Tuple[float, float]] = {
     # Phase 7 D: external sector
     "ai_foreign_share": (0.5, 0.9),     # AI rent earned abroad (Synergy 2025: US ~70% of EU cloud)
     "levy_pass_through": (0.5, 1.0),    # source levy passed on (Langenmayr & Muddasani 2026)
+    # Phase 7 E: the fiscal block
+    "fiscal_reaction": (0.0003, 0.0005),  # Bohn 0.03-0.05 (ECB WP 2036), per pp of debt/GDP
     # beta is UNIDENTIFIED in macro data (disposable-Gini cross-section R2=.02;
     # FE panel 2010-24 beta=.05 R2=.006 - redistribution absorbs the shift). The
     # OECD IDD market Gini (2026-06-14) removes that confound and QUANTIFIES it:
@@ -93,7 +95,7 @@ def core_kwargs(d: Dict[str, float]) -> Dict[str, object]:
     return {k: d[k] for k in ("profit_response", "debt_cap", "loan_rate",
                               "phillips_slope", "export_elasticity",
                               "utilisation_response", "ai_foreign_share",
-                              "levy_pass_through") if k in d}
+                              "levy_pass_through", "fiscal_reaction") if k in d}
 
 
 def _pctile(xs: List[float], q: float) -> float:

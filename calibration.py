@@ -82,6 +82,8 @@ def calibrate(
     capital_tax_share: float = 0.0,  # P6 broad revenue base: share of base-year net
                                      # tax raised on CAPITAL (0 = legacy wage-only base)
     i_rate: float = 0.0,        # interest on gov debt; 0 keeps Phase 1-3 behaviour
+    g_nominal: Optional[float] = None,  # Phase 7 E: nominal trend growth; when set,
+                                # net taxes hold debt/GDP at its base-year level
     world_growth: float = 0.015,  # exports grow with FOREIGN demand, not own output
     g_fiscal: float = 0.015,    # debt-stabilising growth for the fiscal anchor
     gini_target: Optional[float] = None,
@@ -123,8 +125,14 @@ def calibrate(
     # the flaw the historical backtest caught (F9). Inequality is anchored
     # separately by the distribution module's personal Gini, so decoupling theta
     # costs nothing on the reported-inequality side. (tax_k0 = 0 at baseline.)
-    target_deficit = g_fiscal * debt
-    theta = max(0.05, min(0.60, (G0 - target_deficit) / (ls0 * Y0)))
+    if g_nominal is None:
+        target_deficit = g_fiscal * debt
+        theta = max(0.05, min(0.60, (G0 - target_deficit) / (ls0 * Y0)))
+    else:
+        # Phase 7 E: the STRUCTURAL primary balance that holds debt/GDP at its
+        # base-year level given the interest rate and nominal growth,
+        # pb* = (i - g) * debt; deviations are corrected by the fiscal rule.
+        theta = max(0.05, min(0.60, (G0 + (i_rate - g_nominal) * debt) / (ls0 * Y0)))
     tau_fisc = 0.0   # theta now carries the fiscal balance; proportional top-up unused
     # Phase 6 broad revenue base: split the SAME total base-year net tax
     # (theta*WB0) into a labour rate (theta_w on wages) + a baseline CAPITAL rate

@@ -93,19 +93,18 @@ def _known_geos() -> List[str]:
 
 
 def _orchestrator(geo: str = "DE", year: int = 2019, allow_live: bool = False,
-                  fiscal_reaction: float = 0.0,
+                  fiscal_reaction: Optional[float] = None,
                   debt_target: Optional[float] = None,
                   i_rate: Optional[float] = None,
-                  capital_tax_share: float = 0.0) -> AgoraOrchestrator:
+                  capital_tax_share: Optional[float] = None) -> AgoraOrchestrator:
     geo = (geo or "DE").upper()
     known = _known_geos()
     if geo not in known:
         raise ToolError(
             f"Unknown geo '{geo}'. Available snapshot geos: {', '.join(known)}. "
             "New EU members can be added with scripts/build_snapshot.py.")
-    fiscal = (float(fiscal_reaction), debt_target, i_rate,
-              float(capital_tax_share))
-    default_fiscal = fiscal == (0.0, None, None, 0.0)
+    fiscal = (fiscal_reaction, debt_target, i_rate, capital_tax_share)
+    default_fiscal = fiscal == (None, None, None, None)   # the closure's sourced defaults
     key = (geo, year, bool(allow_live))
     if default_fiscal and key in _ORCH:
         return _ORCH[key]
@@ -259,18 +258,20 @@ def run_scenario(geo: str = "DE", horizon: int = 30,
                  reinstatement_rate: float = 0.02,
                  series: Optional[List[str]] = None,
                  name: Optional[str] = None, allow_live: bool = False,
-                 fiscal_reaction: float = 0.0,
+                 fiscal_reaction: Optional[float] = None,
                  debt_target: Optional[float] = None,
                  i_rate: Optional[float] = None,
-                 capital_tax_share: float = 0.0,
+                 capital_tax_share: Optional[float] = None,
                  year: int = 2019) -> Dict[str, Any]:
     """Run ONE gated scenario; defaults = the no-shock baseline.
 
     AI-shock preset: labour_share_end=0.30, capex_growth=0.06 (see
     mcp_api.AI_SHOCK_PRESET). Policy levers: capital_tax (+ ubi=True for cash
     redistribution, or ubc=True for the citizens' capital fund with optional
-    ubc_reinvest). Fiscal block (Phase 6, default OFF): fiscal_reaction,
-    debt_target, i_rate, capital_tax_share.
+    ubc_reinvest). Fiscal block (Phase 7 E: ON with sourced defaults - each
+    country's implicit interest rate and 2019 primary balance, a 30% capital
+    share of taxes, and a Bohn debt rule toward the 2019 debt ratio); override
+    with fiscal_reaction, debt_target, i_rate, capital_tax_share.
     """
     horizon = _check_horizon(horizon)
     spec = _validate_levers({"labour_share_end": labour_share_end,
@@ -289,8 +290,8 @@ def run_scenario(geo: str = "DE", horizon: int = 30,
     payload = _run_payload(orch, run, series or DEFAULT_SERIES)
     payload["assumptions"] = _assumptions(scen)
     payload["data_sources"] = _sources(orch)
-    if fiscal_reaction or debt_target is not None or i_rate is not None \
-            or capital_tax_share:
+    if any(v is not None for v in (fiscal_reaction, debt_target, i_rate,
+                                   capital_tax_share)):
         payload["fiscal_block"] = {"fiscal_reaction": fiscal_reaction,
                                    "debt_target": debt_target, "i_rate": i_rate,
                                    "capital_tax_share": capital_tax_share}

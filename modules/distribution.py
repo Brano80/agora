@@ -164,6 +164,12 @@ class DistributionModule(Module):
 
     @staticmethod
     def _capital_share(rep: Dict[str, float]) -> float:
+        # Phase 7 E: MARKET inequality follows the households' capital share
+        # BEFORE taxes and levies (behavioural closure). Using the after-levy
+        # share counted a cash levy twice: once here and once as the transfer.
+        if "capital_income_hh_gross" in rep:
+            k, w = rep["capital_income_hh_gross"], rep.get("wage_bill", 0.0)
+            return k / (w + k) if (w + k) else 0.0
         nl, nk = rep.get("net_wages", 0.0), rep.get("net_profits", 0.0)
         denom = nl + nk
         return nk / denom if denom else 0.0

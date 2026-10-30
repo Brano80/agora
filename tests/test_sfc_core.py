@@ -128,11 +128,14 @@ def test_interest_on_gov_debt_is_gated_and_optional(orch):
     data = orch._data
     scen = make_triad(orch.params(), horizon=30)[1]      # AI shift, no policy
 
-    base = SFCCore(base_year=2019).run(scen, data)        # i_rate default 0
+    # Phase 6 semantics (v1.1 engine): the behavioural closure turns interest on
+    # by default with each country's rate (Phase 7 E, tests/test_fiscal.py)
+    base = SFCCore(base_year=2019, investment_closure="legacy").run(scen, data)
     assert all(per.reported["gov_interest"] == 0.0 for per in base.periods)
 
     p_i = calibrate(data, geo="DE", base_year=2019, i_rate=0.03)
-    withi = SFCCore(base_year=2019, calib_kwargs={"i_rate": 0.03}).run(
+    withi = SFCCore(base_year=2019, calib_kwargs={"i_rate": 0.03},
+                    investment_closure="legacy").run(
         make_triad(p_i, horizon=30)[1], data)
     reports = check_run(withi, strict=False)
     assert all(r.passed for r in reports)                 # still gate-clean
@@ -155,7 +158,8 @@ def test_phase6_fiscal_reaction_and_interest(orch):
 
     def debt_end(fiscal_reaction=0.0, target=None, i_rate=None, tail=1):
         res = SFCCore(base_year=2019, fiscal_reaction=fiscal_reaction,
-                      debt_target=target, i_rate=i_rate).run(base, data)
+                      debt_target=target, i_rate=i_rate,
+                      investment_closure="legacy").run(base, data)
         worst = max(r.max_residual for r in check_run(res, strict=False))
         assert worst < 1.0                                  # gate exact in every config
         path = [q.reported["gov_debt_gdp"] for q in res.periods][-tail:]
@@ -181,7 +185,8 @@ def test_phase6_broad_base_and_full_block_via_orchestrator():
     controlled path; the gate stays exact. Default OFF leaves everything unchanged."""
     from orchestrator import AgoraOrchestrator
     on = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True,
-                           capital_tax_share=0.2, fiscal_reaction=0.01)
+                           capital_tax_share=0.2, fiscal_reaction=0.01,
+                           investment_closure="legacy")
     on.load_data()
     rows, _ = on.validate_baseline(horizon=30)
     ok = {r.metric: r.ok for r in rows}
@@ -194,7 +199,8 @@ def test_phase6_broad_base_and_full_block_via_orchestrator():
     r = on.run_scenario(ai)
     assert r.consistent and r.max_residual < 1.0          # gate exact with the block on
     debt_on = r.result.periods[-1].reported["gov_debt_gdp"]
-    off = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True)
+    off = AgoraOrchestrator(geo="DE", year=2019, allow_live=False, strict=True,
+                            investment_closure="legacy")
     off.load_data()
     debt_off = off.run_scenario(make_triad(off.params(), horizon=40)[1]
                                 ).result.periods[-1].reported["gov_debt_gdp"]

@@ -86,9 +86,10 @@ def test_year0_calibration_matches_the_data(geo):
     psi0 = e["inward_gdp"] / ((1.0 - p.ls0) - p.delta * p.K0 / p.Y0)   # of NET profits
     assert run.meta["foreign_stake0"] == pytest.approx(psi0)
     assert r0["foreign_capital_share"] == pytest.approx(psi0, rel=0.02)
-    # equity income paid abroad / received in 2019 = the observed shares of GDP
-    assert p.theta_k == 0.0
-    assert r0["foreign_profits"] / r0["gdp"] == pytest.approx(e["inward_gdp"], rel=1e-9)
+    # equity income paid abroad in 2019 = the observed share of GDP, less the
+    # capital tax the model levies at source on the foreign stake (step E)
+    assert r0["foreign_profits"] / r0["gdp"] == pytest.approx(
+        e["inward_gdp"] - psi0 * p.theta_k * (1.0 - p.ls0), rel=1e-9)
     assert r0["owners_foreign_income"] / r0["gdp"] == pytest.approx(e["outward_gdp"], rel=1e-9)
     # the 2019 NIIP plus the year's current account (no revaluation in year 0)
     assert r0["niip_gdp"] == pytest.approx(

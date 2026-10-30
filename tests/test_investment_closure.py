@@ -33,9 +33,10 @@ from uncertainty import PRIORS, core_kwargs
 SOLVENCY = {"hh_net_worth_nonnegative", "money_split_shares_valid"}
 # macro aggregates reproduce the legacy base year; household money and income
 # differ by design from step D (foreign owners, equity abroad, no household fx)
-YEAR0_KEYS = ("gdp", "consumption", "investment", "gov_debt", "wage_bill",
+# (gov_debt differs from step E: interest and the structural fiscal balance)
+YEAR0_KEYS = ("gdp", "consumption", "investment", "wage_bill",
               "profits", "exports", "imports", "gov_expenditure")
-YEAR0_ARM_KEYS = YEAR0_KEYS + ("money_owners", "money_workers", "hh_disposable",
+YEAR0_ARM_KEYS = YEAR0_KEYS + ("gov_debt", "money_owners", "money_workers", "hh_disposable",
                                "current_account", "niip")
 
 

@@ -102,6 +102,7 @@ from modules.interface import Module, Scenario, RunResult, PeriodState
 from calibration import calibrate, SFCParams
 from data.connectors.capacity import capacity_utilisation_for
 from data.connectors.external import R_WORLD, external_position_for
+from data.connectors.fiscal import fiscal_position_for
 
 
 # --------------------------------------------------------------------------- #
@@ -131,6 +132,7 @@ LIQUIDITY_FLOOR = 0.5
 
 # Phase 7 C supply side and prices.
 INFLATION_TARGET = 0.02      # ECB price-stability target
+WORLD_GROWTH = 0.015         # world real growth (= calibrate()'s world_growth default)
 # pp of inflation per pp of output gap: ECB WP 3133 (Beschin, Paredes,
 # Polichetti & Renault 2025) regional euro-area slope ~0.19 per pp of
 # unemployment, times an Okun coefficient of ~0.4 (Ball, Leigh & Loungani 2017).
@@ -164,6 +166,33 @@ AI_FOREIGN_SHARE = 0.70
 # tax (Langenmayr & Muddasani 2026, CESifo WP 12713) and the platforms added
 # DST surcharges to their invoices. MC range 0.5-1.0.
 LEVY_PASS_THROUGH = 0.9
+
+# Phase 7 E: the fiscal block (behavioural closure defaults; legacy keeps 0).
+# Capital taxes / (labour + capital taxes) = 21.6 / (51.5 + 21.6), EU-27 2024
+# (European Commission, DG TAXUD, tax revenue release of 31 March 2026).
+CAPITAL_TAX_SHARE = 0.30
+# Fiscal reaction (Bohn coefficient): +0.034 pp of primary balance per pp of
+# debt/GDP (Checherita-Westphal & Zdarek 2017, ECB WP 2036, euro area 1970-2013;
+# range 0.03-0.05). Applied to the tax rate on all taxed income (labour and
+# capital alike), steering debt back to its 2019 level. MC range 0.03-0.05.
+FISCAL_REACTION = 0.034 / 100.0
+
+
+def fiscal_calibration(geo: Optional[str], closure: str,
+                       i_rate: Optional[float] = None,
+                       capital_tax_share: Optional[float] = None) -> dict:
+    """calibrate() fiscal kwargs for a closure. Behavioural: each country's
+    implicit interest rate (2015-19) and 2019 primary balance (Eurostat), and
+    a 30% capital share of taxes. Legacy: the v1.1 defaults (0, 0, debt anchor)."""
+    if closure == "behavioural":
+        f = fiscal_position_for(geo)
+        return {"i_rate": float(f["implicit_rate"]) if i_rate is None else float(i_rate),
+                "capital_tax_share": (CAPITAL_TAX_SHARE if capital_tax_share is None
+                                      else float(capital_tax_share)),
+                # nominal trend growth = the world's real growth at the ECB target
+                "g_nominal": (1.0 + WORLD_GROWTH) * (1.0 + INFLATION_TARGET) - 1.0}
+    return {"i_rate": 0.0 if i_rate is None else float(i_rate),
+            "capital_tax_share": 0.0 if capital_tax_share is None else float(capital_tax_share)}
 
 
 def profit_response_for(geo: Optional[str]) -> float:
@@ -202,7 +231,7 @@ class SFCCore(Module):
     name = "sfc_core"
 
     def __init__(self, base_year: int = 2019, calib_kwargs: Optional[dict] = None,
-                 inv_elasticity: float = 0.0, fiscal_reaction: float = 0.0,
+                 inv_elasticity: float = 0.0, fiscal_reaction: Optional[float] = None,
                  debt_target: Optional[float] = None, i_rate: Optional[float] = None,
                  fund_payout: float = 0.0, investment_closure: str = "behavioural",
                  profit_response: Optional[float] = None, debt_cap: float = DEBT_CAP,
@@ -231,7 +260,8 @@ class SFCCore(Module):
         #   debt_target = target debt/GDP in % (None -> the calibrated seed level).
         #   i_rate = override interest rate on gov debt (None -> calibrated p.i_rate,
         #     0 by default; set >0 to turn on the r-g snowball).
-        self.fiscal_reaction = float(fiscal_reaction)
+        # None = the closure default (behavioural: FISCAL_REACTION; legacy: 0)
+        self.fiscal_reaction = None if fiscal_reaction is None else float(fiscal_reaction)
         self.debt_target = debt_target
         self.i_rate_override = i_rate
         # SWF calibration (default OFF -> legacy full-profit-share payout):
@@ -303,13 +333,24 @@ class SFCCore(Module):
             "foreign_profits", "foreign_capital_share", "fdi_investment", "fdi_net_inflow",
             "owners_foreign_equity", "owners_foreign_income", "fund_foreign_equity",
             "fund_foreign_income", "public_external_position", "niip", "niip_gdp",
+            "capital_income_hh_gross", "tax_rate_labour", "tax_rate_capital",
         ]
 
     def run(self, scenario: Scenario, data: Dict[str, float],
             context: Optional[dict] = None) -> RunResult:
         ck = dict(self.calib_kwargs)
-        if self.i_rate_override is not None:
-            ck.setdefault("i_rate", self.i_rate_override)   # calibration matches the run rate
+        fk = fiscal_calibration(scenario.geo, self.investment_closure,
+                                i_rate=self.i_rate_override,
+                                capital_tax_share=ck.get("capital_tax_share"))
+        if ck.get("capital_tax_share") is None:
+            ck["capital_tax_share"] = fk["capital_tax_share"]
+        if self.i_rate_override is not None or self.investment_closure == "behavioural":
+            ck.setdefault("i_rate", fk["i_rate"])         # calibration matches the run rate
+        if "g_nominal" in fk:
+            ck.setdefault("g_nominal", fk["g_nominal"])
+        fiscal_reaction = (self.fiscal_reaction if self.fiscal_reaction is not None
+                           else (FISCAL_REACTION if self.investment_closure == "behavioural"
+                                 else 0.0))
         p = calibrate(data, geo=scenario.geo, base_year=self.base_year,
                       sources=data.get("_sources", {}) if isinstance(data, dict) else {},
                       **ck)
@@ -411,14 +452,16 @@ class SFCCore(Module):
                 tau, ubi_on, ubc_on = 0.0, False, False
             # Phase 6 fiscal-reaction rule (default OFF): adjusts the LABOUR rate
             # (the usual marginal instrument) to steer debt/GDP toward target.
-            if self.fiscal_reaction:
+            if fiscal_reaction:
                 debt_gdp_prev = ((100.0 * (M_w + M_k - L - L_sf - (FX_s - FX_s0)) / Y_prev)
                                  if Y_prev else debt_target)
-                delta_theta = self.fiscal_reaction * (debt_gdp_prev - debt_target)
+                delta_theta = fiscal_reaction * (debt_gdp_prev - debt_target)
             else:
                 delta_theta = 0.0
             theta_w = min(0.95, max(0.0, p.theta_w + delta_theta))
             theta_k = p.theta_k
+            if behavioural:      # E3: the rule moves the tax rate on ALL taxed income
+                theta_k = min(0.95, max(0.0, p.theta_k + delta_theta))
 
             M_w_prev, M_k_prev, K_prev = M_w, M_k, K
             K_trad_prev, K_ai_prev = K_trad, K_ai
@@ -1033,6 +1076,10 @@ class SFCCore(Module):
                     "fund_foreign_equity": A_sff, "fund_foreign_income": Y_sf,
                     "public_external_position": FX_s,
                     "niip": nfa, "niip_gdp": 100.0 * nfa / Y if Y else 0.0,
+                    # E: owners' capital income BEFORE capital taxes and levies
+                    # (drives MARKET inequality in the distribution layer)
+                    "capital_income_hh_gross": b["own_fp"] + Y_kf,
+                    "tax_rate_labour": theta_w, "tax_rate_capital": theta_k,
                     "swf_net_assets": Pk * E_sf - L_sf + A_sff,
                     "citizen_wealth_pc": (Pk * E_sf - L_sf + A_sff) / Pk / pop,
                 })
@@ -1062,6 +1109,11 @@ class SFCCore(Module):
                 "policy_start": self.policy_start,
                 "capacity_utilisation": cu if behavioural else None,
                 "baseline_tfp_growth": g_tfp if behavioural else None,
+                "fiscal_reaction": fiscal_reaction, "debt_target": debt_target,
+                "i_rate": i_rate_eff, "capital_tax_share": ck.get("capital_tax_share"),
+                "g_nominal": ck.get("g_nominal"),
+                "observed_primary_balance": (fiscal_position_for(scenario.geo)["primary_balance"]
+                                             if behavioural else None),
                 "external": ext if behavioural else None,
                 "foreign_stake0": psi0, "ai_foreign_share": self.ai_foreign_share,
                 "levy_pass_through": self.levy_pass_through, "r_world": self.r_world,
