@@ -98,7 +98,8 @@ def _row(family, geo, name, res, dist, reports, **extra):
           for p in res.periods]
     mk = [float(p.bsm.get("money", {}).get("hh_owners", 0.0)) for p in res.periods]
     mw = [float(p.bsm.get("money", {}).get("hh_workers", 0.0)) for p in res.periods]
-    neg_money = [c for c, v in (("workers", min(mw)), ("owners", min(mk))) if v < 0]
+    tol = 1e-6 + 1e-9 * Y0                       # the gate's tolerance (rounding at a zero floor)
+    neg_money = [c for c, v in (("workers", min(mw)), ("owners", min(mk))) if v < -tol]
     iy = [p.reported["investment"] / p.reported["gdp"] for p in res.periods
           if p.reported.get("gdp")]
     gi = ([p.reported["gini_personal"] for p in dist.periods
@@ -118,6 +119,16 @@ def _row(family, geo, name, res, dist, reports, **extra):
                                         for p in res.periods) / len(res.periods)),
                    min_utilisation=_r(min(p.reported["utilisation"] for p in res.periods)),
                    util_trough=(res.meta.get("capacity_utilisation") or {}).get("min"))
+    if res.periods and "niip_gdp" in res.periods[0].reported:      # step D external sector
+        e, e0 = res.periods[-1].reported, res.periods[0].reported
+        row.update(niip0=_r(e0["niip_gdp"], 1), niip_end=_r(e["niip_gdp"], 1),
+                   ca_max_abs=_r(max(abs(p.reported["current_account"] / p.reported["gdp"])
+                                     for p in res.periods)),
+                   ai_rent_end=_r(e["ai_rent"] / e["gdp"]),
+                   reach_end=_r(e["ai_rent_reached_share"]),
+                   foreign_reach_end=_r(e["ai_rent_foreign_reached_share"]),
+                   gni_gdp_end=_r(e["gni"] / e["gdp"]),
+                   foreign_capital_end=_r(e["foreign_capital_share"]))
     row.update(extra)
     return row
 
@@ -316,6 +327,17 @@ def build_report(data, date=None):
             "checked against the new plausibility-v2 laws in `consistency/checks.py`. "
             "The laws run in *audit* mode, so nothing shipped changes; this file reads "
             "what they flag. Reproduce: `python scripts/audit_plausibility.py`.\n")
+    elif step == "D":
+        add(f"# Plausibility audit — {date} (Phase 7, step D)\n")
+        add("The same scenario families, countries and laws as the step-A, B and C "
+            "audits, re-run on the engine with an **external sector**: foreign owners "
+            "hold their observed share of domestic capital, owners hold their observed "
+            "equity abroad, every country starts at its 2019 net international "
+            "investment position, 70% of the AI rent is paid abroad as licence and "
+            "cloud fees, the net external position is held by the public sector as a "
+            "stand-in (no household carries it), and the citizens' fund invests abroad "
+            "what it retains but cannot use at home. Reproduce: "
+            "`python scripts/audit_plausibility.py` (step A: `--closure legacy`).\n")
     elif step == "C":
         add(f"# Plausibility audit — {date} (Phase 7, step C)\n")
         add("The same scenario families, countries and laws as the step-A audit "
@@ -503,8 +525,10 @@ def build_report(data, date=None):
     add("## Reading\n")
     if closure != "legacy":
         _reading_b(add, rows, mc, by, step)
-        if step == "C":
+        if step in ("C", "D"):
             _reading_c(add, rows, mc)
+        if step == "D":
+            _reading_d(add, rows)
         return "\n".join(L) + "\n"
     add("- Every run counted above passes (or fails) the **accounting** gate exactly as "
         "before; the plausibility laws only add information.")
@@ -537,7 +561,12 @@ def _reading_b(add, rows, mc, by, step="B"):
     n_acc = sum(r["accounting_ok"] for r in rows)
     add(f"- **Accounting:** {n_acc:,} of {len(rows):,} runs balance their books.")
     nw = [r for r in rows if "hh_net_worth_nonnegative" in r["first_fail"]]
-    if step == "C":
+    if step == "D":
+        add(f"- **Insolvency:** {len(nw)} runs and "
+            f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws (step B: 2 runs; "
+            "step C: 0). External positions are no longer split among households by "
+            "their money, so no household carries the country's foreign debt.")
+    elif step == "C":
         add(f"- **Insolvency:** {len(nw)} runs and "
             f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws (step B: 2 "
             "runs). The SK runs that failed in step B reinvested without limit; with a "
@@ -560,12 +589,16 @@ def _reading_b(add, rows, mc, by, step="B"):
         f"{sum('workers' in r.get('neg_money', []) for r in rows)} runs "
         f"({', '.join(wrk) or 'none'}); Monte-Carlo draws: "
         + (", ".join(f"{g} {n}" for g, n in sorted(mc_money.items())) or "none")
-        + ". No owner overdraft remains outside countries whose calibration is "
-        "unusable. Workers' overdrafts arise there too, and in trade-linked runs "
-        "from the external-position rule. This law stays advisory until step D.")
+        + (". With the external position off household balance sheets (step D) the "
+           "trade-linked overdrafts are gone. The law stays advisory until step F "
+           "re-validates."
+           if step == "D" else
+           ". No owner overdraft remains outside countries whose calibration is "
+           "unusable. Workers' overdrafts arise there too, and in trade-linked runs "
+           "from the external-position rule. This law stays advisory until step D."))
     iy = [r for r in rows if "investment_share_bounded" in r["first_fail"]]
     iy_fund = sum(1 for r in iy if policy_form(r["scenario"]) == "ubc")
-    if step == "C":
+    if step in ("C", "D"):
         iy_geo = sorted({r["geo"] for r in iy})
         add(f"- **Investment above 40% of GDP:** {len(iy)} runs ({iy_fund} of them UBC), "
             f"all in {', '.join(iy_geo) or 'no country'} (step B: 385 in the rich "
@@ -578,7 +611,7 @@ def _reading_b(add, rows, mc, by, step="B"):
             "domestic fixed capital; a real fund would also buy financial and foreign "
             "assets. That outlet arrives with step D (the fund may buy foreign equity).")
     gf = [r for r in rows if "gini_floor" in r["first_fail"]]
-    if step == "C":
+    if step in ("C", "D"):
         cash_g = sum(mc[g]["cash_ubi"]["fails"].get("gini_floor", 0)
                      for g in mc if "cash_ubi" in mc[g])
         add(f"- **Gini below 0.15:** {len(gf):,} runs and {mcc.get('gini_floor', 0):,} "
@@ -640,6 +673,40 @@ def _reading_c(add, rows, mc):
         "banks step), so demand-led growth is not yet leaned against.")
 
 
+def _reading_d(add, rows):
+    import statistics as _st
+    ext = [r for r in rows if r.get("niip_end") is not None]
+    if not ext:
+        return
+    base = [r for r in ext if r["family"] == "triad" and r["scenario"] == "Baseline"]
+    if base:
+        moves = sorted(base, key=lambda r: r["niip_end"] - r["niip0"])
+        add(f"- **External positions (baselines):** NIIP {_st.median(r['niip0'] for r in base):+.0f}% "
+            f"of GDP in 2019 (median) and {_st.median(r['niip_end'] for r in base):+.0f}% in 2049; "
+            "largest moves: " + ", ".join(f"{r['geo']} {r['niip0']:+.0f} to {r['niip_end']:+.0f}"
+                                          for r in moves[-3:][::-1])
+            + ". Exports follow world demand while imports follow domestic output, so "
+            "surplus countries keep accumulating; there is no exchange-rate or "
+            "risk-premium feedback yet (step F).")
+    big = Counter(policy_form(r["scenario"]) for r in ext if r["ca_max_abs"] > 0.10)
+    add("- **Current account beyond +-10% of GDP** in some year: "
+        + "; ".join(f"{k} {big.get(k, 0)}" for k in ("none", "cash", "ubc"))
+        + " runs. Mostly UBC: a fund that retains profits it cannot invest at home "
+        "saves them abroad, as Norway's fund does.")
+    ai = [r for r in ext if (r["ai_rent_end"] or 0) > 0]
+    if ai:
+        for k in ("none", "cash", "ubc"):
+            rs = [r for r in ai if policy_form(r["scenario"]) == k]
+            if rs:
+                add(f"- **AI rent reached ({k}):** median {100 * _st.median(r['reach_end'] for r in rs):.0f}% "
+                    f"of the AI rent by 2049 ({len(rs)} runs with the AI shift); of the part "
+                    f"earned abroad, {100 * max(r['foreign_reach_end'] for r in rs):.0f}% at most. "
+                    f"National income / GDP: median {_st.median(r['gni_gdp_end'] for r in rs):.2f}.")
+        add("- None of these families includes the source levy; its reach is pinned in "
+            "`tests/test_external.py` (with 90% pass-through a 10% levy reaches 1% of "
+            "the foreign rent).")
+
+
 def compact(data):
     """Small machine-readable summary for docs/ (full rows stay in the parts)."""
     agg = defaultdict(lambda: dict(runs=0, accounting_ok=0, plausible=0, fails=Counter()))
@@ -666,7 +733,7 @@ def main():
     ap.add_argument("--assemble", help="merge all *.json parts in this directory into the docs")
     ap.add_argument("--closure", choices=("behavioural", "legacy"), default="behavioural",
                     help="investment closure to audit (legacy = the v1.1 engine, step A)")
-    ap.add_argument("--step", default="C",
+    ap.add_argument("--step", default="D",
                     help="Phase 7 step the behavioural audit documents (file suffix)")
     ap.add_argument("--out", help="report path (default: docs/AUDIT-2026-10[-step<S>].md)")
     ap.add_argument("--json", help="summary path (default: docs/audit-2026-10[-step<S>].json)")

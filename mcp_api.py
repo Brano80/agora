@@ -39,7 +39,7 @@ DISCLAIMER = (
 # Phase 7 C: values are in current euros; gdp_real (2019 prices) is the size
 # measure, inflation and utilisation show the supply side.
 DEFAULT_SERIES = ["gdp", "gdp_real", "consumption", "investment", "labour_share",
-                  "inflation", "utilisation",
+                  "inflation", "utilisation", "gni_real", "ai_rent_reached_share",
                   "gini_personal", "poverty_rate", "top10_wealth_share"]
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))

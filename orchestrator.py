@@ -19,7 +19,8 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from modules.interface import Module, Scenario, RunResult
-from modules.sfc_core import (SFCCore, DEBT_CAP, LOAN_RATE, LIQUIDITY_FLOOR)
+from modules.sfc_core import (SFCCore, DEBT_CAP, LOAN_RATE, LIQUIDITY_FLOOR,
+                              AI_FOREIGN_SHARE, LEVY_PASS_THROUGH)
 from modules.distribution import DistributionModule
 from modules.input_output import InputOutputModule
 from calibration import calibrate, SFCParams
@@ -80,7 +81,9 @@ class AgoraOrchestrator:
                  capital_tax_share: float = 0.0, fund_payout: float = 0.0,
                  investment_closure: str = "behavioural",
                  profit_response: Optional[float] = None, debt_cap: float = DEBT_CAP,
-                 loan_rate: float = LOAN_RATE, liquidity_floor: float = LIQUIDITY_FLOOR):
+                 loan_rate: float = LOAN_RATE, liquidity_floor: float = LIQUIDITY_FLOOR,
+                 ai_foreign_share: float = AI_FOREIGN_SHARE,
+                 levy_pass_through: float = LEVY_PASS_THROUGH):
         self.geo = geo
         self.year = year
         self.inv_elasticity = float(inv_elasticity)
@@ -95,6 +98,9 @@ class AgoraOrchestrator:
         self.profit_response = profit_response
         self.debt_cap, self.loan_rate = float(debt_cap), float(loan_rate)
         self.liquidity_floor = float(liquidity_floor)
+        # Phase 7 D external sector
+        self.ai_foreign_share = float(ai_foreign_share)
+        self.levy_pass_through = float(levy_pass_through)
         self.modules = modules or [SFCCore(base_year=year,
                                            inv_elasticity=inv_elasticity,
                                            fiscal_reaction=fiscal_reaction,
@@ -115,7 +121,9 @@ class AgoraOrchestrator:
                   profit_response=(self.profit_response if profit_response is None
                                    else profit_response),
                   debt_cap=self.debt_cap, loan_rate=self.loan_rate,
-                  liquidity_floor=self.liquidity_floor)
+                  liquidity_floor=self.liquidity_floor,
+                  ai_foreign_share=self.ai_foreign_share,
+                  levy_pass_through=self.levy_pass_through)
         return kw
 
     def _regime_core(self, inv_elasticity: float) -> SFCCore:

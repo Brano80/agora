@@ -34,7 +34,7 @@ from scenarios import build_custom, LS_AI_END, CAPEX_AI_GROWTH
 
 # objective key -> (human label, the raw reported metric it derives from)
 OBJECTIVES: List[Tuple[str, str]] = [
-    ("growth", "GDP (end, MEUR)"),
+    ("growth", "National income (real GNI, end, MEUR)"),
     ("equality", "Equality (1 − Gini)"),
     ("stability", "Stability (−growth volatility)"),
     ("fiscal", "Fiscal (−debt/GDP)"),
@@ -87,15 +87,19 @@ def _score(run) -> Tuple[Dict[str, float], Dict[str, float]]:
                if run.dist is not None else 0.0)
     vol = _growth_volatility(gdp)
     debt = end["gov_debt_gdp"]
-    metrics = {"gdp_end": gdp[-1], "gini": gini, "growth_vol": vol,
+    # Phase 7 D: income paid abroad (foreign owners, AI fees) is in GDP but not
+    # in residents' income, so the growth objective is real national income
+    gni = end.get("gni_real", gdp[-1])
+    metrics = {"gdp_end": gdp[-1], "gni_end": gni, "gini": gini, "growth_vol": vol,
                "debt_gdp": debt, "poverty": poverty,
                "swf_share": end.get("swf_share", 0.0)}
-    objectives = {"growth": gdp[-1], "equality": -gini, "stability": -vol,
+    objectives = {"growth": gni, "equality": -gini, "stability": -vol,
                   "fiscal": -debt, "resilience": -poverty}
     return metrics, objectives
 
 
-_METRIC_KEYS = ("gdp_end", "gini", "growth_vol", "debt_gdp", "poverty", "swf_share")
+_METRIC_KEYS = ("gdp_end", "gni_end", "gini", "growth_vol", "debt_gdp", "poverty",
+                "swf_share")
 
 
 def _evaluate(run_fn, scen):

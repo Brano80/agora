@@ -40,6 +40,12 @@ live data and validated against history.
 > 3. **No foreign ownership of capital.** All capital, AI capital included, is modelled
 >    as domestically owned, so the model cannot yet say how much of a largely
 >    foreign-owned AI rent European policies can reach.
+>    *Fixed in the engine on 2026-10-30 (Phase 7 step D,
+>    [`docs/AUDIT-2026-10-stepD.md`](docs/AUDIT-2026-10-stepD.md)): foreign owners hold
+>    their observed share of capital and 70% of the AI rent is paid abroad. Taxes on
+>    domestic capital and dilution reach none of that foreign part; a source levy
+>    reaches little, because providers pass it on. The numbers above are not yet
+>    regenerated.*
 >
 > An audit of the 3,057 scenario runs behind the published numbers finds that every one
 > balances its books, but only 13% also pass the new plausibility checks:

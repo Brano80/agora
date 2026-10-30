@@ -203,10 +203,16 @@ def test_fund_invests_by_rule_up_to_its_payout_budget():
     # paying out all NET profit still replaces worn-out capital (CFC is retained) ...
     assert all(s.reported["swf_reinvest"] > 0.0 for s in pay_all[2:])
     assert pay_all[-1].reported["capacity"] >= 0.95 * pay_all[0].reported["capacity"]
-    # ... but adds none: retaining lets the fund invest by the owners' rule
+    # ... but adds none: retaining lets the fund invest by the owners' rule at
+    # home, and what it does not need at home buys equity abroad (step D)
     assert sum(s.reported["swf_reinvest"] for s in retain) > sum(
         s.reported["swf_reinvest"] for s in pay_all)
-    assert retain[-1].reported["gdp_real"] > pay_all[-1].reported["gdp_real"]
+    assert retain[-1].reported["fund_foreign_equity"] > retain[-1].reported["gdp"]
+    assert (pay_all[-1].reported["fund_foreign_equity"]
+            < 0.1 * retain[-1].reported["fund_foreign_equity"])
+    # saving abroad earns national income, at the cost of domestic demand
+    assert retain[-1].reported["gni_real"] > pay_all[-1].reported["gni_real"]
+    assert retain[-1].reported["swf_net_assets"] > pay_all[-1].reported["swf_net_assets"]
     # a rule, not "all retained profits": the fund still pays a dividend, and
     # investment stays inside the plausibility bound
     assert retain[-1].reported["swf_dividend"] > 0.0

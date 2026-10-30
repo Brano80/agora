@@ -98,7 +98,9 @@ INSTRUMENTS: Dict[str, Instrument] = {
         Instrument("deposits", "Bank deposits", 2, note="Inactive in Phase 1."),
         Instrument("equity", "Firm equity", 2, note="Inactive in Phase 1."),
         Instrument("reserves", "Central-bank reserves", 2, note="Inactive."),
-        Instrument("fx_assets", "Net foreign assets", 1, note="Domestic net foreign assets vs RoW (open economy)."),
+        Instrument("fx_assets", "Net foreign assets", 1, note="Domestic net foreign assets vs RoW (open economy). Phase 7 D: the net external position other than equity, held by the public sector as a stand-in until the banks step."),
+        Instrument("foreign_equity", "Equity held abroad", 1,
+                   note="Phase 7 D: owners' and the citizens' fund's equity in foreign firms (RoW liability), at book value."),
     ]
 }
 
@@ -140,6 +142,12 @@ FLOWS: Dict[str, Flow] = {
         Flow("loans_chg", "Change in loans", 1, "Phase 7 B: owners' net new borrowing (+) or repayment (-); lender counterpart."),
         Flow("loan_interest", "Interest on loans", 1, "Phase 7 B: owners pay interest on outstanding loans to the lender."),
         Flow("debt_assumption", "Debt assumed with equity", 1, "Phase 7 B: under UBC the fund takes net equity, i.e. the diluted capital together with its share of the owners' loans (non-cash)."),
+        Flow("ai_licence_fees", "AI licence and cloud fees paid abroad", 1, "Phase 7 D: the foreign share of the AI rent, paid by domestic firms to foreign owners of AI IP/cloud (primary income)."),
+        Flow("tax_source_levy", "Source levy on AI fees paid abroad", 1, "Phase 7 D: withheld on the fees; the foreign provider passes part of it on to domestic buyers."),
+        Flow("transfer_levy_fund", "Source levy paid into the citizens' fund", 1, "Phase 7 D: under UBC the levy seeds the fund."),
+        Flow("equity_income_abroad", "Equity income from abroad", 1, "Phase 7 D: owners' and the fund's income on equity held abroad."),
+        Flow("fx_interest", "Interest on the net external position", 1, "Phase 7 D: at the government-money rate (0 by default)."),
+        Flow("foreign_equity_chg", "Purchases of equity abroad", 1, "Phase 7 D: owners reinvest abroad; the fund invests retained profits it does not need at home."),
     ]
 }
 

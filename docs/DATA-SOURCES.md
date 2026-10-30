@@ -16,6 +16,8 @@ Beyond Eurostat / ECB / FIGARO / AMECO / OECD already noted. Organised by which 
 - **IMF Data** (IFS, WEO, GFS) — national accounts, fiscal, balance of payments, monetary; good cross-checks and rest-of-world sector.
 - **World Bank Open Data / Data360** — broad development + macro indicators, clean API.
 - **FRED** (St. Louis Fed) — huge series library incl. international; easiest single API for quick pulls.
+- **Eurostat external-sector tables (used, Phase 7 D; `data/connectors/external.py`, rebuild with `scripts/build_external.py`)** — `nasa_10_nf_tr` D42 + D43 vs the rest of the world (S2): equity income paid to foreign owners (RECV) and received from abroad (PAID), which calibrate the foreign-owned share of capital and owners' equity abroad; `nama_10_gdp` B1GQ; `tipsii10` net international investment position (% of GDP). All via DBnomics bulk calls.
+- **Eurostat `ei_bsin_q_r2`** (used, Phase 7 C; `data/connectors/capacity.py`) — EC business-survey capacity utilisation, BS-ICU-PC, SA, all 27 members.
 - **Conference Board Total Economy Database** — GDP, hours, labour productivity, TFP, capital services (long annual series).
 
 ## 2. Productivity, capital & labour by industry (automation-by-sector + labour share)

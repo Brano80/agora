@@ -65,6 +65,7 @@ class Policy:
     ubi: bool = False
     ubc: bool = False                           # Universal Basic Capital (sovereign fund)
     ubc_reinvest: float = 0.0                   # fraction of fund profits reinvested
+    source_levy: float = 0.0                    # Phase 7 D: levy on AI fees paid abroad
     note: str = ""
 
 
@@ -139,6 +140,7 @@ def to_scenario(p: SFCParams, ai: AIShock, pol: Policy,
         ubi_on=LeverPath(1.0 if pol.ubi else 0.0, "UBI"),
         ubc_on=LeverPath(1.0 if pol.ubc else 0.0, "UBC"),
         ubc_reinvest=LeverPath(pol.ubc_reinvest, "UBC reinvest"),
+        source_levy=LeverPath(pol.source_levy, "source levy on AI fees abroad"),
         description=(f"AI shock: labour share -> "
                      f"{ai.labour_share_end if ai.labour_share_end is not None else p.ls0:.2f}, "
                      f"capex +{ai.capex_growth*100:.0f}%/yr ({ai.adoption}); "

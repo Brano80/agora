@@ -218,18 +218,25 @@ def test_swf_pomv_payout_grounds_the_dividend(orch, closure):
                       investment_closure=closure).run(ubc, orch._data)
         assert max(r.max_residual for r in check_run(res, strict=False)) < 1.0   # gate exact
         e = res.periods[-1].reported
+        if closure == "behavioural":
+            prev = res.periods[-2].reported
+            return (e["transfer_pool"] / e["price_level"] / pop * 1e6, e["swf_stake"],
+                    e["swf_net_assets"], e["transfer_pool"] / prev["swf_net_assets"])
         return e["transfer_pool"] / e["price_level"] / pop * 1e6, e["swf_stake"]   # real
 
-    div_legacy, stake_legacy = run(0.0)
-    div_pomv, stake_pomv = run(0.03)            # Norway GPFG 3% fiscal rule
-    assert stake_pomv > stake_legacy            # POMV reinvests the rest -> fund compounds further
     if closure == "legacy":
+        div_legacy, stake_legacy = run(0.0)
+        div_pomv, stake_pomv = run(0.03)        # Norway GPFG 3% fiscal rule
+        assert stake_pomv > stake_legacy        # POMV reinvests the rest -> fund compounds further
         assert div_pomv < div_legacy            # a rule-based draw, not the full profit share
     else:
-        # with a supply side, a fund that pays out all its NET profit only
-        # replaces the capital it owns; the retaining (POMV) fund grows it and
-        # so pays a larger REAL dividend by the horizon (Phase 7 C)
-        assert div_pomv > div_legacy
+        # step D: what the POMV fund retains and cannot use at home it invests
+        # abroad, so it compounds like GPFG: larger assets, a ~3% draw on them
+        div_all, _, assets_all, _ = run(0.0)
+        div_pomv, _, assets_pomv, draw = run(0.03)
+        assert assets_pomv > 1.5 * assets_all
+        assert div_pomv < div_all               # 30 years in, the draw is still smaller
+        assert 0.02 < draw < 0.045              # ~3% of last year's net assets
 
 
 def test_phase6_interest_reproduces_year0():

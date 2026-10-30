@@ -120,9 +120,12 @@ class MultiRegion:
             worst = max(worst, run.max_residual)
             pop = p.population
             reps = run.result.periods
+            # Phase 7 D: compare countries in REAL terms (each deflated by its
+            # own price level; legacy runs have none, i.e. 1.0)
             per[g] = {
                 "pop": pop,
-                "yd_pc": [r.reported["hh_disposable"] / pop for r in reps],
+                "yd_pc": [r.reported["hh_disposable"] / pop / r.reported.get("price_level", 1.0)
+                          for r in reps],
                 "div_total": [r.reported["transfer_pool"] for r in reps],
             }
 
@@ -190,6 +193,7 @@ class MultiRegion:
         for g in geos_v:
             worst = max(worst, runs2[g].max_residual)
             per[g]["yd_pc_glob"] = [r.reported["hh_disposable"] / pops[g]
+                                    / r.reported.get("price_level", 1.0)
                                     for r in runs2[g].result.periods]
         consistent = (bool(geos_v) and worst <= 1.0
                       and all(r.consistent for r in runs2.values()))
@@ -280,6 +284,14 @@ class MultiRegion:
         # FX competitiveness: euro members are locked to parity (comp=1); a
         # non-euro member running deficits depreciates -> more competitive exports.
         comp = {g: 1.0 for g in geos}
+        # Phase 7 D: under the behavioural closure external demand is nominal
+        # (world prices) and responds to the country's own price level, as it
+        # does in the core when exports are not overridden
+        core = {g: self.orchs[g].modules[0] for g in geos}
+        beh = {g: getattr(core[g], "investment_closure", "legacy") == "behavioural"
+               for g in geos}
+        P = {g: [(1.0 + getattr(core[g], "inflation_target", 0.0)) ** t
+                 for t in range(horizon)] for g in geos}
 
         Y = {g: [Y0[g]] * horizon for g in geos}
         M = {g: [erat[g] * Y0[g]] * horizon for g in geos}   # seed
@@ -300,6 +312,9 @@ class MultiRegion:
                     # was fixed in the core 2026-06-07 but had survived here).
                     external = ((1.0 - intra_share) * erat[j] * Y0[j]
                                 * (1.0 + wg[j]) ** t)
+                    if beh[j]:
+                        pw = (1.0 + core[j].inflation_target) ** t
+                        external *= P[j][t] * (P[j][t] / pw) ** (-core[j].export_elasticity)
                     path.append((intra + external) * comp[j])
                 scen[j].exports_override = LeverPath(path)
             # 2) run every country with the injected exports
@@ -308,6 +323,7 @@ class MultiRegion:
                 runs[g] = self.orchs[g].run_scenario(scen[g])
                 newY[g] = [pp.reported["gdp"] for pp in runs[g].result.periods]
                 M[g] = [pp.reported["imports"] for pp in runs[g].result.periods]
+                P[g] = [pp.reported.get("price_level", 1.0) for pp in runs[g].result.periods]
                 if fx_response and not is_euro(g):
                     nfa_gdp = runs[g].result.periods[-1].reported.get("nfa_gdp", 0.0)
                     adj = max(-0.5, min(0.5, -nfa_gdp / 100.0))   # deficit -> depreciate

@@ -128,4 +128,5 @@ def test_intl_transfer_books_close():
     res = SFCCore().run(scen, d)
     assert max(r.max_residual for r in check_run(res, strict=False)) < 1e-3
     r0 = res.periods[0].reported
-    assert abs(r0["current_account"] - (r0["net_exports"] + 10000.0)) < 1e-6
+    assert abs(r0["current_account"] - r0["primary_income_net"]
+               - (r0["net_exports"] + 10000.0)) < 1e-6

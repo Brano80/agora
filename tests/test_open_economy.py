@@ -51,13 +51,18 @@ def test_fx_and_rest_of_world_gated(ctx):
 
 
 def test_nfa_accumulates_current_account(ctx):
+    """Balance of payments (Phase 7 D): the current account plus FDI inflows is
+    the change in the external position held at home (public stand-in + equity
+    abroad). The NIIP also moves with the book value of foreign-owned capital."""
     o, p, res, geo = ctx
     for i in range(1, len(res.periods)):
-        nfa = res.periods[i].reported["net_foreign_assets"]
-        nfa_prev = res.periods[i - 1].reported["net_foreign_assets"]
-        ca = res.periods[i].reported["current_account"]
-        assert abs((nfa - nfa_prev) - ca) < 1e-6 * max(1.0, abs(nfa)), \
-            f"{geo}: NFA did not accumulate the current account at period {i}"
+        r, rp = res.periods[i].reported, res.periods[i - 1].reported
+        held = lambda q: (q["public_external_position"] + q["owners_foreign_equity"]
+                          + q["fund_foreign_equity"])
+        lhs = held(r) - held(rp)
+        rhs = r["current_account"] + r["fdi_net_inflow"]
+        assert abs(lhs - rhs) < 1e-6 * max(1.0, abs(held(r))), \
+            f"{geo}: the BoP does not close at period {i}"
 
 
 def test_external_position_direction(ctx):

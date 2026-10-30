@@ -95,6 +95,8 @@ class Scenario:
     # Phase 7 C: AI's productivity LEVEL multiplier on capacity (1 = none).
     # Used by the behavioural closure only.
     ai_productivity: LeverPath = field(default_factory=lambda: LeverPath(1.0))
+    # Phase 7 D: source-based levy on AI licence/cloud fees paid abroad (rate)
+    source_levy: LeverPath = field(default_factory=lambda: LeverPath(0.0))
     # absolute exports path (MEUR), set by the multi-region trade linker to
     # tie one country's exports to its partners' imports; None = autonomous.
     exports_override: Optional[LeverPath] = None
@@ -117,6 +119,7 @@ class Scenario:
             "ubc_on": self.ubc_on,
             "ubc_reinvest": self.ubc_reinvest,
             "ai_productivity": self.ai_productivity,
+            "source_levy": self.source_levy,
         }
 
     def snapshot(self) -> Dict[str, List[float]]:

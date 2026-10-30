@@ -40,6 +40,9 @@ PRIORS: Dict[str, Tuple[float, float]] = {
     "phillips_slope":   (0.01, 0.15),   # ECB WP 3133 slope range (0.02-0.19 per pp u) x Okun
     "export_elasticity": (0.3, 1.0),    # Christodoulopoulou & Tkacevs 2013 country range
     "utilisation_response": (0.1, 0.35),  # assumption; >~0.5 gives cycles the data rule out
+    # Phase 7 D: external sector
+    "ai_foreign_share": (0.5, 0.9),     # AI rent earned abroad (Synergy 2025: US ~70% of EU cloud)
+    "levy_pass_through": (0.5, 1.0),    # source levy passed on (Langenmayr & Muddasani 2026)
     # beta is UNIDENTIFIED in macro data (disposable-Gini cross-section R2=.02;
     # FE panel 2010-24 beta=.05 R2=.006 - redistribution absorbs the shift). The
     # OECD IDD market Gini (2026-06-14) removes that confound and QUANTIFIES it:
@@ -89,7 +92,8 @@ def core_kwargs(d: Dict[str, float]) -> Dict[str, object]:
         return {"investment_closure": "legacy", "inv_elasticity": d["inv_elasticity"]}
     return {k: d[k] for k in ("profit_response", "debt_cap", "loan_rate",
                               "phillips_slope", "export_elasticity",
-                              "utilisation_response") if k in d}
+                              "utilisation_response", "ai_foreign_share",
+                              "levy_pass_through") if k in d}
 
 
 def _pctile(xs: List[float], q: float) -> float:
@@ -142,7 +146,9 @@ def _run_draws(geo: str, form: str, tau: float, year: int, horizon: int,
         pop = p.population or 1.0
         acc["gini"].append(dd["gini_personal"])
         acc["poverty"].append(dd["poverty_rate"])
-        acc["citizen_wealth_pc"].append(m["swf_stake"] * 1e6 / pop)
+        acc["citizen_wealth_pc"].append(        # step D: fund assets incl. abroad, real
+            m["citizen_wealth_pc"] * 1e6 if "fund_foreign_equity" in m
+            else m["swf_stake"] * 1e6 / pop)
         acc["dividend_pc"].append(m["transfer_pool"] / m.get("price_level", 1.0) * 1e6 / pop)
         acc["gdp_end"].append(m.get("gdp_real", m["gdp"]))      # real (Phase 7 C)
         inputs.append(d)

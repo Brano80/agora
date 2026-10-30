@@ -1,6 +1,6 @@
 # Phase 7 — Credibility fixes (from the 2026-10-28 review)
 
-**Status:** IN PROGRESS (0, A, B, C done 2026-10-29). **Rule:** no README claim, outreach, post or Zenodo
+**Status:** IN PROGRESS (0, A, B, C done 2026-10-29; D done 2026-10-30). **Rule:** no README claim, outreach, post or Zenodo
 version goes out until step G is done. Step 0 is the only exception.
 
 All findings below were reproduced on the shipped engine (fbbe103) on 2026-10-28.
@@ -222,6 +222,89 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 - **D3.** Policies that reach foreign rent: a source-based levy or withholding on AI revenue (reuse the F22 study inputs). The fund may *buy* foreign equity with its own resources but cannot dilute what is foreign-owned.
 - **D4.** Sanity check against Wossnig (2026): reproduce the qualitative result that flow taxes on domestic capital miss the foreign AI rent.
 - **Done when:** a scenario with 80% foreign-owned AI capital runs gated, and the dashboard shows how much of the AI dividend each policy can still reach.
+- **Status: DONE 2026-10-30, one criterion moved to step G** (the dashboard shows the reach metric once it is regenerated; the metric exists in the engine and the MCP tools now). Audit: `docs/AUDIT-2026-10-stepD.md`.
+
+#### What was built
+- **Foreign owners of domestic capital (D1).** The rest of the world owns a share ψ of the capital stock. ψ = equity income paid abroad (dividends + reinvested FDI earnings, a net-of-depreciation concept) / net profits, 2015–19 (Eurostat `nasa_10_nf_tr` D42+D43 vs the rest of the world).
+  - Foreign owners invest on their stake by the owners' rule (FDI), financed by their parents, so it is never cut for lack of cash.
+  - They pay the baseline capital tax, and a cash levy, at source.
+  - UBC cannot dilute them: the fund's stake is capped at the domestically owned capital.
+- **Owners' equity abroad.** Sized from what owners actually receive from abroad (outward D42+D43 / the world return). It earns the world return; owners reinvest abroad at world nominal growth and bring the rest home. An owner who runs out of cash stops reinvesting abroad and, if needed, sells, rather than run an overdraft.
+- **The 2019 net international investment position** (Eurostat `tipsii10`). The part that is not equity is held by **the public sector as a stand-in** until the banks step, as with loans in step B. It earns the government-money rate (0 by default). Fiscal debt is reported net of what the stand-in bought abroad since 2019, so a current-account surplus is not counted as government debt.
+- **No household holds the external position any more.** The v1.1 rule split the current account between workers and owners by their money. It caused the step-B insolvency and the workers' overdrafts, and it is gone.
+- **AI rent abroad (D2).** The AI rent is the income the AI shift moves from labour to capital, (ls₂₀₁₉ − ls)·Y. A share α of it is paid abroad every year as licence and cloud fees, booked as primary income: GDP is unchanged and national income (GNI) is lower. Both are reported.
+- **Source levy (D3).** A new lever, `source_levy`, is withheld on the fees.
+  - A share ρ of it is passed on to domestic buyers. The provider receives F·(1 − (1−ρ)s); domestic firms pay F·(1 + ρs).
+  - The revenue funds the cash UBI, seeds the citizens' fund, or else goes to general revenue.
+- **The fund abroad (D3).** Whatever the fund retains but does not need at home buys foreign equity at the world return, as Norway's fund does. A POMV draw is on its total value.
+- **Reach metric (D4).** `ai_rent_reached_share` is the public's claim on the AI rent: levy revenue plus the cash levy rate, or the fund's stake, times the rent kept at home. `ai_rent_foreign_reached_share` is the bite on the foreign part.
+- **Balance of payments.** The current account includes net primary income, booked net of depreciation on foreign-owned capital, as in the statistics. The current account plus net FDI equals the change in the external position held at home; this is tested every period. Year 0 starts exactly at the observed NIIP.
+- **Year 0 still reproduces.** Owners now receive only their own share of profits plus their income from abroad. Their consumption residual (MPC) is rescaled once so that 2019 consumption and GDP are unchanged. The new values stay within [0.14, 0.62] for the usable members.
+- **Conduits.** NL, IE, LU, MT and CY show equity income above 15% of GDP in both directions; that is money passing through shell companies. They get the median of the other members, flagged. Their NIIP is kept.
+- **Also changed.**
+  - The policy search's growth objective is now real national income (GNI), not GDP.
+  - Multi-region comparisons are in real terms. In the trade linker, external demand is nominal and responds to each country's prices, as in the core.
+  - The Monte Carlo draws α and ρ.
+  - `scripts/build_external.py` rebuilds the cache in three DBnomics calls.
+
+#### Parameters and sources
+| Parameter | Default | MC range | Source |
+|---|---|---|---|
+| Foreign owners' stake ψ | per country, e.g. DE 9%, FR 15%, IT 6%, ES 12%, PL 15%, RO 10%, SK 17%, CZ 36%, HU 37%, SE 34%, BE 49% | — | Eurostat `nasa_10_nf_tr` D42+D43 (S2, RECV) / net profits, 2015–19, via DBnomics (retrieved 2026-10-30) |
+| Owners' equity abroad | outward D42+D43 / world return (DE 53% of GDP) | — | Eurostat `nasa_10_nf_tr` (S2, PAID) |
+| Initial NIIP | per country (DE +59%, ES −72%, PL −49%, EL −157% of GDP) | — | Eurostat `tipsii10`, 2019 |
+| World return on equity | 6.6% nominal | — | Norway GPFG, annualised 6.64% since 1998 (net real 4.34% + 2.13% inflation), NBIM Annual Report 2025 |
+| AI rent earned abroad α | 0.70 | 0.5–0.9 | US providers ~70% of the European cloud market, European ~15% (Synergy Research, 2025) |
+| Source-levy pass-through ρ | 0.9 | 0.5–1.0 | Amazon raised its fees by roughly the full DST (Langenmayr & Muddasani 2026, CESifo WP 12713) |
+| Conduit threshold | inward equity income > 15% of GDP | — | Design (separates NL, IE, LU, MT, CY from all others) |
+
+#### Result
+| DE, 30 years | v1.1 | Step B | Step C | Step D |
+|---|---|---|---|---|
+| AI shift, no policy: real GDP / real GNI (× 2019) | 2.28 | 1.63 | 1.64 | 1.25 / 0.96 |
+| Cash UBI / UBC (pinned experiment, fund pays out all), real GDP | 2.75 / 3.51 | 1.80 / 1.92 | 1.63 / 1.14 | 1.18 / 1.14 |
+| … real GNI | — | — | — | 0.91 / 0.82 |
+| C1, endogenous: UBC / cash, fund retains none / 60% | 0.805 / — | 1.065 / — | 0.70 / 1.26 | 0.96 / 1.01 |
+| Frontier (13 points) | UBC 20–50% only | 9 points | 11 points | 8 points: no policy, cash 10/30/40/60%, UBC 10–30% |
+| All 27 countries: runs passing every plausibility law | 13% | 48% | 48% | 69% |
+| Runs with an insolvent household / with negative household money | 479 / over half of policy runs | 2 / ~80 (LU) | 0 / 113 (LU) | 0 / 0 |
+
+**Across 24 countries** (IE, LU and SI excluded; τ = 40%; AI shift; 2049):
+- With no policy, AI fees abroad reach a median 22% of GDP. Real GDP rises to 1.27× (the baseline is 1.46×). Real national income stays flat (0.98×, range 0.80–1.26) and real consumption falls to 0.89×.
+- **Cash UBI** against no policy:
+  - National income: median −3%, higher in 8 of 24.
+  - Consumption: +17%, higher in 21 of 24.
+- **UBC, the fund pays out all its net profit:** national income −14% (higher in 0 of 24), consumption −5%.
+- **UBC, the fund keeps 60%:** national income +8% (higher in 24 of 24). Consumption is −15%, because the fund saves abroad.
+- **A 10% source levy** adds 1–2 pp of national income in either form.
+- **The public's claim on the AI rent** (median): cash 12%; UBC 22% if it pays out everything, 24% if it keeps 60%; with the levy, 16% and 26%. Of the part earned abroad, the cash levy and dilution reach **0%**. A 10% levy at 90% pass-through reaches **1%**; it would reach 10% with no pass-through.
+
+#### D4: check against Wossnig (2026)
+**Qualitatively reproduced.** Taxes on domestic capital and dilution do not reach the foreign-held AI rent; only a source-based levy does (`tests/test_external.py::test_which_policies_reach_the_ai_rent`).
+
+**One difference.** With the observed pass-through, the levy mostly becomes a tax on European AI users rather than on the foreign rent. Wossnig assumes the levy reaches the rent. His steady-state foreign rent is ~13% of output; ours reaches ~22% of GDP because AGORA's AI shift is more extreme (the labour share falls to 30%). That is within his rising-rent range (up to about a quarter of output).
+
+#### Findings changed by step D (input to the step-F ledger)
+- **The headline welfare measure changes.** With 70% of the AI rent abroad, GDP overstates residents' income by about a quarter by 2049. Compare policies on national income and consumption, not GDP; the policy search now does.
+- **"UBC vs cash" becomes a choice between now and later.**
+  - Cash UBI raises consumption almost everywhere and leaves national income roughly unchanged.
+  - A fund that retains profits raises national income and citizens' wealth everywhere, but lowers consumption for 30 years, because it saves abroad.
+  - A fund that pays out everything is worse than doing nothing on national income.
+  - Step E puts this on the frontier explicitly.
+- **C3 is revised.** The step-C result "UBC retaining 60% +10% GDP" does not survive. In GDP it is now −6% against no policy; in GNI it is +8%. The domestic-investment part is unchanged; the difference is that what the fund cannot use at home now goes abroad instead of being paid out.
+- **Romania's baseline** is now capacity-constrained from about 2030. Under the v1.1 money-share rule, the owners' share of the current-account deficit had acted as a hidden foreign credit line; without it, the borrowing cap binds. Real investment financing (FDI beyond the owners' rule, EU funds, bank credit) is **step F**.
+- **Debt.** With no fiscal reaction, the AI shift takes DE debt to ~170% of GDP by 2049 in every policy arm. Labour taxes collapse, and the AI fees deduct from the capital tax base. **E3**.
+
+#### Residuals and which step owns them
+- **Baseline current accounts drift.** Exports follow world demand while imports follow domestic output, so surplus countries keep accumulating: baseline NIIP median −23% → +12% of GDP, DE +66% → +145%. There is no exchange-rate or risk-premium feedback. **Step F.**
+- **Large UBC surpluses.** A fund that retains profits it cannot invest at home runs current-account surpluses above 10% of GDP in 754 runs. That is Norway-like, but extreme for weak economies such as EL (+24% of GDP). **Step E** (payout rules) and **step F**.
+- **BE** has a 49% foreign stake: it is a semi-conduit (treasury centres) below the 15% threshold. **Step F.**
+- **Romania** investment financing. **Step F.**
+- **The fund's foreign equity is held at book value**, with no revaluation.
+- **The external position earns the government-money rate**, which is 0 by default. **Banks step.**
+- **The source levy is not in the audit families or the frontier yet.** **Step E** (the proposal library).
+- **The dashboard reach panel.** **Step G.**
+
 
 ### E. Fair comparison and real proposals (~2 days)
 - **E1.** Value transferred equity at market value (PV of expected profits / Tobin's q), not book value. Compare policies at equal present value of the burden on owners, and also show the equal-government-cost view.

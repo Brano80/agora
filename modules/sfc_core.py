@@ -12,6 +12,8 @@ Open-economy closure:
   M = m_imp * Y                   (imports scale with output)
   Current account NX = X - M accumulates as domestic net foreign assets (fx),
   held by households (split by money wealth); rest-of-world is the counterpart.
+  (Legacy closure only: the behavioural closure replaces this with the Phase 7
+  D external sector described below.)
 Setting export_ratio = m_imp = 0 recovers the closed Phase-1/2 economy.
 
 Universal Basic Capital (the pinned experiment, Phase 3). Two policy arms share
@@ -68,7 +70,20 @@ Investment closure (Phase 7 step B, 2026-10-29). Two switchable closures:
     policy lets it retain, and pays out the rest. Like any owner it first
     retains the depreciation allowance on its stake (replacement), so
     ubc_reinvest is the share of NET profits retained and a POMV draw cannot
-    consume capital. Until step D it cannot hold financial or foreign assets.
+    consume capital.
+    External sector (Phase 7 step D, 2026-10-30). Foreign owners hold their
+    observed share of domestic capital (equity income paid abroad / net
+    profits, Eurostat), invest on it by the owners' rule (FDI), pay capital
+    taxes at source, and cannot be diluted by UBC. Owners hold their observed
+    equity abroad (world return, reinvested at world nominal growth). A share
+    of the AI rent - the income the AI shift moves from labour - is paid abroad
+    as licence/cloud fees (ai_foreign_share); a source levy on those fees is
+    partly passed on to domestic buyers (levy_pass_through). Each country
+    starts at its 2019 net international investment position; the part that is
+    not equity is held by the public sector as a stand-in (no household holds
+    it, replacing the v1.1 money-share rule), and fiscal debt is reported net
+    of what the stand-in bought abroad since 2019. What the citizens' fund
+    retains but does not need at home buys equity abroad.
   * "legacy": the v1.1 behaviour, exactly - an exogenous capex path (ai_capex
     lever, optionally scaled by inv_elasticity) financed by an unlimited,
     interest-free money overdraft. Kept ONLY to reproduce published v1.1
@@ -86,6 +101,7 @@ from typing import Dict, List, Optional
 from modules.interface import Module, Scenario, RunResult, PeriodState
 from calibration import calibrate, SFCParams
 from data.connectors.capacity import capacity_utilisation_for
+from data.connectors.external import R_WORLD, external_position_for
 
 
 # --------------------------------------------------------------------------- #
@@ -137,6 +153,18 @@ POLICY_START = 1             # policies switch on in 2020: 2019 reproduces in ev
 # (IMF WP/24/258, "Chasing the Dream", from EU-KLEMS).
 TFP_BOUNDS = (0.001, 0.007)
 
+# Phase 7 D: the external sector (behavioural closure only).
+# Share of the AI rent (the income the AI shift moves from labour to capital)
+# earned ABROAD as licence and cloud fees: US providers hold ~70% of the
+# European cloud market and European providers ~15% (Synergy Research, 2025);
+# frontier models are mostly US. MC range 0.5-0.9.
+AI_FOREIGN_SHARE = 0.70
+# Share of a source levy on those fees that the foreign provider passes on to
+# domestic buyers: Amazon raised its fees by roughly the full digital services
+# tax (Langenmayr & Muddasani 2026, CESifo WP 12713) and the platforms added
+# DST surcharges to their invoices. MC range 0.5-1.0.
+LEVY_PASS_THROUGH = 0.9
+
 
 def profit_response_for(geo: Optional[str]) -> float:
     return PROFIT_RESPONSE.get((geo or "").upper(), PROFIT_RESPONSE_DEFAULT)
@@ -185,7 +213,11 @@ class SFCCore(Module):
                  export_elasticity: float = EXPORT_ELASTICITY,
                  utilisation_response: float = UTILISATION_RESPONSE,
                  policy_start: int = POLICY_START,
-                 capacity: Optional[dict] = None):
+                 capacity: Optional[dict] = None,
+                 ai_foreign_share: float = AI_FOREIGN_SHARE,
+                 levy_pass_through: float = LEVY_PASS_THROUGH,
+                 r_world: float = R_WORLD,
+                 external: Optional[dict] = None):
         self.base_year = base_year
         self.calib_kwargs = calib_kwargs or {}
         # C1 (enclosure-vs-diffusion): elasticity of investment to owners'
@@ -229,6 +261,11 @@ class SFCCore(Module):
         self.utilisation_response = float(utilisation_response)
         self.policy_start = int(policy_start)
         self.capacity = capacity          # {normal, base, max} override; None = data
+        # Phase 7 D external sector (behavioural closure only)
+        self.ai_foreign_share = float(ai_foreign_share)
+        self.levy_pass_through = float(levy_pass_through)
+        self.r_world = float(r_world)
+        self.external = external          # {inward_gdp, outward_gdp, niip_gdp}; None = data
         self.params: Optional[SFCParams] = None
 
     def declares_inputs(self) -> List[str]:
@@ -260,6 +297,12 @@ class SFCCore(Module):
             "debt_assumed_by_fund", "swf_net_assets",
             "gdp_real", "price_level", "inflation", "capacity", "utilisation",
             "output_gap", "excess_imports",
+            "gni", "gni_real", "primary_income_net", "ai_rent", "ai_rent_abroad",
+            "ai_rent_levy", "ai_rent_reached", "ai_rent_reached_share",
+            "ai_rent_foreign_reached_share",
+            "foreign_profits", "foreign_capital_share", "fdi_investment", "fdi_net_inflow",
+            "owners_foreign_equity", "owners_foreign_income", "fund_foreign_equity",
+            "fund_foreign_income", "public_external_position", "niip", "niip_gdp",
         ]
 
     def run(self, scenario: Scenario, data: Dict[str, float],
@@ -304,6 +347,34 @@ class SFCCore(Module):
         g_tfp = min(max((1.0 + p.world_growth) / (1.0 + g_K0) - 1.0, TFP_BOUNDS[0]),
                     TFP_BOUNDS[1])
         infl = self.inflation_target if behavioural else 0.0
+        # Phase 7 D: the external sector (behavioural only; legacy keeps the v1.1
+        # rule - the current account accrues to households by money shares).
+        ext = dict(self.external) if self.external is not None else external_position_for(scenario.geo)
+        if behavioural:
+            # foreign owners' stake = their share of NET profits: equity income
+            # paid abroad (dividends + reinvested FDI earnings, a net-of-
+            # depreciation concept, Eurostat) / (gross profits - depreciation)
+            net_profit0 = max((1.0 - p.ls0) - p.delta * p.K0 / p.Y0, 0.05)
+            psi0 = min(0.9, max(0.0, float(ext["inward_gdp"])) / net_profit0)
+            E_row = psi0 * p.K0                          # real claim on domestic capital
+            A_kf = max(0.0, float(ext["outward_gdp"])) * p.Y0 / self.r_world   # owners' equity abroad
+            FX_s0 = float(ext["niip_gdp"]) * p.Y0 - A_kf + E_row   # the rest of the NIIP
+        else:
+            psi0 = E_row = A_kf = FX_s0 = 0.0
+        FX_s, A_sff = FX_s0, 0.0                         # public stand-in / fund abroad
+        g_wn = (1.0 + p.world_growth) * (1.0 + self.inflation_target) - 1.0
+        fpd_share_prev = 1.0 - p.ls0                     # profit share net of AI fees
+        pi_row_prev = pi0
+        # year-0 owners' MPC: owners now receive only their own share of domestic
+        # profits plus income from equity abroad, so the calibration residual is
+        # rescaled to keep base-year consumption (and GDP) exactly as observed.
+        a1_k = p.a1_k
+        if behavioural:
+            yd_k0_old = (1.0 - p.ls0) * (1.0 - p.theta_k) * p.Y0 + i_rate_eff * p.M_k0
+            yd_k0_new = ((1.0 - psi0) * (1.0 - p.ls0) * (1.0 - p.theta_k) * p.Y0
+                         + i_rate_eff * p.M_k0 + self.r_world * A_kf)
+            if yd_k0_new > 0:
+                a1_k = p.a1_k * yd_k0_old / yd_k0_new
 
         for t in range(H):
             ls = scenario.labour_share.at(t, H)
@@ -341,7 +412,8 @@ class SFCCore(Module):
             # Phase 6 fiscal-reaction rule (default OFF): adjusts the LABOUR rate
             # (the usual marginal instrument) to steer debt/GDP toward target.
             if self.fiscal_reaction:
-                debt_gdp_prev = (100.0 * (M_w + M_k - L - L_sf) / Y_prev) if Y_prev else debt_target
+                debt_gdp_prev = ((100.0 * (M_w + M_k - L - L_sf - (FX_s - FX_s0)) / Y_prev)
+                                 if Y_prev else debt_target)
                 delta_theta = self.fiscal_reaction * (debt_gdp_prev - debt_target)
             else:
                 delta_theta = 0.0
@@ -352,10 +424,13 @@ class SFCCore(Module):
             K_trad_prev, K_ai_prev = K_trad, K_ai
             F_w_prev, F_k_prev, E_sf_prev = F_w, F_k, E_sf
             L_prev, L_sf_prev = L, L_sf
-            own_K_prev0 = max(K_prev - E_sf_prev, 0.0)
+            E_row_prev, A_kf_prev, A_sff_prev, FX_s_prev = E_row, A_kf, A_sff, FX_s
+            # D1: foreign owners' share of domestic capital (UBC cannot dilute it)
+            psi = (min(E_row_prev / K_prev, 1.0) if (behavioural and K_prev > 0) else 0.0)
+            own_K_prev0 = max(K_prev - E_sf_prev - E_row_prev, 0.0)
 
             # fund's ownership share entering the period drives this year's dividend
-            phi = (min(E_sf_prev / K_prev, 1.0)
+            phi = (min(E_sf_prev / K_prev, 1.0 - psi)
                    if (ubc_on and K_prev > 0) else 0.0)
 
             # C1 investment feedback: owners fund capex and respond to the
@@ -366,28 +441,35 @@ class SFCCore(Module):
             inv_signal = (1.0 - phi) if ubc_on else (1.0 - tau)
             inv_mult = inv_signal ** self.inv_elasticity   # applied capex multiplier
             A_priv = base_A * inv_mult                      # privately-financed capex
+            A_row = ai_row = 0.0                            # foreign owners' investment (D1)
             if behavioural:
                 # B1: owners invest on the stake they own; the investment share
                 # responds to last year's net profit share (see docstring).
                 inv_share = max(0.0, p.a_ratio0 + gamma * (pi_eff_prev - pi0)
                                 + self.utilisation_response * (gap_prev - gap0))
-                A_priv = (1.0 - phi) * Y_prev * pfac * inv_share
+                A_priv = (1.0 - phi - psi) * Y_prev * pfac * inv_share
                 # the part driven by a HIGHER net profit share (the AI boom)
-                ai_desired = (1.0 - phi) * Y_prev * pfac * max(0.0, gamma * (pi_eff_prev - pi0))
+                ai_desired = (1.0 - phi - psi) * Y_prev * pfac * max(0.0, gamma * (pi_eff_prev - pi0))
                 inv_mult = (inv_share / p.a_ratio0) if p.a_ratio0 else 1.0
+                # D1: foreign owners invest on their stake by the same rule (FDI),
+                # financed by their parents, so it is never cut for lack of cash.
+                inv_share_row = max(0.0, p.a_ratio0 + gamma * (pi_row_prev - pi0)
+                                    + self.utilisation_response * (gap_prev - gap0))
+                A_row = psi * Y_prev * pfac * inv_share_row
+                ai_row = psi * Y_prev * pfac * max(0.0, gamma * (pi_row_prev - pi0))
             A_desired = A_priv
             reinvest = scenario.ubc_reinvest.at(t, H) if ubc_on else 0.0
-            fund_capex = 0.0
+            fund_capex = fund_abroad = 0.0
             if behavioural and ubc_on:
                 # the fund invests on its stake by the owners' rule (its return is
                 # the gross profit share: it pays no levy on itself), up to the
                 # budget its payout policy retains, planned on last year's profits.
                 fund_share = max(0.0, p.a_ratio0
-                                 + gamma * ((1.0 - ls_prev) * (1.0 - p.theta_k) - pi0)
+                                 + gamma * (fpd_share_prev * (1.0 - p.theta_k) - pi0)
                                  + self.utilisation_response * (gap_prev - gap0))
                 fund_desired = phi * Y_prev * pfac * fund_share
-                expected_net = phi * (1.0 - ls_prev) * Y_prev * pfac - (
-                    self.loan_rate + self.deleverage_rate) * L_sf_prev
+                expected_net = phi * fpd_share_prev * Y_prev * pfac - (
+                    self.loan_rate + self.deleverage_rate) * L_sf_prev + self.r_world * A_sff_prev
                 # Replacement comes out of the depreciation allowance (CFC) before
                 # any dividend: owners do not pay out capital consumption and
                 # neither does the fund, so `reinvest` applies to NET profits and
@@ -397,11 +479,13 @@ class SFCCore(Module):
                 cfc_fund = dep_prev * Pk * E_sf_prev
                 if self.fund_payout > 0.0:
                     budget = max(cfc_fund, expected_net
-                                 - self.fund_payout * (Pk * E_sf_prev - L_sf_prev))
+                                 - self.fund_payout * (Pk * E_sf_prev - L_sf_prev + A_sff_prev))
                 else:
                     budget = cfc_fund + reinvest * max(0.0, expected_net - cfc_fund)
                 budget = min(budget, max(0.0, expected_net))   # cannot retain more than it earns
                 fund_capex = max(0.0, min(budget, fund_desired))
+                # D3: what it retains but does not need at home buys equity abroad
+                fund_abroad = max(0.0, budget - fund_capex)
             # interest on government debt (gov money held by households),
             # predetermined from last period's debt; paid out by money share.
             gov_debt_prev = M_w_prev + M_k_prev
@@ -414,6 +498,20 @@ class SFCCore(Module):
             int_sf = self.loan_rate * L_sf_prev if behavioural else 0.0
             rep_sf = self.deleverage_rate * L_sf_prev if behavioural else 0.0
             fund_service = int_sf + rep_sf
+            # D3: income on equity abroad (world return) and on the net external
+            # position (the government-money rate; 0 by default). Owners reinvest
+            # abroad at the world's nominal growth rate and bring the rest home.
+            Y_kf = self.r_world * A_kf_prev if behavioural else 0.0
+            dA_kf = g_wn * A_kf_prev if behavioural else 0.0
+            Y_sf = self.r_world * A_sff_prev if behavioural else 0.0
+            int_fx = i_rate_eff * FX_s_prev if behavioural else 0.0
+            s_lev = (scenario.source_levy.at(t, H)
+                     if (behavioural and t >= self.policy_start) else 0.0)
+            levy_to = "ubi" if ubi_on else ("fund" if ubc_on else "gov")
+            # depreciation on foreign-owned capital: the balance of payments books
+            # income and FDI net of it (gross flows net out to the same cash)
+            cfc_row = ((((p.delta * K_trad_prev + p.delta_ai * K_ai_prev) / K_prev)
+                        if K_prev > 0 else p.delta) * Pk * E_row_prev) if behavioural else 0.0
             # inventories+valuables (P52+P53): constant autonomous, owner-
             # financed, NOT added to productive K (closes the identity).
             INV = p.inv0 * Pk
@@ -492,6 +590,60 @@ class SFCCore(Module):
                             gross_fund=gross_fund, A_fund=A_fund,
                             YD_w=YD_w, YD_k=YD_k, C_w=C_w, C_k=C_k)
 
+            def breakdown_beh(Y: float):
+                """Phase 7 D income split (behavioural closure). LINEAR in Y."""
+                WB = ls * Y
+                R = max(0.0, p.ls0 - ls) * Y              # AI rent: income moved from labour
+                F = self.ai_foreign_share * R              # earned abroad (licence / cloud fees)
+                levy = s_lev * F                           # source levy, withheld on the fees
+                F_gross = F + self.levy_pass_through * levy   # the passed-on part raises the fee
+                FP = (1.0 - ls) * Y - F_gross              # domestic firms' profit after fees
+                FP_row = psi * FP                          # foreign owners' share of it
+                tax_w = theta_w * WB
+                src = 0.0 if ubc_on else tau               # a cash levy is applied at source
+                FP_row_net = FP_row - (theta_k + src) * FP_row
+                levy_fund = levy if levy_to == "fund" else 0.0
+                if ubc_on:
+                    gross_fund = phi * FP
+                    owners_profit = (1.0 - phi - psi) * FP
+                    A_fund = fund_capex                    # predetermined -> solve stays linear
+                    div_total = gross_fund - fund_service + Y_sf - A_fund - fund_abroad
+                    own_fp = owners_profit
+                    tax_k_own, tax_kb_own = 0.0, theta_k * owners_profit
+                    ubi_pool = 0.0
+                    transfer_pool = div_total
+                    div_w, div_k = div_total * f_w, div_total * f_k
+                    ubi_w = ubi_k = 0.0
+                else:
+                    gross_fund = A_fund = div_total = owners_profit = 0.0
+                    own_fp = (1.0 - psi) * FP
+                    tax_k_own, tax_kb_own = tau * own_fp, theta_k * own_fp
+                    ubi_pool = (tau * FP + levy) if ubi_on else 0.0
+                    transfer_pool = ubi_pool
+                    div_w = div_k = 0.0
+                    ubi_w, ubi_k = ubi_pool * f_w, ubi_pool * f_k
+                tax_k = tax_k_own + src * FP_row
+                tax_k_base = tax_kb_own + theta_k * FP_row
+                YD_w = WB - tax_w + ubi_w + div_w + int_w + tr_w
+                YD_k = (own_fp - tax_k_own - tax_kb_own + ubi_k + div_k + int_k + tr_k
+                        + Y_kf - int_L)
+                net_profits = own_fp - tax_k_own - tax_kb_own + Y_kf
+                wealth_k = max(0.0, M_k_prev - L_prev)    # net of debt
+                C_w = p.a1_w * YD_w + p.a2 * M_w_prev
+                C_k = a1_k * YD_k + p.a2 * wealth_k
+                return dict(WB=WB, FP=FP, tax_w=tax_w, tax_k=tax_k, tax_k_base=tax_k_base,
+                            ubi_pool=ubi_pool, transfer_pool=transfer_pool,
+                            div_total=div_total, div_w=div_w, div_k=div_k,
+                            owners_profit=owners_profit, net_profits=net_profits,
+                            gross_fund=gross_fund, A_fund=A_fund,
+                            YD_w=YD_w, YD_k=YD_k, C_w=C_w, C_k=C_k,
+                            R=R, F_gross=F_gross, levy=levy, levy_fund=levy_fund,
+                            FP_row=FP_row, FP_row_net=FP_row_net, own_fp=own_fp,
+                            tax_k_own=tax_k_own, tax_kb_own=tax_kb_own)
+
+            if behavioural:
+                breakdown = breakdown_beh
+
             # within-period demand: every term is LINEAR in Y, so two
             # evaluations determine intercept+slope and the fixed point is
             # exact (no silent non-convergence). Iteration kept as a guard.
@@ -517,7 +669,7 @@ class SFCCore(Module):
                 # needed), 2 loans at the cap and capex cut, 3 no capex and
                 # inventories cut, 4 nothing left to cut. Each is LINEAR in Y,
                 # so each is solved exactly; the first consistent regime holds.
-                own_K_prev = max(K_prev - E_sf_prev, 0.0) * Pk   # at current prices
+                own_K_prev = max(K_prev - E_sf_prev - E_row_prev, 0.0) * Pk   # at current prices
                 M_floor = liq_ratio * own_K_prev
                 cap = self.debt_cap * own_K_prev
                 # room for new borrowing; NEGATIVE = a required repayment of the
@@ -528,8 +680,9 @@ class SFCCore(Module):
                 sh_w_fx = (M_w_prev / money_prev) if money_prev > 0 else 0.5
 
                 def cash_before(Yv, bb):
-                    ca = X - p.m_imp * Yv + T_int
-                    return M_k_prev + bb["YD_k"] - bb["C_k"] - ca * (1.0 - sh_w_fx)
+                    # D3: owners no longer buy a share of the current account;
+                    # they reinvest part of their income from equity abroad
+                    return M_k_prev + bb["YD_k"] - bb["C_k"] - dA_kf
 
                 def plan(Yv, regime):
                     bb = breakdown(Yv)
@@ -545,7 +698,7 @@ class SFCCore(Module):
                 def demand_r(Yv, regime):
                     bb, ip, iv = plan(Yv, regime)
                     return (bb["C_w"] + bb["C_k"] + ip + bb["A_fund"] + iv
-                            + G + X - p.m_imp * Yv)
+                            + A_row + G + X - p.m_imp * Yv)
 
                 tol_f = 1e-9 * max(p.Y0, 1.0)
                 # C1 ceiling: real output <= max utilisation x full capacity
@@ -574,14 +727,26 @@ class SFCCore(Module):
                             break
                     else:
                         dL = headroom
+                # D: an owner with no cash left stops reinvesting abroad and, if
+                # need be, sells equity abroad rather than run an overdraft
+                # (dA_kf is a financial use of cash: it does not move demand)
+                m_end = cash_before(Y, b) - A_priv - INV + dL
+                if m_end < M_floor - tol_f:
+                    dA_kf = max(-A_kf_prev, dA_kf - (M_floor - m_end))
             if behavioural:
                 u_d = ((Y + excess) / P) / y_cap if y_cap > 0 else u_0   # demand pressure
                 gap_now = u_d / u_n - 1.0
-            A = A_priv + b["A_fund"]                # total investment
+            A = A_priv + b["A_fund"] + A_row        # total investment (incl. FDI)
             C = b["C_w"] + b["C_k"]
             M_imp = p.m_imp * Y + excess           # imports (+ excess demand met abroad)
             NX = X - M_imp                          # trade balance
             CA = NX + T_int                         # current account (incl. transfers)
+            if behavioural:                         # D: + net primary income
+                prim_net = (Y_kf + Y_sf + int_fx - (b["FP_row_net"] - cfc_row)
+                            - (b["F_gross"] - b["levy"]))
+                CA = NX + T_int + prim_net
+            else:
+                prim_net = 0.0
             Y_prev = Y
 
             # sectoral net financial saving (NAFA). The fund holds no money: its
@@ -591,17 +756,29 @@ class SFCCore(Module):
             dH_s = (G + b["ubi_pool"] + interest) - (b["tax_w"] + b["tax_k"] + b["tax_k_base"])  # gov money issued (incl. debt interest)
             if behavioural:
                 dH_s += dL - int_L - fund_service   # the public lender issues money to lend
+                dH_s += b["levy_fund"] - b["levy"] - int_fx   # D: levy revenue, fx income
 
             # current account accrues as net foreign assets, split by money wealth
             tot_money = M_w_prev + M_k_prev
             sh_w = (M_w_prev / tot_money) if tot_money > 0 else 0.5
             dfx_w = CA * sh_w
             dfx_k = CA * (1.0 - sh_w)
+            dA_sff = dFX_s = 0.0
+            if behavioural:      # D3: no household holds the external position
+                dfx_w = dfx_k = 0.0
             dM_w = nafa_w - dfx_w
             dM_k = nafa_k - dfx_k
             if behavioural:
-                dM_k += dL
+                dM_k += dL - dA_kf
                 L = L_prev + dL
+                # the public stand-in holds the net external position: the
+                # current account plus FDI inflows less purchases of equity abroad
+                dA_sff = fund_abroad + b["levy_fund"]
+                dFX_s = CA + (A_row - cfc_row) - dA_kf - dA_sff
+                dH_s += dFX_s
+                FX_s = FX_s_prev + dFX_s
+                A_kf = A_kf_prev + dA_kf
+                A_sff = A_sff_prev + dA_sff
 
             M_w = M_w_prev + dM_w
             M_k = M_k_prev + dM_k
@@ -616,8 +793,8 @@ class SFCCore(Module):
             if behavioural:
                 # only the profit-driven (AI-boom) part builds fast-obsolescing AI
                 # capital; capacity-driven and fund investment is traditional
-                ai_A = (min(A, ai_desired * (A_priv / A_desired))
-                        if A_desired > 0 else 0.0)
+                ai_A = min(A, (ai_desired * (A_priv / A_desired)
+                               if A_desired > 0 else 0.0) + ai_row)
             trad_A = A - ai_A
             K_trad = K_trad_prev * (1.0 - p.delta) + trad_A / Pk     # real stocks
             K_ai = K_ai_prev * (1.0 - p.delta_ai) + ai_A / Pk
@@ -627,22 +804,29 @@ class SFCCore(Module):
             # fund's stake depreciates at the capital-weighted blended rate.
             blended_delta = ((p.delta * K_trad_prev + p.delta_ai * K_ai_prev) / K_prev
                              if K_prev > 0 else p.delta)
-            contrib = (tau * b["FP"]) if ubc_on else 0.0
+            contrib = (tau * (1.0 - psi) * b["FP"]) if ubc_on else 0.0   # domestic profits only
             # behavioural: contrib is NET equity - the capital moves with its
             # share of the owners' debt (lev = owners' leverage). legacy: lev = 0.
             lev = (min(L_prev / (Pk * own_K_prev0), 0.95)
                    if (behavioural and ubc_on and own_K_prev0 > 0) else 0.0)
             E_pre = E_sf_prev * (1.0 - blended_delta) + b["A_fund"] / Pk
-            E_sf = min(E_pre + contrib / Pk / (1.0 - lev), K)    # real claim on capital
+            if behavioural:      # D1: foreign owners' stake depreciates, grows with FDI
+                E_row = E_row_prev * (1.0 - blended_delta) + A_row / Pk
+            E_sf = min(E_pre + contrib / Pk / (1.0 - lev), K - E_row)   # real claim on capital
             d_tr = lev * Pk * max(0.0, E_sf - E_pre)       # debt assumed by the fund (nominal)
+            if behavioural and ubc_on and K - E_sf - E_row <= 1e-12 * max(K, 1.0):
+                d_tr = max(d_tr, L)        # the last owned capital goes with all its debt
             if behavioural:
                 L -= d_tr
                 L_sf = L_sf_prev - rep_sf + d_tr
-            owners_K = K - E_sf
+            owners_K = K - E_sf - E_row
             # owners' net profit share this year (drives next year's investment):
             # capital income after taxes and after equity/levy given up.
-            own_share = 1.0 - phi
-            if ubc_on:
+            own_share = 1.0 - phi - psi
+            if behavioural:
+                own_income = ((b["owners_profit"] - b["tax_kb_own"] - contrib) if ubc_on
+                              else (b["own_fp"] - b["tax_k_own"] - b["tax_kb_own"]))
+            elif ubc_on:
                 own_income = b["owners_profit"] - b["tax_k_base"] - contrib
             else:
                 own_income = b["FP"] - b["tax_k"] - b["tax_k_base"]
@@ -694,7 +878,47 @@ class SFCCore(Module):
                                            "hh_owners": b["ubi_pool"] * f_k,
                                            "government": -b["ubi_pool"]}
 
-            if behavioural:
+            if behavioural:      # D: the external sector rows
+                tfm["investment"] = {"firms": A + INV, "hh_owners": -(A_priv + INV)}
+                if b["A_fund"]:
+                    tfm["investment"]["sovereign_fund"] = -b["A_fund"]
+                if A_row:
+                    tfm["investment"]["rest_of_world"] = -A_row
+                prof = {"firms": -b["FP"], "hh_owners": b["own_fp"]}
+                if b["gross_fund"]:
+                    prof["sovereign_fund"] = b["gross_fund"]
+                if b["FP_row"]:
+                    prof["rest_of_world"] = b["FP_row"]
+                tfm["profits"] = prof
+                tfm.pop("tax_capital", None)
+                tfm.pop("tax_capital_base", None)
+                if b["tax_k"]:
+                    tfm["tax_capital"] = {"government": b["tax_k"], "hh_owners": -b["tax_k_own"],
+                                          "rest_of_world": -(b["tax_k"] - b["tax_k_own"])}
+                if b["tax_k_base"]:
+                    tfm["tax_capital_base"] = {"government": b["tax_k_base"],
+                                               "hh_owners": -b["tax_kb_own"],
+                                               "rest_of_world": -(b["tax_k_base"] - b["tax_kb_own"])}
+                if b["F_gross"]:
+                    tfm["ai_licence_fees"] = {"firms": -b["F_gross"], "rest_of_world": b["F_gross"]}
+                if b["levy"]:
+                    tfm["tax_source_levy"] = {"rest_of_world": -b["levy"], "government": b["levy"]}
+                if b["levy_fund"]:
+                    tfm["transfer_levy_fund"] = {"government": -b["levy_fund"],
+                                                 "sovereign_fund": b["levy_fund"]}
+                if Y_kf or Y_sf:
+                    tfm["equity_income_abroad"] = {"hh_owners": Y_kf,
+                                                   "rest_of_world": -(Y_kf + Y_sf)}
+                    if Y_sf:
+                        tfm["equity_income_abroad"]["sovereign_fund"] = Y_sf
+                if int_fx:
+                    tfm["fx_interest"] = {"government": int_fx, "rest_of_world": -int_fx}
+                if dA_kf or dA_sff:
+                    tfm["foreign_equity_chg"] = {"hh_owners": -dA_kf,
+                                                 "rest_of_world": dA_kf + dA_sff}
+                    if dA_sff:
+                        tfm["foreign_equity_chg"]["sovereign_fund"] = -dA_sff
+                tfm["fx_chg"] = {"government": -dFX_s, "rest_of_world": dFX_s}
                 tfm["loans_chg"] = {"hh_owners": dL - d_tr, "government": -(dL - rep_sf)}
                 if L_sf_prev or d_tr:
                     tfm["loans_chg"]["sovereign_fund"] = d_tr - rep_sf
@@ -716,12 +940,26 @@ class SFCCore(Module):
             }
 
             if behavioural:
+                bsm["fx_assets"] = {"government": FX_s, "rest_of_world": -FX_s}
+                fe = {"hh_owners": A_kf, "rest_of_world": -(A_kf + A_sff)}
+                if A_sff or A_sff_prev:
+                    fe["sovereign_fund"] = A_sff
+                bsm["foreign_equity"] = fe
+                capr = {"hh_owners": Pk * owners_K}
+                if E_sf > 0:
+                    capr["sovereign_fund"] = Pk * E_sf
+                if E_row > 0:
+                    capr["rest_of_world"] = Pk * E_row
+                bsm["capital"] = capr
                 bsm["loans"] = {"hh_owners": -L, "government": L + L_sf}
                 if L_sf or L_sf_prev:
                     bsm["loans"]["sovereign_fund"] = -L_sf
             gov_money = M_w + M_k
             gov_debt = gov_money - L - L_sf   # net of the public lender's loans (0 in legacy)
             nfa = F_w + F_k
+            if behavioural:      # D: fiscal debt excludes the stand-in's external position
+                gov_debt -= (FX_s - FX_s0)
+                nfa = FX_s + A_kf + A_sff - Pk * E_row          # NIIP (equity at book value)
             interest_gdp = 100.0 * interest / Y if Y else 0.0
             pop = p.population or 1.0
             reported = {
@@ -773,6 +1011,33 @@ class SFCCore(Module):
                 reported.update({"capacity": y_cap,
                                  "utilisation": ((Y / P) / y_cap) if y_cap > 0 else 0.0,
                                  "output_gap": gap_now, "excess_imports": excess})
+                dom_ai = max(0.0, b["R"] - b["F_gross"])          # AI rent kept at home
+                claim = phi if ubc_on else tau                  # the public claim on it
+                reached = b["levy"] + claim * dom_ai
+                gni = Y + prim_net
+                reported.update({
+                    "deficit": dH_s - dFX_s,
+                    "gni": gni, "gni_real": gni / Pk, "primary_income_net": prim_net,
+                    "ai_rent": b["R"], "ai_rent_abroad": b["F_gross"] - b["levy"],
+                    "ai_rent_levy": b["levy"], "ai_rent_reached": reached,
+                    "ai_rent_reached_share": (reached / b["R"]) if b["R"] > 0 else 0.0,
+                    # the bite on the FOREIGN part: only the levy share providers absorb
+                    "ai_rent_foreign_reached_share": (
+                        ((1.0 - self.levy_pass_through) * b["levy"] / (self.ai_foreign_share * b["R"]))
+                        if self.ai_foreign_share * b["R"] > 0 else 0.0),
+                    "foreign_profits": b["FP_row_net"] - cfc_row,     # net, as in the BoP
+                    "fdi_net_inflow": A_row - cfc_row,
+                    "foreign_capital_share": (E_row / K) if K else 0.0,
+                    "fdi_investment": A_row,
+                    "owners_foreign_equity": A_kf, "owners_foreign_income": Y_kf,
+                    "fund_foreign_equity": A_sff, "fund_foreign_income": Y_sf,
+                    "public_external_position": FX_s,
+                    "niip": nfa, "niip_gdp": 100.0 * nfa / Y if Y else 0.0,
+                    "swf_net_assets": Pk * E_sf - L_sf + A_sff,
+                    "citizen_wealth_pc": (Pk * E_sf - L_sf + A_sff) / Pk / pop,
+                })
+                pi_row_prev = (b["FP_row_net"] / (psi * Y)) if (psi > 0 and Y > 0) else pi0
+                fpd_share_prev = (b["FP"] / Y) if Y > 0 else fpd_share_prev
                 gap_prev, P_prev = gap_now, P
                 ls_prev = ls
             periods.append(PeriodState(year=p.base_year + t, tfm=tfm, bsm=bsm,
@@ -783,7 +1048,8 @@ class SFCCore(Module):
             periods=periods,
             meta={
                 "stock_flow_map": ({"money": "money_chg", "fx_assets": "fx_chg",
-                                    "loans": "loans_chg"} if behavioural
+                                    "loans": "loans_chg",
+                                    "foreign_equity": "foreign_equity_chg"} if behavioural
                                    else {"money": "money_chg", "fx_assets": "fx_chg"}),
                 "investment_closure": self.investment_closure,
                 "profit_response": gamma, "debt_cap": self.debt_cap,
@@ -796,6 +1062,10 @@ class SFCCore(Module):
                 "policy_start": self.policy_start,
                 "capacity_utilisation": cu if behavioural else None,
                 "baseline_tfp_growth": g_tfp if behavioural else None,
+                "external": ext if behavioural else None,
+                "foreign_stake0": psi0, "ai_foreign_share": self.ai_foreign_share,
+                "levy_pass_through": self.levy_pass_through, "r_world": self.r_world,
+                "owners_mpc": a1_k, "fx_stand_in0": FX_s0,
                 "params": p.as_dict(), "targets": p.targets,
                 "sources": p.sources, "notes": p.notes, "nx_gap": p.nx_gap,
             },

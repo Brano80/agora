@@ -31,8 +31,12 @@ from scenarios import build_custom, make_triad, make_ubc_experiment
 from uncertainty import PRIORS, core_kwargs
 
 SOLVENCY = {"hh_net_worth_nonnegative", "money_split_shares_valid"}
+# macro aggregates reproduce the legacy base year; household money and income
+# differ by design from step D (foreign owners, equity abroad, no household fx)
 YEAR0_KEYS = ("gdp", "consumption", "investment", "gov_debt", "wage_bill",
-              "profits", "money_owners", "money_workers", "hh_disposable")
+              "profits", "exports", "imports", "gov_expenditure")
+YEAR0_ARM_KEYS = YEAR0_KEYS + ("money_owners", "money_workers", "hh_disposable",
+                               "current_account", "niip")
 
 
 def _orch(geo, **kw):
@@ -52,10 +56,13 @@ def test_year0_identical_to_legacy(geo):
     on in 2020 (Phase 7 C), so year 0 equals the legacy BASELINE in all arms."""
     ob, ol = _orch(geo), _orch(geo, investment_closure="legacy")
     vl = ol.run_scenario(make_ubc_experiment(ol.params())[0]).result.periods[0].reported
-    for sb in make_ubc_experiment(ob.params()):
-        vb = ob.run_scenario(sb).result.periods[0].reported
+    arms = [ob.run_scenario(sb).result.periods[0].reported
+            for sb in make_ubc_experiment(ob.params())]
+    for vb in arms:
         for k in YEAR0_KEYS:
-            assert vb[k] == pytest.approx(vl[k], rel=1e-12, abs=1e-6), (geo, sb.name, k)
+            assert vb[k] == pytest.approx(vl[k], rel=1e-12, abs=1e-6), (geo, k)
+        for k in YEAR0_ARM_KEYS:        # and every arm is the same economy in 2019
+            assert vb[k] == pytest.approx(arms[0][k], rel=1e-12, abs=1e-6), (geo, k)
 
 
 @pytest.mark.parametrize("geo", ["DE", "FR", "IT", "ES", "PL", "SK", "RO", "NL", "SE"])
@@ -87,13 +94,18 @@ def test_every_monte_carlo_draw_keeps_owners_solvent():
 
 
 def test_investment_responds_to_owners_net_profit_share():
-    o = _orch("DE")
+    # mechanism test with the AI rent kept at home (step D sends 70% abroad)
+    o = _orch("DE", ai_foreign_share=0.0)
     runs = {r.scenario: r.result for r in o.run_ubc_experiment()}
     base, ai = runs["Baseline"], runs["AI shift, no policy"]
     cash = runs["AI + Cash UBI"]
     iy = lambda res, t: res.periods[t].reported["investment"] / res.periods[t].reported["gdp"]
     # the AI shift raises the profit share -> a higher investment share (no exogenous path)
     assert iy(ai, 15) > iy(base, 15) + 0.02
+    # with the default foreign share, most of the boom's profit leaves the country
+    ai70 = next(r.result for r in _orch("DE").run_ubc_experiment()
+                if r.scenario == "AI shift, no policy")
+    assert iy(ai70, 15) < iy(ai, 15) - 0.02
     # a 40% profit levy (from 2020) lowers owners' net profit share in year 1,
     # and with it next year's investment
     assert (cash.periods[1].reported["owners_net_profit_share"]
@@ -144,7 +156,10 @@ def test_pecking_order_borrowing_is_capped_priced_and_netted():
         assert per[t].reported["money_owners"] >= per[t].reported["owners_liquidity_floor"] - 1e-6
     for s in per:
         r = s.reported
-        assert r["gov_debt"] == pytest.approx(r["gov_money"] - r["loans_owners"])
+        # fiscal debt = money issued less what the public stand-in lent and
+        # bought abroad since 2019 (step D)
+        fx_new = r["public_external_position"] - run.meta["fx_stand_in0"]
+        assert r["gov_debt"] == pytest.approx(r["gov_money"] - r["loans_owners"] - fx_new)
         assert sum(s.bsm["loans"].values()) == pytest.approx(0.0, abs=1e-9)
     assert run.meta["stock_flow_map"]["loans"] == "loans_chg"
 
@@ -204,10 +219,12 @@ def test_fund_takes_net_equity_with_its_share_of_debt():
         r, rp = per[t].reported, per[t - 1].reported
         assert r["fund_debt_service"] == pytest.approx(
             (LOAN_RATE + DELEVERAGE_RATE) * rp["loans_fund"])
+        fx_new = r["public_external_position"] - run.result.meta["fx_stand_in0"]
         assert r["gov_debt"] == pytest.approx(
-            r["gov_money"] - r["loans_owners"] - r["loans_fund"])
+            r["gov_money"] - r["loans_owners"] - r["loans_fund"] - fx_new)
         assert r["swf_net_assets"] == pytest.approx(
-            r["price_level"] * r["swf_stake"] - r["loans_fund"])     # stake is real
+            r["price_level"] * r["swf_stake"] - r["loans_fund"]
+            + r["fund_foreign_equity"])                              # stake is real
         assert sum(per[t].bsm["loans"].values()) == pytest.approx(0.0, abs=1e-9)
 
 
