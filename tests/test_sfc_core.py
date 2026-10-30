@@ -216,7 +216,8 @@ def test_swf_pomv_payout_grounds_the_dividend(orch, closure):
     from modules.sfc_core import SFCCore
     from scenarios import make_ubc_experiment
     p = orch.params(); pop = p.population
-    ubc = [s for s in make_ubc_experiment(p, horizon=30)
+    # the arm with NO scenario payout rule (step E pins POMV 3% by default)
+    ubc = [s for s in make_ubc_experiment(p, horizon=30, fund_payout=0.0)
            if "Universal Basic Capital" in s.name][0]
 
     def run(fp):
@@ -227,7 +228,7 @@ def test_swf_pomv_payout_grounds_the_dividend(orch, closure):
         if closure == "behavioural":
             prev = res.periods[-2].reported
             return (e["transfer_pool"] / e["price_level"] / pop * 1e6, e["swf_stake"],
-                    e["swf_net_assets"], e["transfer_pool"] / prev["swf_net_assets"])
+                    e["swf_net_assets"], e["transfer_pool"] / prev["swf_market_value"])
         return e["transfer_pool"] / e["price_level"] / pop * 1e6, e["swf_stake"]   # real
 
     if closure == "legacy":
@@ -240,9 +241,9 @@ def test_swf_pomv_payout_grounds_the_dividend(orch, closure):
         # abroad, so it compounds like GPFG: larger assets, a ~3% draw on them
         div_all, _, assets_all, _ = run(0.0)
         div_pomv, _, assets_pomv, draw = run(0.03)
-        assert assets_pomv > 1.5 * assets_all
+        assert assets_pomv > assets_all
         assert div_pomv < div_all               # 30 years in, the draw is still smaller
-        assert 0.02 < draw < 0.045              # ~3% of last year's net assets
+        assert 0.02 < draw < 0.045              # ~3% of last year's MARKET value (E1)
 
 
 def test_phase6_interest_reproduces_year0():

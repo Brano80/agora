@@ -66,6 +66,14 @@ class Policy:
     ubc: bool = False                           # Universal Basic Capital (sovereign fund)
     ubc_reinvest: float = 0.0                   # fraction of fund profits reinvested
     source_levy: float = 0.0                    # Phase 7 D: levy on AI fees paid abroad
+    fund_payout: float = 0.0                    # Phase 7 E: fund's POMV draw (0 = reinvest rule)
+    # Phase 7 E2 proposal levers (a float, a per-year list, or a LeverPath)
+    fund_seed: object = 0.0
+    fund_seed_eur: object = 0.0                 # MEUR, current euros
+    ai_equity_stake: object = 0.0
+    ai_stake_payout: object = 0.05
+    pledge_share: object = 0.0
+    broad_tax: object = 0.0
     note: str = ""
 
 
@@ -123,6 +131,10 @@ def _ai_productivity_path(p: SFCParams, ai: AIShock, ls_path: LeverPath) -> Leve
     return LeverPath(f, "AI productivity (level, phased with adoption)")
 
 
+def _lever(v, label: str) -> LeverPath:
+    return v if isinstance(v, LeverPath) else LeverPath(v, label)
+
+
 def to_scenario(p: SFCParams, ai: AIShock, pol: Policy,
                 name: Optional[str] = None, horizon: int = 30,
                 geo: Optional[str] = None) -> Scenario:
@@ -141,6 +153,13 @@ def to_scenario(p: SFCParams, ai: AIShock, pol: Policy,
         ubc_on=LeverPath(1.0 if pol.ubc else 0.0, "UBC"),
         ubc_reinvest=LeverPath(pol.ubc_reinvest, "UBC reinvest"),
         source_levy=LeverPath(pol.source_levy, "source levy on AI fees abroad"),
+        fund_payout=LeverPath(pol.fund_payout, "citizens' fund POMV payout"),
+        fund_seed=_lever(pol.fund_seed, "fund seed (share of GDP)"),
+        fund_seed_eur=_lever(pol.fund_seed_eur, "fund seed (MEUR)"),
+        ai_equity_stake=_lever(pol.ai_equity_stake, "fund stake in domestic AI firms"),
+        ai_stake_payout=_lever(pol.ai_stake_payout, "dividend on the AI stake"),
+        pledge_share=_lever(pol.pledge_share, "AI rent returned by pledges"),
+        broad_tax=_lever(pol.broad_tax, "flat tax on all income for a UBI"),
         description=(f"AI shock: labour share -> "
                      f"{ai.labour_share_end if ai.labour_share_end is not None else p.ls0:.2f}, "
                      f"capex +{ai.capex_growth*100:.0f}%/yr ({ai.adoption}); "

@@ -1,6 +1,6 @@
 # Phase 7 — Credibility fixes (from the 2026-10-28 review)
 
-**Status:** IN PROGRESS (0, A, B, C done 2026-10-29; D done 2026-10-30). **Rule:** no README claim, outreach, post or Zenodo
+**Status:** IN PROGRESS (0, A, B, C done 2026-10-29; D, E done 2026-10-30). **Rule:** no README claim, outreach, post or Zenodo
 version goes out until step G is done. Step 0 is the only exception.
 
 All findings below were reproduced on the shipped engine (fbbe103) on 2026-10-28.
@@ -318,6 +318,106 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 - **E3.** Turn the Phase-6 fiscal block ON by default (broad base + fiscal reaction), so debt comparisons mean something.
 - **E4.** Frontier: filtered for plausibility, with the investment regime shown explicitly. Flag any point that wins on ≥4/5 objectives, since that signals a missing cost.
 - **Done when:** the frontier shows genuine trade-offs and every lever is sourced.
+- **Status: DONE 2026-10-30, two items narrowed** (E1's equal-present-value and equal-cost views are replaced by the library, where each proposal runs at its announced size; and the investment regime is shown on the rich frontier only). Audit: `docs/AUDIT-2026-10-stepE.md`.
+- **Decided 2026-10-30:** debt target = each country's 2019 ratio; keep the 40% experiment as a priced benchmark that pays out 3% a year; include the Anthropic-style pledge as a labelled best case; add a sixth objective (living standards); order E3, E1, E2 + E4.
+
+#### What was built
+- **A realistic government (E3).** It is on by default in the behavioural closure; the legacy closure is unchanged.
+  - Each country borrows at its own implicit interest rate: interest paid / previous year's debt, 2015–19.
+  - The base-year tax rate is set so the primary balance holds the 2019 debt ratio on the trend path: pb* = (i − g)·debt, with g = 1.5% real world growth at 2% inflation. Using the observed 2019 balance instead would have DE paying off its whole debt.
+  - **Fiscal reaction (Bohn rule):** every year the tax rate on all taxed income moves by 0.034 pp per pp of debt above or below the 2019 ratio.
+  - **Broad base:** 30% of base-year tax is raised on capital income, and profits are taxed at source. That includes the citizens' fund's share and the AI-stake income, so a fund no longer escapes tax.
+  - **Distribution fix:** market inequality is driven by households' pre-tax capital income, so a capital levy is counted once, as a transfer (step C's double count).
+- **Fair prices (E1).** Shares are valued at market prices, through Tobin's q = this year's net profit rate / 2019's (floored at 0.2).
+  - The UBC claim buys shares at market value, not book value, and the fund's draw is on its market value.
+  - The pinned 40% UBC arm now pays out 3% of the fund a year (Norway's rule) instead of all its profit. The C1 ladder keeps the old reinvestment rule.
+  - The Monte-Carlo UBC draws use the same 3% rule.
+  - Reported: `swf_market_value`, `equity_q`.
+- **The proposal library (E2, `proposals.py`).** Six real or announced proposals, each run gated through the whole chain against no policy and the two 40% benchmarks:
+  - **One-time stock levy (Sanders):** the fund takes 50% of the domestic AI firms in 2020 and pays citizens 5% of the stake's value a year. The rest of the stake's net income goes to the budget.
+  - **Voluntary pledges, best case (Anthropic-style):** 5% of the AI rent paid abroad comes back as distributions to European households, plus 2 pp for each 50% rise in the rent after 2026. This assumes every foreign provider pledges and pays out in proportion to its European fees.
+  - **Debt-financed fund (UK Citizens' Wealth Fund proposal, Norway's rule):** the state borrows 3% of GDP a year for 10 years to seed a fund. The fund buys world equity and pays out 3% of its value a year.
+  - **Child accounts (Frühstart-Rente):** €10 a month per child aged 6–17 from 2027, fixed in euros, invested, with no payouts before retirement.
+  - **Source levy:** 3% on the AI fees paid abroad.
+  - **Cash UBI on a broad tax base:** a flat tax on all income, paid back as an equal UBI. Its rate raises what the 40% capital levy raises in 2019.
+  - **Benchmarks:** the stylised 40% capital levy paid as cash UBI, and the 40% claim in shares, paying 3%.
+  - Each enters as a lever on the scenario: `fund_seed`, `fund_seed_eur`, `ai_equity_stake`, `ai_stake_payout`, `pledge_share` and `broad_tax`, all behavioural-only, from 2020.
+  - `run_library()` reports national income, consumption, inequality, poverty, wealth, debt and the AI rent reached for each.
+- **The frontier (E4).**
+  - A sixth objective, `living`: average real consumption per person 2020–49.
+  - Points that fail a plausibility law are kept off the frontier.
+  - The library's proposals are frontier points.
+  - `near_dominant` flags a point that is best on all but one objective, which would signal a missing cost.
+  - The MCP `policy_frontier` tool reports `n_implausible` and the flags.
+- **Audit.** A new `proposals` family, and the UBC Monte Carlo at the 3% rule. The legacy audit (`docs/AUDIT-2026-10.md`) still reproduces byte for byte.
+
+#### Parameters and sources
+| Parameter | Default | MC range | Source |
+|---|---|---|---|
+| Interest rate on public debt | per country, 2015–19 implicit (DE 1.6%, FR 1.8%, IT 2.8%, EU median 2.5%) | — | Eurostat `gov_10dd_edpt1` D41PAY / GD(t−1), via DBnomics (retrieved 2026-10-30) |
+| Debt target | each country's 2019 ratio | — | Eurostat `gov_10dd_edpt1` GD, 2019 |
+| Fiscal reaction (Bohn) | 0.034 | 0.03–0.05 | Checherita-Westphal & Žďárek 2017, ECB WP 2036 (euro area 1970–2013) |
+| Capital share of tax revenue | 0.30 | — | DG TAXUD tax revenue release, 31 March 2026: capital 21.6 / (labour 51.5 + capital 21.6), EU-27 2024 |
+| Fund payout (benchmark, debt fund) | 3% of market value a year | — | Norway's fiscal rule (3% expected real return) |
+| Stock levy | 50% of domestic AI firms, 5% dividend | — | AI Sovereign Wealth Fund Act, Sen. Sanders, June 2026 (AP, 17 Jun 2026) |
+| Pledge | 5% + 2% per 50% rise | — | Anthropic Public Benefit Fund, 19 Oct 2026 (Al Jazeera); every provider pledging alike is an assumption |
+| Debt fund | 3% of GDP a year, 10 years | — | UK Citizens' Wealth Fund proposal (Lansley, McCann & Schifferes 2018); the size is an assumption |
+| Child accounts | €10/month per child 6–17 (11% of population), from 2027 | — | Frühstart-Rente, Bundestag 16 Oct 2026 (Deutsche Rentenversicherung); Eurostat population structure |
+| Source levy | 3% | — | EU digital services taxes (FR, IT, ES 3%; AT 5%) |
+
+#### Result
+| DE, 30 years | Step D | Step E |
+|---|---|---|
+| AI shift, no policy: real GDP / real GNI (× 2019) | 1.25 / 0.96 | 1.18 / 0.94 |
+| … real consumption (× 2019) | — | 0.72 |
+| … public debt 2049 (% of GDP, 2019: 60) | ~170 | 128 |
+| Cash UBI / UBC (pinned experiment), real GNI | 0.91 / 0.82 (fund pays out all) | 0.87 / 0.87 (fund pays 3%) |
+| Tobin's q in 2049, UBC arm | book value (1) | 2.05 |
+| Frontier | 8 points | 14 points: cash 10–60%, UBC 10–40%, stock levy, pledge, debt fund, broad-base UBI; none near-dominant |
+| All 27 countries: runs passing every plausibility law | 69% | 80% |
+| Runs with Gini below 0.15 | 720 | 233 (217 UBC) |
+
+**DE proposals against no policy (AI shift, 2049):**
+
+| Proposal | Real GNI | Consumption per head, 2020–49 average | Gini | Debt (% of GDP) | AI rent reached (of the part abroad) |
+|---|---|---|---|---|---|
+| No policy | — | — | 0.331 | 128 | 0% |
+| Stock levy (Sanders) | +0.2% | +3.0% | 0.311 | 116 | 15% (0%) |
+| Pledge, best case | +3.0% | +3.7% | 0.315 | 125 | 9% (13%) |
+| Debt-financed fund | +3.8% | +1.4% | 0.325 | 141 | 0% |
+| Child accounts | ≈0 | ≈0 | 0.331 | 129 | 0% |
+| Source levy 3% | ≈0 | −0.2% | 0.331 | 121 | 2% (0.3%) |
+| Broad-base cash UBI | −1.4% | +6.5% | 0.279 | 128 | 4% |
+| Benchmark: 40% levy, cash UBI | −7.1% | +27.2% | 0.239 | 129 | 12% |
+| Benchmark: 40% claim in shares, 3% payout | −7.6% | +11.4% | 0.183 | 120 | 25% |
+
+**Across the 23 countries with a usable calibration** (median against no policy, 2049): see the proposals table in `docs/AUDIT-2026-10-stepE.md`.
+- With no policy, debt goes from 60% to 128% of GDP. It passes 150% in 9 countries: BE, CY, EL, ES, FI, FR, HR, IT, PT.
+- **Stock levy:** GNI +0.5%, consumption +1.9%, debt −11 pp. It reaches 15% of the AI rent but none of the part paid abroad.
+- **Pledge (best case):** GNI +2.5%, consumption +3.2%. It is the only proposal that reaches the foreign rent (13%), and only if every provider pledges.
+- **Debt fund:** GNI +3.4%, the largest gain, because the fund earns the world return. Consumption +1.1%, debt +14 pp.
+- **Child accounts and the 3% source levy** are too small to move the aggregates.
+- **Broad-base cash UBI:** consumption +6.6%, GNI −0.8%.
+- **40% levy as cash:** consumption +22%, GNI −5%.
+- **40% claim in shares:** GNI +0.9%, consumption −1.2%, plausible in 18 of 23 countries.
+
+#### Findings changed by step E (input to the step-F ledger)
+- **The fiscal comparison now means something.** Every policy arm faces the same government. The AI shift still drives debt up, because the profits that replace wages are partly paid abroad and outside the tax base, and the estimated fiscal reaction is slow.
+- **The 40% experiment is a benchmark, not a proposal.** Priced at market value with a 3% payout, the UBC arm loses half as much national income against no policy as in step D (DE −7.6%, was −15%), about the same as cash (−7.1%). It is far larger than anything on the table: it takes 25% of the AI rent; the largest real proposal takes 15%.
+- **Real proposals are an order of magnitude smaller.** None moves real national income by more than about 4%. None but the best-case pledge reaches the part of the rent paid abroad.
+- **The trade-off is now / later and here / abroad.** Cash and the broad-base UBI raise consumption. Funds (the debt fund, the 40% claim) raise national income by saving abroad, and lower or barely raise consumption for decades.
+- **No proposal dominates.** Four of the six are on the DE frontier (child accounts and the source levy are too small to matter), and no point is best on five of the six objectives.
+
+#### Residuals and which step owns them
+- **Owners' consumption propensity (the largest).** It is solved as the base-year residual. Taxing capital at its observed share moves base-year tax off wages, and workers, with a propensity of 0.95, then account for almost all consumption. The owners' residual falls (DE 0.21 → 0.04) and turns negative in IE and NL, which join LU and SI as unusable.
+  - The results are sensitive to it. With no capital tax (owners' propensity 0.19), DE's UBC benchmark changes from GNI −7.6% / consumption +11% to −1.0% / +1.7%; cash UBI's consumption gain changes from +27% to +22%.
+  - **Step F** (calibration review): replace the residual with observed saving rates by income group (Eurostat ICW) and treat corporate retained earnings as firms' saving.
+- **Equal-present-value and equal-cost comparisons** (the original E1 wording) are not built. Each proposal runs at its own announced size. **Step F**, if the ledger needs it.
+- **Interest rates are fixed** at each country's 2015–19 rate, with no risk premium as debt passes 150%. **Banks step.**
+- **No behavioural response to the stock levy:** no relocation, valuation drop or compensation. **Step F** (sensitivity).
+- **The debt fund's spread:** it earns 6.6% and borrows at 1.6–2.8%. **Banks step** (the rates) and **step F**.
+- **Large UBC current-account surpluses** are unchanged (749 runs beyond ±10% of GDP). The 3% payout keeps most profit in the fund. **Step F.**
+- **The investment regime is shown only on the rich frontier**, where both regimes run. The standard frontier runs the behavioural closure only.
 
 ### Banks (between E and F, ~2–3 days; added 2026-10-29)
 - Replace the public-sector stand-in lender with a banking sector, activating the reserved `banks` sector and the `deposits` instrument. Loans equal deposits, households hold deposits next to (or instead of) government money, and loan interest goes to banks and depositors, not the state.

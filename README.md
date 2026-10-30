@@ -46,6 +46,16 @@ live data and validated against history.
 >    domestic capital and dilution reach none of that foreign part; a source levy
 >    reaches little, because providers pass it on. The numbers above are not yet
 >    regenerated.*
+> 4. **Book-value equity transfer and a stylised policy.** The UBC experiment valued the
+>    shares it transferred at book value, and its 40%-a-year claim is far larger than any
+>    real proposal.
+>    *Fixed in the engine on 2026-10-30 (Phase 7 step E,
+>    [`docs/AUDIT-2026-10-stepE.md`](docs/AUDIT-2026-10-stepE.md)): shares are priced at
+>    market value and every arm faces a government with real borrowing costs and a fiscal
+>    rule. Six real 2026 proposals (a stock levy, pledges, a debt-financed fund, child
+>    accounts, a source levy, a broad-base UBI) now run against the 40% benchmarks; none
+>    moves national income by more than about 4%. The numbers above are not yet
+>    regenerated.*
 >
 > An audit of the 3,057 scenario runs behind the published numbers finds that every one
 > balances its books, but only 13% also pass the new plausibility checks:

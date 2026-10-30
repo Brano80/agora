@@ -97,6 +97,25 @@ class Scenario:
     ai_productivity: LeverPath = field(default_factory=lambda: LeverPath(1.0))
     # Phase 7 D: source-based levy on AI licence/cloud fees paid abroad (rate)
     source_levy: LeverPath = field(default_factory=lambda: LeverPath(0.0))
+    # Phase 7 E: the citizens' fund's percent-of-market-value payout (0 = the
+    # ubc_reinvest rule). Behavioural closure only; SFCCore(fund_payout) wins.
+    fund_payout: LeverPath = field(default_factory=lambda: LeverPath(0.0))
+    # Phase 7 E2, the proposal library (behavioural closure only):
+    #   fund_seed       government transfer to the citizens' fund, share of GDP
+    #                   (debt-financed fund, child accounts); the fund buys world equity
+    #   ai_equity_stake fund's stake in the domestic AI firms (one-time stock levy)
+    #   ai_stake_payout citizens' dividend on that stake, share of its value a year
+    #   pledge_share    share of the AI rent paid abroad that comes back as
+    #                   distributions (voluntary pledges, best case)
+    #   broad_tax       flat tax on all income, paid back as an equal cash UBI
+    #   fund_seed_eur   the same transfer as a fixed amount, MEUR in current
+    #                   euros (child accounts: EUR 10 a month per child)
+    fund_seed: LeverPath = field(default_factory=lambda: LeverPath(0.0))
+    fund_seed_eur: LeverPath = field(default_factory=lambda: LeverPath(0.0))
+    ai_equity_stake: LeverPath = field(default_factory=lambda: LeverPath(0.0))
+    ai_stake_payout: LeverPath = field(default_factory=lambda: LeverPath(0.05))
+    pledge_share: LeverPath = field(default_factory=lambda: LeverPath(0.0))
+    broad_tax: LeverPath = field(default_factory=lambda: LeverPath(0.0))
     # absolute exports path (MEUR), set by the multi-region trade linker to
     # tie one country's exports to its partners' imports; None = autonomous.
     exports_override: Optional[LeverPath] = None
@@ -120,6 +139,11 @@ class Scenario:
             "ubc_reinvest": self.ubc_reinvest,
             "ai_productivity": self.ai_productivity,
             "source_levy": self.source_levy,
+            "fund_payout": self.fund_payout,
+            "fund_seed": self.fund_seed, "fund_seed_eur": self.fund_seed_eur,
+            "ai_equity_stake": self.ai_equity_stake,
+            "ai_stake_payout": self.ai_stake_payout, "pledge_share": self.pledge_share,
+            "broad_tax": self.broad_tax,
         }
 
     def snapshot(self) -> Dict[str, List[float]]:

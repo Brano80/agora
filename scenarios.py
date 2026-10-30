@@ -19,6 +19,9 @@ from modules.ai_shock import AIShock, Policy, to_scenario
 
 # scenario shock constants (inspectable / swappable; consumed by the driver)
 LS_AI_END = 0.30           # labour share collapses toward 30% under the AI shift
+# Phase 7 E: the pinned UBC arm's fund pays out 3% of its market value a year,
+# Norway's GPFG fiscal rule (Alaska's Permanent Fund uses 5%).
+PINNED_FUND_PAYOUT = 0.03
 CAPEX_BASE_GROWTH = 0.015  # baseline investment growth
 CAPEX_AI_GROWTH = 0.06     # AI capex boom growth
 CAPITAL_TAX = 0.40         # settlement: capital/profit tax rate
@@ -52,7 +55,9 @@ def build_custom(p: SFCParams, *, labour_share_end: Optional[float] = None,
                  automation_rate: Optional[float] = None,
                  reinstatement_rate: float = 0.02,
                  ai_productivity: Optional[float] = None,
-                 source_levy: float = 0.0,
+                 source_levy: float = 0.0, fund_payout: float = 0.0,
+                 fund_seed=0.0, fund_seed_eur=0.0, ai_equity_stake=0.0, ai_stake_payout=0.05,
+                 pledge_share=0.0, broad_tax=0.0,
                  horizon: int = 30, name: str = "Custom") -> Scenario:
     """Build a bespoke scenario from AI-shock + policy parameters (scenario
     builder). `labour_share_end=None` holds the baseline labour share.
@@ -67,7 +72,10 @@ def build_custom(p: SFCParams, *, labour_share_end: Optional[float] = None,
                 automation_rate=automation_rate,
                 reinstatement_rate=reinstatement_rate, **extra),
         Policy("custom", capital_tax=capital_tax, ubi=ubi, ubc=ubc,
-               ubc_reinvest=ubc_reinvest, source_levy=source_levy),
+               ubc_reinvest=ubc_reinvest, source_levy=source_levy,
+               fund_payout=fund_payout, fund_seed=fund_seed, fund_seed_eur=fund_seed_eur,
+               ai_equity_stake=ai_equity_stake, ai_stake_payout=ai_stake_payout,
+               pledge_share=pledge_share, broad_tax=broad_tax),
         name=name, horizon=horizon)
 
 
@@ -91,10 +99,16 @@ UBC_LABELS = [
 
 
 def make_ubc_experiment(p: SFCParams, horizon: int = 30,
-                        reinvest: float = 0.0) -> List[Scenario]:
+                        reinvest: float = 0.0,
+                        fund_payout: Optional[float] = None) -> List[Scenario]:
     """The four arms of the pinned UBC-vs-cash-UBI experiment (shared shock).
     `reinvest` sets the UBC fund's profit-reinvestment fraction (C1 closure: the
-    fund sustains capex as owners are diluted); 0.0 = the legacy pay-out-all arm."""
+    fund sustains capex as owners are diluted); 0.0 = the legacy pay-out-all arm.
+    Phase 7 E: the UBC arm's fund pays out 3% of its market value a year (Norway's
+    rule, PINNED_FUND_PAYOUT) unless `reinvest` > 0 or `fund_payout` is given;
+    the legacy closure ignores the payout lever (v1.1 numbers reproduce)."""
+    if fund_payout is None:
+        fund_payout = PINNED_FUND_PAYOUT if reinvest == 0.0 else 0.0
     shock = dict(labour_share_end=LS_AI_END, capex_growth=CAPEX_AI_GROWTH)
     baseline = to_scenario(
         p, AIShock("Baseline", labour_share_end=None, capex_growth=CAPEX_BASE_GROWTH),
@@ -108,6 +122,7 @@ def make_ubc_experiment(p: SFCParams, horizon: int = 30,
         name=UBC_LABELS[2], horizon=horizon)
     ubc = to_scenario(
         p, AIShock("AI shift", **shock),
-        Policy("UBC", capital_tax=CAPITAL_TAX, ubc=True, ubc_reinvest=reinvest),
+        Policy("UBC", capital_tax=CAPITAL_TAX, ubc=True, ubc_reinvest=reinvest,
+               fund_payout=fund_payout),
         name=UBC_LABELS[3], horizon=horizon)
     return [baseline, no_policy, cash_ubi, ubc]

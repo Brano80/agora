@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Tuple
 from calibration import calibrate
 from modules.sfc_core import SFCCore
 from modules.distribution import DistributionModule
-from scenarios import build_custom, CAPEX_AI_GROWTH
+from scenarios import build_custom, CAPEX_AI_GROWTH, PINNED_FUND_PAYOUT
 from modules.ai_shock import AI_PRODUCTIVITY
 from consistency.checks import check_run
 from data.connectors.dbnomics import DBnomicsConnector
@@ -118,7 +118,9 @@ def _run_draws(geo: str, form: str, tau: float, year: int, horizon: int,
     shared by the bands (monte_carlo) and the sensitivity ranking."""
     rng = random.Random(seed)
     priors = priors or PRIORS
-    pol = _POLICY[form]
+    pol = dict(_POLICY[form])
+    if form == "ubc" and "inv_elasticity" not in priors:
+        pol["fund_payout"] = PINNED_FUND_PAYOUT     # Phase 7 E1: the benchmark's POMV 3%
     rows = DBnomicsConnector(allow_live=False).fetch(geo, year)
     data = {k: v["value"] for k, v in rows.items()}
     inputs: List[Dict[str, float]] = []

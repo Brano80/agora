@@ -24,7 +24,8 @@ Families (all 30-year horizon, the published settings):
   triad, ubc_experiment, frontier, rich_frontier (F23),
   c1_ladder (manifesto: endogenous investment 0.75 x reinvest 0/0.6/0.8/1.0),
   mc_ubc / mc_cash (uncertainty.PRIORS, seed 0 - the F12 bands' draws),
-  pooling (multi-region dividend: EU bloc, DE+FR+SK, DE+FR).
+  pooling (multi-region dividend: EU bloc, DE+FR+SK, DE+FR),
+  proposals (behavioural only, Phase 7 E: the real-proposal library).
 """
 from __future__ import annotations
 
@@ -54,7 +55,7 @@ from orchestrator import AgoraOrchestrator                          # noqa: E402
 from scenarios import build_custom                                  # noqa: E402
 from schema.accounts import AGGREGATE_GEOS                          # noqa: E402
 from scout.checks import snapshot_geos                              # noqa: E402
-from scenarios import CAPEX_AI_GROWTH                               # noqa: E402
+from scenarios import CAPEX_AI_GROWTH, PINNED_FUND_PAYOUT           # noqa: E402
 from uncertainty import LEGACY_PRIORS, PRIORS, core_kwargs          # noqa: E402
 
 CHECKS = ("hh_net_worth_nonnegative", "money_split_shares_valid",
@@ -129,11 +130,16 @@ def _row(family, geo, name, res, dist, reports, **extra):
                    foreign_reach_end=_r(e["ai_rent_foreign_reached_share"]),
                    gni_gdp_end=_r(e["gni"] / e["gdp"]),
                    foreign_capital_end=_r(e["foreign_capital_share"]))
+    if res.periods and "equity_q" in res.periods[0].reported \
+            and res.meta.get("investment_closure") == "behavioural":   # step E
+        row.update(debt0=_r(res.periods[0].reported["gov_debt_gdp"], 3),
+                   debt_end=_r(res.periods[-1].reported["gov_debt_gdp"], 3),
+                   q_end=_r(res.periods[-1].reported["equity_q"], 3))
     row.update(extra)
     return row
 
 
-def _family(rows, errors, geo, family, fn, points=False, rename=None):
+def _family(rows, errors, geo, family, fn, points=False, rename=None, proposals=False):
     global _CAPTURE
     _CAPTURE = []
     out = None
@@ -143,14 +149,28 @@ def _family(rows, errors, geo, family, fn, points=False, rename=None):
         errors.append(dict(geo=geo, family=family,
                            error=f"{type(e).__name__}: {str(e)[:240]}"))
     caps, _CAPTURE = _CAPTURE, None
-    flags = {}
+    flags, props = {}, {}
     if points and out is not None:
         if len(out) != len(caps):
             raise RuntimeError(f"{geo}/{family}: {len(out)} points vs {len(caps)} runs")
         flags = {id(run): bool(pt.on_frontier) for (_, run), pt in zip(caps, out)}
+        props = {id(run): pt.proposal for (_, run), pt in zip(caps, out)}
+    pmet = {}
+    if proposals and out is not None:          # a refused proposal has no captured run
+        done = [r for r in out if r.metrics]
+        if len(done) != len(caps):
+            raise RuntimeError(f"{geo}/{family}: {len(done)} proposals vs {len(caps)} runs")
+        pmet = {id(run): r for (_, run), r in zip(caps, done)}
     for g, run in caps:
         name = rename(run.scenario) if rename else run.scenario
         extra = {"on_frontier": flags.get(id(run))} if points else {}
+        if points and props.get(id(run)):
+            extra["proposal"] = props[id(run)]
+        if id(run) in pmet:
+            r = pmet[id(run)]
+            name = r.name
+            extra = {"proposal": r.key,
+                     "m": {k: _r(v, 6) for k, v in r.metrics.items()}}
         rows.append(_row(family, g, name, run.result, run.dist, run.reports, **extra))
 
 
@@ -160,7 +180,9 @@ def _mc(geo, n, seed=0, tau=0.40, year=2019, horizon=30, closure="behavioural"):
     rows = DBnomicsConnector(allow_live=False).fetch(geo, year)
     data = {k: r["value"] for k, r in rows.items()}
     out = {}
-    for form, pol in (("ubc", dict(ubc=True)), ("cash_ubi", dict(ubi=True))):
+    ubc = dict(ubc=True, fund_payout=PINNED_FUND_PAYOUT) if closure == "behavioural" \
+        else dict(ubc=True)
+    for form, pol in (("ubc", ubc), ("cash_ubi", dict(ubi=True))):
         rng = random.Random(seed)
         agg = dict(n=n, used=0, skipped=0, plausible=0, fails=Counter(),
                    worst_owner_nw_y0=None, worst_owner_money_y0=None)
@@ -226,6 +248,9 @@ def run_geos(geos, mc_n, closure="behavioural"):
                     lambda rv=rv: o.run_ubc_experiment(inv_elasticity=0.75, reinvest=rv),
                     rename=(lambda s, rv=rv: f"{s} [inv 0.75, reinvest {rv:g}]") if closure == "legacy"
                     else (lambda s, rv=rv: f"{s} [endogenous investment, reinvest {rv:g}]"))
+        if closure == "behavioural":
+            from proposals import run_library
+            _family(rows, errors, geo, "proposals", lambda: run_library(o), proposals=True)
         if mc_n:
             mc[geo] = _mc(geo, mc_n, closure=closure)
         print(f"{geo}: done in {time.time() - t0:.1f}s", flush=True)
@@ -279,7 +304,7 @@ SOLVENCY = ("hh_net_worth_nonnegative", "money_split_shares_valid")
 def policy_form(name: str) -> str:
     """cash / ubc / none, from the scenario name (all families' naming)."""
     n = name.lower()
-    if "ubc" in n or "universal basic capital" in n:
+    if "ubc" in n or "universal basic capital" in n or "claim in shares" in n:
         return "ubc"
     if "cash" in n or "settlement" in n:
         return "cash"
@@ -306,13 +331,16 @@ def _firsts(rs):
 def build_report(data, date=None):
     closure = data.get("closure", "legacy")
     step = data.get("step", "B")
-    date = date or ("2026-10-28" if closure == "legacy" else "2026-10-29")
+    date = date or ("2026-10-28" if closure == "legacy" else
+                    "2026-10-30" if step == "E" else "2026-10-29")
     rows, mc, pool, errors = data["rows"], data["mc"], data["pooling"], data["errors"]
     geos = sorted({r["geo"] for r in rows if r["family"] != "pooling"})
     fams = ["triad", "ubc_experiment", "frontier", "rich_frontier", "c1_ladder", "pooling"]
     by = defaultdict(list)
     for r in rows:
         by[r["family"]].append(r)
+    if by.get("proposals"):                     # step E: the proposal library
+        fams.insert(-1, "proposals")
     L = []
     add = L.append
     n_all = len(rows)
@@ -327,6 +355,20 @@ def build_report(data, date=None):
             "checked against the new plausibility-v2 laws in `consistency/checks.py`. "
             "The laws run in *audit* mode, so nothing shipped changes; this file reads "
             "what they flag. Reproduce: `python scripts/audit_plausibility.py`.\n")
+    elif step == "E":
+        add(f"# Plausibility audit — {date} (Phase 7, step E)\n")
+        add("The same scenario families, countries and laws as the step-A to D "
+            "audits, re-run on the engine with a **realistic government and fair "
+            "prices**: each country borrows at its own 2015-2019 implicit interest "
+            "rate, starts from the primary balance that holds its 2019 debt ratio, "
+            "and corrects deviations from that ratio by the estimated EU fiscal "
+            "reaction (Bohn rule); profits are taxed at source, including the "
+            "citizens' fund's share; the fund buys its shares at market value "
+            "(Tobin's q) and the 40% benchmark pays out 3% of the fund a year "
+            "(Norway's rule). A new family, **proposals**, runs six real or "
+            "announced proposals against no policy and the two 40% benchmarks, and "
+            "the policy frontier now keeps implausible runs off. Reproduce: "
+            "`python scripts/audit_plausibility.py` (step A: `--closure legacy`).\n")
     elif step == "D":
         add(f"# Plausibility audit — {date} (Phase 7, step D)\n")
         add("The same scenario families, countries and laws as the step-A, B and C "
@@ -478,6 +520,9 @@ def build_report(data, date=None):
     surf.append(("Dashboard (all countries: triad + UBC experiment + frontier)",
                  sel("triad") + sel("ubc_experiment") + sel("frontier")))
     surf.append(("F23 rich frontier (DE, all regimes)", sel("rich_frontier", ["DE"])))
+    if by.get("proposals"):
+        surf.append(("Proposal library (DE)", sel("proposals", ["DE"])))
+        surf.append(("Proposal library (all countries)", sel("proposals")))
     for label, rs in surf:
         add(f"| {label} | {len(rs)} | {_frac(rs)} | {_firsts(rs)} |")
     for s in pool:
@@ -506,8 +551,12 @@ def build_report(data, date=None):
 
     # --- by country ------------------------------------------------------- #
     add("## By country (plausible / runs)\n")
-    add("| Country | Owners' MPC | Triad | UBC exp. | Frontier | Rich frontier | C1 ladder | MC UBC | MC cash | Worst owners' net worth (x Y0) |")
-    add("|---|---|---|---|---|---|---|---|---|---|")
+    if "proposals" in fams:
+        add("| Country | Owners' MPC | Triad | UBC exp. | Frontier | Rich frontier | C1 ladder | Proposals | MC UBC | MC cash | Worst owners' net worth (x Y0) |")
+        add("|---|---|---|---|---|---|---|---|---|---|---|")
+    else:
+        add("| Country | Owners' MPC | Triad | UBC exp. | Frontier | Rich frontier | C1 ladder | MC UBC | MC cash | Worst owners' net worth (x Y0) |")
+        add("|---|---|---|---|---|---|---|---|---|---|")
     for g in geos:
         rg = [r for r in rows if r["geo"] == g and r["family"] != "pooling"]
         a1k = next((r["a1_k"] for r in rg if r["a1_k"] is not None), None)
@@ -525,10 +574,12 @@ def build_report(data, date=None):
     add("## Reading\n")
     if closure != "legacy":
         _reading_b(add, rows, mc, by, step)
-        if step in ("C", "D"):
+        if step in ("C", "D", "E"):
             _reading_c(add, rows, mc)
-        if step == "D":
+        if step in ("D", "E"):
             _reading_d(add, rows)
+        if step == "E":
+            _reading_e(add, rows, mc, by)
         return "\n".join(L) + "\n"
     add("- Every run counted above passes (or fails) the **accounting** gate exactly as "
         "before; the plausibility laws only add information.")
@@ -561,10 +612,11 @@ def _reading_b(add, rows, mc, by, step="B"):
     n_acc = sum(r["accounting_ok"] for r in rows)
     add(f"- **Accounting:** {n_acc:,} of {len(rows):,} runs balance their books.")
     nw = [r for r in rows if "hh_net_worth_nonnegative" in r["first_fail"]]
-    if step == "D":
+    if step in ("D", "E"):
         add(f"- **Insolvency:** {len(nw)} runs and "
             f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws (step B: 2 runs; "
-            "step C: 0). External positions are no longer split among households by "
+            + ("steps C and D: 0). " if step == "E" else "step C: 0). ") +
+            "External positions are no longer split among households by "
             "their money, so no household carries the country's foreign debt.")
     elif step == "C":
         add(f"- **Insolvency:** {len(nw)} runs and "
@@ -592,13 +644,13 @@ def _reading_b(add, rows, mc, by, step="B"):
         + (". With the external position off household balance sheets (step D) the "
            "trade-linked overdrafts are gone. The law stays advisory until step F "
            "re-validates."
-           if step == "D" else
+           if step in ("D", "E") else
            ". No owner overdraft remains outside countries whose calibration is "
            "unusable. Workers' overdrafts arise there too, and in trade-linked runs "
            "from the external-position rule. This law stays advisory until step D."))
     iy = [r for r in rows if "investment_share_bounded" in r["first_fail"]]
     iy_fund = sum(1 for r in iy if policy_form(r["scenario"]) == "ubc")
-    if step in ("C", "D"):
+    if step in ("C", "D", "E"):
         iy_geo = sorted({r["geo"] for r in iy})
         add(f"- **Investment above 40% of GDP:** {len(iy)} runs ({iy_fund} of them UBC), "
             f"all in {', '.join(iy_geo) or 'no country'} (step B: 385 in the rich "
@@ -611,7 +663,21 @@ def _reading_b(add, rows, mc, by, step="B"):
             "domestic fixed capital; a real fund would also buy financial and foreign "
             "assets. That outlet arrives with step D (the fund may buy foreign equity).")
     gf = [r for r in rows if "gini_floor" in r["first_fail"]]
-    if step in ("C", "D"):
+    if step == "E":
+        cash_g = sum(mc[g]["cash_ubi"]["fails"].get("gini_floor", 0)
+                     for g in mc if "cash_ubi" in mc[g])
+        ubc_g = sum(mc[g]["ubc"]["fails"].get("gini_floor", 0) for g in mc if "ubc" in mc[g])
+        gform = Counter(policy_form(r["scenario"]) for r in gf)
+        add(f"- **Gini below 0.15:** {len(gf):,} runs (UBC {gform.get('ubc', 0):,}, cash "
+            f"{gform.get('cash', 0):,}, other {gform.get('none', 0):,}) and "
+            f"{mcc.get('gini_floor', 0):,} draws, {cash_g:,} cash UBI and {ubc_g:,} UBC "
+            "(step D: 720 runs; 5,787 draws, 914 cash). Market inequality now follows "
+            "households' pre-tax capital income, so the levy is counted once, as a "
+            "transfer. What remains is UBC at high claim rates: a fund that owns "
+            "most domestic capital and pays an equal dividend compresses personal "
+            "income below anything observed. The law is advisory until step F; the "
+            "frontier already keeps those runs off.")
+    elif step in ("C", "D"):
         cash_g = sum(mc[g]["cash_ubi"]["fails"].get("gini_floor", 0)
                      for g in mc if "cash_ubi" in mc[g])
         add(f"- **Gini below 0.15:** {len(gf):,} runs and {mcc.get('gini_floor', 0):,} "
@@ -629,11 +695,17 @@ def _reading_b(add, rows, mc, by, step="B"):
             "financing; it is revisited with step E and re-checked in step F.")
     mpc = sorted({r["geo"] for r in rows if "owners_mpc_in_unit_interval" in r["first_fail"]})
     add(f"- **Calibration:** owners' MPC outside [0, 1] in {', '.join(mpc) or 'no country'}; "
-        "those countries' results stay unusable under this closure.")
+        "those countries' results stay unusable under this closure."
+        + (" (Step D: LU, SI.) Taxing capital at its observed 30% share of revenue "
+           "moves base-year tax off wages; workers, with a consumption propensity of "
+           "0.95, then account for nearly all of household consumption, and the "
+           "owners' propensity, solved as the residual, falls (DE 0.21 to 0.04) and "
+           "turns negative in IE and NL. Step F's calibration review replaces the "
+           "residual with observed saving rates." if step == "E" else ""))
 
 
 def _reading_c(add, rows, mc):
-    sup = [r for r in rows if r.get("max_inflation") is not None]
+    sup = [r for r in rows if r.get("max_inflation") is not None and not r.get("proposal")]
     if not sup:
         return
     form = defaultdict(list)
@@ -675,7 +747,7 @@ def _reading_c(add, rows, mc):
 
 def _reading_d(add, rows):
     import statistics as _st
-    ext = [r for r in rows if r.get("niip_end") is not None]
+    ext = [r for r in rows if r.get("niip_end") is not None and not r.get("proposal")]
     if not ext:
         return
     base = [r for r in ext if r["family"] == "triad" and r["scenario"] == "Baseline"]
@@ -707,6 +779,91 @@ def _reading_d(add, rows):
             "the foreign rent).")
 
 
+def _reading_e(add, rows, mc, by):
+    import statistics as _st
+    props = [r for r in by.get("proposals", []) if r.get("m")]
+    if not props:
+        return
+    med = _st.median
+    none = {r["geo"]: r for r in props if r["proposal"] == "none" and r["plausible"]}
+    nd = [r for r in none.values() if r.get("debt_end") is not None]
+    if nd:
+        hi = sorted(r["geo"] for r in nd if r["debt_end"] > 150)
+        rise = sorted(nd, key=lambda r: r["debt_end"] - r["debt0"])
+        add(f"- **Public debt with no policy (AI shift), {len(nd)} usable countries:** median {med(r['debt0'] for r in nd):.0f}% "
+            f"of GDP in 2019 and {med(r['debt_end'] for r in nd):.0f}% in 2049; above 150% in "
+            f"{len(hi)} of {len(nd)} countries ({', '.join(hi) or 'none'}). Largest rises: "
+            + ", ".join(f"{r['geo']} {r['debt0']:.0f} to {r['debt_end']:.0f}" for r in rise[-3:][::-1])
+            + ". Each government corrects by the estimated EU fiscal reaction (0.034 of "
+            "the debt gap a year), which is too slow for a shock of this size: 70% of "
+            "the AI rent is paid abroad as licence and cloud fees, so the profits it "
+            "replaces wages with are largely outside the domestic tax base. No "
+            "austerity or tax rise beyond the estimated reaction is assumed, and "
+            "interest rates stay at each country's 2015-2019 rate (no risk premium "
+            "until the banks step).")
+    ubc = [r for r in props if r["proposal"] == "ubc_40" and r.get("q_end") is not None]
+    if ubc:
+        add(f"- **Fair prices (UBC benchmark):** the fund buys shares at market value; "
+            f"Tobin's q ends at a median {med(r['q_end'] for r in ubc):.2f} (2019 = 1) as "
+            "AI raises profits, so each euro of the 40% claim buys fewer shares than at "
+            "book value. It still ends up owning most domestic capital: the claim is "
+            "large relative to new investment, whatever the price.")
+    keys = []
+    for r in props:
+        if r["proposal"] not in keys:
+            keys.append(r["proposal"])
+    add(f"\n### Proposals against no policy (AI shift), median across the {len(none)} "
+        "countries whose no-policy run is plausible\n")
+    add("| Proposal | Plausible | Real GNI 2049 | Consumption per head 2020-49 | "
+        "Gini 2049 | Debt 2049 (pp) | AI rent reached 2049 | of the part paid abroad |")
+    add("|---|---|---|---|---|---|---|---|")
+    for k in keys:
+        rs = [r for r in props if r["proposal"] == k and r["geo"] in none]
+        if not rs:
+            continue
+        def d(f, rel=True):
+            xs = []
+            for r in rs:
+                a, b = r["m"].get(f), none[r["geo"]]["m"].get(f)
+                if a is None or b is None:
+                    continue
+                xs.append((a / b - 1.0) * 100 if rel else a - b)
+            return med(xs) if xs else float("nan")
+        gini = med(r["m"]["gini_end"] for r in rs if r["m"].get("gini_end") is not None)
+        debt = med((r["debt_end"] - none[r["geo"]]["debt_end"]) for r in rs)
+        reach = med(r["reach_end"] or 0.0 for r in rs)
+        freach = med(r["foreign_reach_end"] or 0.0 for r in rs)
+        name = rs[0]["scenario"]
+        if k == "none":
+            add(f"| {name} | {_frac(rs)} | level | level | {gini:.3f} | "
+                f"{med(r['debt_end'] for r in rs):.0f}% of GDP | {100 * reach:.0f}% | "
+                f"{100 * freach:.0f}% |")
+        else:
+            add(f"| {name} | {_frac(rs)} | {d('gni_real_end'):+.1f}% | "
+                f"{d('consumption_pc_avg'):+.1f}% | {gini:.3f} | {debt:+.0f} | "
+                f"{100 * reach:.0f}% | {100 * freach:.0f}% |")
+    add("\n*GNI and consumption: % difference from no policy in the same country; debt: "
+        "percentage-point difference in 2049. Benchmarks are the stylised 40% levy "
+        "(cash) and 40% claim in shares (UBC); the pledge row is a best case.*\n")
+    fr = by.get("frontier", [])
+    off = [r for r in fr if not r["plausible"]]
+    onp = Counter(r["proposal"] for r in fr if r.get("proposal") and r.get("on_frontier"))
+    nprop = Counter(r["proposal"] for r in fr if r.get("proposal"))
+    if fr:
+        add(f"- **Frontier:** {len(off)} of {len(fr)} frontier-search points fail a "
+            "plausibility law and are kept off the frontier. Proposals on the frontier: "
+            + ", ".join(f"{k} {onp.get(k, 0)}/{nprop[k]}" for k in nprop)
+            + " countries. A sixth objective, average real consumption per person "
+            "2020-2049, sits beside growth (national income), equality, stability, "
+            "fiscal space and resilience.")
+    add("- **Caveats:** the pledge row assumes every foreign AI provider pays out like "
+        "Anthropic's pledge and in proportion to its European fees; the stock levy "
+        "has no valuation, relocation or compensation response; the debt-financed "
+        "fund earns the world equity return (6.6%) while the state borrows at its "
+        "2015-2019 rate, a spread that a higher-rate world would narrow. Step F "
+        "re-validates all of it.")
+
+
 def compact(data):
     """Small machine-readable summary for docs/ (full rows stay in the parts)."""
     agg = defaultdict(lambda: dict(runs=0, accounting_ok=0, plausible=0, fails=Counter()))
@@ -733,7 +890,7 @@ def main():
     ap.add_argument("--assemble", help="merge all *.json parts in this directory into the docs")
     ap.add_argument("--closure", choices=("behavioural", "legacy"), default="behavioural",
                     help="investment closure to audit (legacy = the v1.1 engine, step A)")
-    ap.add_argument("--step", default="D",
+    ap.add_argument("--step", default="E",
                     help="Phase 7 step the behavioural audit documents (file suffix)")
     ap.add_argument("--out", help="report path (default: docs/AUDIT-2026-10[-step<S>].md)")
     ap.add_argument("--json", help="summary path (default: docs/audit-2026-10[-step<S>].json)")

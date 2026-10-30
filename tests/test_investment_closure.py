@@ -253,7 +253,9 @@ def test_gate_is_staged_for_behavioural_runs_and_audit_for_legacy(monkeypatch):
 
 
 def test_behavioural_ubc_passes_the_staged_gate_with_advisories():
-    o = _orch("DE")                                 # strict orchestrator, default mode
+    # SK: the most equal member, where the fund's dividends push the Gini below
+    # the 0.15 floor (an advisory law until step F); the gate still passes
+    o = _orch("SK")                                 # strict orchestrator, default mode
     ubc = next(r for r in o.run_ubc_experiment() if "Universal Basic Capital" in r.scenario)
     assert ubc.consistent
     assert "gini_floor" in {c.name for r in ubc.reports for c in r.advisories()}

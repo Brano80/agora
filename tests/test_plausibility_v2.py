@@ -113,8 +113,9 @@ def test_enforce_catches_investment_runaway():
 
 
 def test_enforce_catches_gini_below_floor():
-    """The frontier's UBC tau=50% point ends at a personal Gini of ~0.056."""
-    o = AgoraOrchestrator(geo="DE", allow_live=False)
+    """The v1.1 frontier's UBC tau=50% point ends at a personal Gini of ~0.056
+    (the legacy closure; the step-E engine no longer goes that low in DE)."""
+    o = AgoraOrchestrator(geo="DE", allow_live=False, investment_closure="legacy")
     run = o.run_scenario(build_custom(o.params(), labour_share_end=0.30,
                                       capital_tax=0.50, ubc=True, name="ubc50"))
     end_gini = run.dist.periods[-1].reported["gini_personal"]

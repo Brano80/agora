@@ -436,9 +436,12 @@ def policy_frontier(geo: str = "DE", horizon: int = 30,
                     taus: Optional[List[float]] = None,
                     allow_live: bool = False, year: int = 2019) -> Dict[str, Any]:
     """The Phase-4 optimiser as a tool: sweep the policy space (form x capital-
-    tax intensity) against the AI shock, GATE every candidate, and return the
-    Pareto (non-dominated) set scored on five objectives (growth, equality,
-    stability, fiscal, resilience). The frontier IS the 'no single best' answer:
+    tax intensity, plus the Phase 7 E library of real proposals) against the AI
+    shock, GATE every candidate, and return the Pareto (non-dominated) set scored
+    on six objectives (national income, equality, stability, fiscal, resilience,
+    living standards). Implausible points are reported but kept off the frontier;
+    a point best on all objectives but one is flagged (near_dominant). The
+    frontier IS the 'no single best' answer:
     it reports the trade-off MENU, never a winner. `taus` overrides the levy
     grid. Returns {disclaimer, geo, horizon, objectives[], frontier[],
     n_frontier, n_dominated, n_gated_out, note, data_sources}.
@@ -453,6 +456,8 @@ def policy_frontier(geo: str = "DE", horizon: int = 30,
             "frontier": front, "n_frontier": len(front),
             "n_dominated": sum(1 for p in pts if p.consistent and not p.on_frontier),
             "n_gated_out": sum(1 for p in pts if not p.consistent),
+            "n_implausible": sum(1 for p in pts if p.consistent and not p.plausible),
+            "near_dominant": [p.name for p in pts if p.near_dominant],
             "note": ("The frontier IS the answer: several non-dominated policies, "
                      "no single 'best'. Each point trades one objective for "
                      "another; the values judgement stays with you."),

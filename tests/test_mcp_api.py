@@ -270,7 +270,9 @@ def test_policy_frontier_is_a_gated_menu_no_winner():
     assert f["n_frontier"] >= 2                        # a menu, not one winner
     assert f["n_dominated"] >= 1                       # some options are dominated
     assert "no single" in f["note"].lower()
-    assert {p["form"] for p in f["frontier"]} <= {"none", "cash_ubi", "ubc"}
+    # Phase 7 E: the real-proposal library competes on the frontier too
+    assert {p["form"] for p in f["frontier"]} <= {"none", "cash_ubi", "ubc", "proposal"}
+    assert all(p["plausible"] for p in f["frontier"])     # implausible points kept off
     assert all(p["on_frontier"] for p in f["frontier"])
 
 

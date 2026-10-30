@@ -12,11 +12,16 @@ Decision space (policy only; the shock is held fixed so the question is
   * capital_tax τ — the public claim on capital income (shared intensity lever)
 
 Objectives (each expressed so HIGHER = better, for clean dominance):
-  * growth      — end-horizon GDP
+  * growth      — end-horizon real national income (GNI; Phase 7 D)
   * equality    — −(personal Gini, end)
   * stability   — −(stdev of YoY GDP growth)         [lower volatility better]
   * fiscal      — −(government debt / GDP, end)       [lower debt better]
   * resilience  — −(at-risk-of-poverty rate, end)     [less poverty better]
+  * living      — average real consumption per person, 2020-49 (Phase 7 E4,
+                  behavioural closure only)
+Phase 7 E4: points that fail a plausibility law are reported but kept off the
+frontier; a frontier point best on all objectives but one is flagged
+(near_dominant), since that usually means a missing cost.
 
 Every candidate is gated; only consistency-passing points are ranked. Pure
 stdlib. The orchestrator exposes `run_policy_search`; the dashboard renders the
@@ -39,6 +44,8 @@ OBJECTIVES: List[Tuple[str, str]] = [
     ("stability", "Stability (−growth volatility)"),
     ("fiscal", "Fiscal (−debt/GDP)"),
     ("resilience", "Resilience (−poverty)"),
+    # Phase 7 E4 (behavioural closure only): what households actually consume
+    ("living", "Living standards (average real consumption per person, 2020-49)"),
 ]
 DEFAULT_TAUS = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
 DENSE_TAUS = [round(0.05*i, 2) for i in range(0, 13)]   # 0.00..0.60 step 0.05
@@ -58,11 +65,20 @@ class PolicyPoint:
     inv_regime: str = "fixed"        # "fixed" | "endogenous" (investment axis)
     ubc_reinvest: float = 0.0        # fund reinvestment fraction (UBC only)
     refusal: str = ""                # why the gate refused it (then never on the frontier)
+    # Phase 7 E4: a point that fails a plausibility law (advisory) is reported
+    # but kept off the frontier; one that is best on all but one objective is
+    # flagged, since that usually means a missing cost
+    plausible: bool = True
+    advisories: List[str] = field(default_factory=list)
+    near_dominant: bool = False
+    proposal: str = ""               # proposal-library key (E2), if any
 
     def as_dict(self) -> Dict[str, object]:
         return {"form": self.form, "capital_tax": self.capital_tax,
                 "name": self.name, "consistent": self.consistent,
-                "on_frontier": self.on_frontier,
+                "on_frontier": self.on_frontier, "plausible": self.plausible,
+                "advisories": list(self.advisories), "near_dominant": self.near_dominant,
+                "proposal": self.proposal,
                 "inv_regime": self.inv_regime,
                 "ubc_reinvest": self.ubc_reinvest,
                 "max_residual": self.max_residual, "refusal": self.refusal,
@@ -95,6 +111,12 @@ def _score(run) -> Tuple[Dict[str, float], Dict[str, float]]:
                "swf_share": end.get("swf_share", 0.0)}
     objectives = {"growth": gni, "equality": -gini, "stability": -vol,
                   "fiscal": -debt, "resilience": -poverty}
+    if macro.meta.get("investment_closure") == "behavioural":
+        pop = (macro.meta.get("params") or {}).get("population") or 1.0
+        living = sum(q.reported["consumption"] / q.reported.get("price_level", 1.0)
+                     for q in macro.periods[1:]) / max(1, len(macro.periods) - 1) / pop * 1e6
+        metrics["consumption_pc_avg"] = living
+        objectives["living"] = living
     return metrics, objectives
 
 
@@ -117,26 +139,61 @@ def _evaluate(run_fn, scen):
     return run.consistent, run.max_residual, m, o, ""
 
 
+def _advisories(run) -> List[str]:
+    if getattr(run, "result", None) is None or \
+            run.result.meta.get("investment_closure") != "behavioural":
+        return []                                   # legacy frontier unchanged
+    return sorted({c.name for r in (run.reports or []) for c in r.advisories()})
+
+
 def _dominates(a: Dict[str, float], b: Dict[str, float], eps: float = 1e-9) -> bool:
-    """a Pareto-dominates b: >= on every objective and strictly > on one."""
-    ge_all = all(a[k] >= b[k] - eps for k, _ in OBJECTIVES)
-    gt_any = any(a[k] > b[k] + eps for k, _ in OBJECTIVES)
+    """a Pareto-dominates b: >= on every objective and strictly > on one (the
+    objectives both points carry; legacy points have no 'living' objective)."""
+    keys = [k for k, _ in OBJECTIVES if k in a and k in b]
+    ge_all = all(a[k] >= b[k] - eps for k in keys)
+    gt_any = any(a[k] > b[k] + eps for k in keys)
     return ge_all and gt_any
 
 
 def pareto_front(points: List[PolicyPoint]) -> List[PolicyPoint]:
-    """Mark and return the non-dominated consistent points."""
-    cand = [p for p in points if p.consistent]
+    """Mark and return the non-dominated consistent, PLAUSIBLE points; flag a
+    frontier point that is best on all objectives but at most one."""
+    cand = [p for p in points if p.consistent and p.plausible]
+    for p in points:
+        p.on_frontier = False
+        p.near_dominant = False
     for p in cand:
         p.on_frontier = not any(
             _dominates(q.objectives, p.objectives) for q in cand if q is not p)
-    return [p for p in cand if p.on_frontier]
+    front = [p for p in cand if p.on_frontier]
+    if len(front) > 1:
+        keys = [k for k, _ in OBJECTIVES if all(k in p.objectives for p in front)]
+        for p in front:
+            wins = sum(1 for k in keys
+                       if p.objectives[k] >= max(q.objectives[k] for q in front) - 1e-9)
+            p.near_dominant = wins >= len(keys) - 1
+    return front
+
+
+def _evaluate_point(run_fn, scen):
+    """_evaluate plus the run's plausibility advisories (behavioural only)."""
+    holder = {}
+
+    def wrapped(s):
+        holder["run"] = run_fn(s)
+        return holder["run"]
+    ok, resid, m, o, why = _evaluate(wrapped, scen)
+    adv = _advisories(holder["run"]) if "run" in holder else []
+    return ok, resid, m, o, why, adv
 
 
 def search_policies(run_scenario, p: SFCParams, taus: Optional[List[float]] = None,
-                    horizon: int = 30) -> List[PolicyPoint]:
+                    horizon: int = 30, include_library: bool = False,
+                    fund_payout: float = 0.0) -> List[PolicyPoint]:
     """Evaluate the policy grid. `run_scenario(scenario) -> ScenarioRun` is the
-    gated runner (the orchestrator). Returns ALL points (frontier flagged)."""
+    gated runner (the orchestrator). Returns ALL points (frontier flagged).
+    Phase 7 E: `include_library` adds the real-proposal library (proposals.py);
+    `fund_payout` is the UBC points' POMV rule (the behavioural default 3%)."""
     taus = DEFAULT_TAUS if taus is None else taus
     plans: List[Tuple[str, float, dict, str]] = [
         ("none", 0.0, dict(ubi=False, ubc=False), "No policy")]
@@ -150,14 +207,29 @@ def search_policies(run_scenario, p: SFCParams, taus: Optional[List[float]] = No
 
     points: List[PolicyPoint] = []
     for form, tau, kw, name in plans:
+        if form == "ubc" and fund_payout:
+            kw = dict(kw, fund_payout=fund_payout)
         scen = build_custom(p, labour_share_end=LS_AI_END,
                             capex_growth=CAPEX_AI_GROWTH, capital_tax=tau,
                             horizon=horizon, name=name, **kw)
-        ok, resid, metrics, objectives, why = _evaluate(run_scenario, scen)
+        ok, resid, metrics, objectives, why, adv = _evaluate_point(run_scenario, scen)
         points.append(PolicyPoint(
             form=form, capital_tax=tau, name=name,
             consistent=ok, max_residual=resid,
-            metrics=metrics, objectives=objectives, refusal=why))
+            metrics=metrics, objectives=objectives, refusal=why,
+            plausible=not adv, advisories=adv))
+    if include_library:
+        from proposals import LIBRARY
+        for key, prop in LIBRARY.items():
+            if key in ("none", "cash_ubi_40", "ubc_40"):
+                continue                       # already on the tau grid
+            scen = prop.build(p, horizon)
+            ok, resid, metrics, objectives, why, adv = _evaluate_point(run_scenario, scen)
+            points.append(PolicyPoint(
+                form="proposal", capital_tax=0.0, name=prop.name,
+                consistent=ok, max_residual=resid, metrics=metrics,
+                objectives=objectives, refusal=why, plausible=not adv,
+                advisories=adv, proposal=key))
     pareto_front(points)                       # sets on_frontier in place
     return points
 
@@ -190,11 +262,12 @@ def search_policies_rich(runner_for, p: SFCParams,
         scen = build_custom(p, labour_share_end=LS_AI_END,
                             capex_growth=CAPEX_AI_GROWTH, capital_tax=tau,
                             horizon=horizon, name=name, ubc_reinvest=reinv, **kw)
-        ok, resid, m, o, why = _evaluate(run_fn, scen)
+        ok, resid, m, o, why, adv = _evaluate_point(run_fn, scen)
         pts.append(PolicyPoint(form=form, capital_tax=tau, name=name,
                                consistent=ok, max_residual=resid, metrics=m,
                                objectives=o, inv_regime=regime,
-                               ubc_reinvest=reinv, refusal=why))
+                               ubc_reinvest=reinv, refusal=why,
+                               plausible=not adv, advisories=adv))
 
     add("none", 0.0, dict(ubi=False, ubc=False), "No policy", "fixed", 0.0, fixed_run)
     for tau in taus:

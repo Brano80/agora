@@ -198,7 +198,8 @@ class AgoraOrchestrator:
 
     def run_ubc_experiment(self, horizon: int = 30,
                            inv_elasticity: Optional[float] = None,
-                           reinvest: float = 0.0) -> List[ScenarioRun]:
+                           reinvest: float = 0.0,
+                           fund_payout: Optional[float] = None) -> List[ScenarioRun]:
         """The pinned experiment: Universal Basic Capital vs cash UBI.
         Runs all four arms through the full chain + consistency gate.
 
@@ -208,7 +209,8 @@ class AgoraOrchestrator:
         vs-diffusion) test: does endogenous investment choke UBC, and does fund
         reinvestment cure it?"""
         p = self.params()
-        scens = make_ubc_experiment(p, horizon=horizon, reinvest=reinvest)
+        scens = make_ubc_experiment(p, horizon=horizon, reinvest=reinvest,
+                                    fund_payout=fund_payout)
         if inv_elasticity is None or (self.investment_closure == "legacy"
                                       and inv_elasticity == self.inv_elasticity):
             return [self.run_scenario(s) for s in scens]
@@ -252,7 +254,8 @@ class AgoraOrchestrator:
         }
         out: Dict[str, Dict[str, float]] = {}
         for name, kw in configs.items():
-            by = _end(self.run_ubc_experiment(horizon=horizon, **kw))
+            # the C1 ladder compares reinvestment rules, so no POMV draw here
+            by = _end(self.run_ubc_experiment(horizon=horizon, fund_payout=0.0, **kw))
             cash = _metrics(by, "AI + Cash UBI")
             ubc = _metrics(by, "AI + Universal Basic Capital")
             out[name] = {
@@ -271,7 +274,13 @@ class AgoraOrchestrator:
         (Pareto frontier flagged). Each candidate is run through the full
         gated chain, so the frontier is built only from consistent points."""
         p = self.params()
-        return search_policies(self.run_scenario, p, taus=taus, horizon=horizon)
+        beh = self.investment_closure == "behavioural"
+        # Phase 7 E: the behavioural search adds the real-proposal library and
+        # gives UBC points the pinned payout rule (3% of market value a year)
+        from scenarios import PINNED_FUND_PAYOUT
+        return search_policies(self.run_scenario, p, taus=taus, horizon=horizon,
+                               include_library=beh,
+                               fund_payout=PINNED_FUND_PAYOUT if beh else 0.0)
 
     def rich_policy_search(self, taus=None, reinvests=None,
                            inv_elasticity: float = 0.75, horizon: int = 30):
