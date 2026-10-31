@@ -318,10 +318,16 @@ def check_period(
 
 def _calibration_check(result, mode: str) -> Optional[CheckResult]:
     """Owners' marginal propensity to consume is solved as a calibration
-    RESIDUAL so that year 0 reproduces GDP. Outside [0, 1] it is not a
-    behaviour but a sign the closure does not fit the country."""
-    params = (getattr(result, "meta", None) or {}).get("params") or {}
+    RESIDUAL so that year 0 reproduces GDP (legacy closure), or from 2019
+    consumption and the published wage/profit consumption gap (behavioural,
+    Phase 7 E5: the propensity the run actually uses). Outside [0, 1] it is
+    not a behaviour but a sign the closure does not fit the country."""
+    meta = getattr(result, "meta", None) or {}
+    params = meta.get("params") or {}
     a1_k = params.get("a1_k") if isinstance(params, dict) else None
+    if meta.get("investment_closure") == "behavioural" and \
+            isinstance(meta.get("owners_mpc"), (int, float)):
+        a1_k = meta["owners_mpc"]
     if not isinstance(a1_k, (int, float)):
         return None
     ok = 0.0 <= a1_k <= 1.0

@@ -101,6 +101,7 @@ from typing import Dict, List, Optional
 from modules.interface import Module, Scenario, RunResult, PeriodState
 from calibration import calibrate, SFCParams
 from data.connectors.capacity import capacity_utilisation_for
+from data.connectors.consumption import consumption_differential_for
 from data.connectors.external import R_WORLD, external_position_for
 from data.connectors.fiscal import fiscal_position_for
 
@@ -176,6 +177,9 @@ CAPITAL_TAX_SHARE = 0.30
 # range 0.03-0.05). Applied to the tax rate on all taxed income (labour and
 # capital alike), steering debt back to its 2019 level. MC range 0.03-0.05.
 FISCAL_REACTION = 0.034 / 100.0
+# Phase 7 E5: workers' propensity to consume out of income is capped at 1:
+# above it they would dissave every year and run out of money (EL 2019).
+MAX_WORKERS_MPC = 1.0
 
 
 def fiscal_calibration(geo: Optional[str], closure: str,
@@ -247,7 +251,9 @@ class SFCCore(Module):
                  levy_pass_through: float = LEVY_PASS_THROUGH,
                  r_world: float = R_WORLD,
                  external: Optional[dict] = None,
-                 equity_valuation: str = "market"):
+                 equity_valuation: str = "market",
+                 consumption_differential: Optional[float] = None,
+                 consumption_draw: float = 0.0):
         self.base_year = base_year
         self.calib_kwargs = calib_kwargs or {}
         # C1 (enclosure-vs-diffusion): elasticity of investment to owners'
@@ -302,6 +308,12 @@ class SFCCore(Module):
         if equity_valuation not in ("market", "book"):
             raise ValueError("equity_valuation must be 'market' or 'book'")
         self.equity_valuation = equity_valuation
+        # Phase 7 E5: MPC out of profits minus MPC out of wages (None = the
+        # country's published estimate, data/connectors/consumption.py);
+        # consumption_draw in [-1, 1] is the Monte-Carlo position in its range.
+        self.consumption_differential = (None if consumption_differential is None
+                                         else float(consumption_differential))
+        self.consumption_draw = float(consumption_draw)
         self.params: Optional[SFCParams] = None
 
     def declares_inputs(self) -> List[str]:
@@ -419,16 +431,45 @@ class SFCCore(Module):
         rprof0 = rprof_prev = None
         q = 1.0
         pi_row_prev = pi0
-        # year-0 owners' MPC: owners now receive only their own share of domestic
-        # profits plus income from equity abroad, so the calibration residual is
-        # rescaled to keep base-year consumption (and GDP) exactly as observed.
-        a1_k = p.a1_k
+        # Phase 7 E5: both classes' propensities to consume. Two facts pin them:
+        # 2019 consumption (C0 - a2*M0, which calibrate() matched with its own
+        # a1_w and residual a1_k) and the country's published effect of moving
+        # one unit of pre-tax income from wages to profits on consumption,
+        #   d = a1_k (1 - psi)(1 - theta_k) - a1_w (1 - theta_w)
+        # (owners get only the domestically owned part, after tax). Owners
+        # consume out of their income NET of depreciation on the capital they
+        # own: replacing worn-out capital is firms' saving, not income to spend
+        # (with it, workers' implied saving rates match the household saving
+        # rates in the national accounts). The legacy closure keeps a1_w and
+        # the residual a1_k on gross income.
+        a1_w, a1_k = p.a1_w, p.a1_k
+        cd = None
         if behavioural:
+            cd = (consumption_differential_for(scenario.geo, self.consumption_draw)
+                  if self.consumption_differential is None else
+                  {"value": self.consumption_differential, "flag": "override",
+                   "source": "SFCCore(consumption_differential=...)"})
+            d_c = float(cd["value"])
+            yd_w0 = p.ls0 * (1.0 - p.theta_w) * p.Y0 + i_rate_eff * p.M_w0
             yd_k0_old = (1.0 - p.ls0) * (1.0 - p.theta_k) * p.Y0 + i_rate_eff * p.M_k0
             yd_k0_new = ((1.0 - psi0) * (1.0 - p.ls0) * (1.0 - p.theta_k) * p.Y0
                          + i_rate_eff * p.M_k0 + self.r_world * A_kf)
-            if yd_k0_new > 0:
-                a1_k = p.a1_k * yd_k0_old / yd_k0_new
+            c_target = p.a1_w * yd_w0 + p.a1_k * yd_k0_old      # = C0 - a2 * M0
+            yd_k0_net = yd_k0_new - p.delta * (1.0 - psi0) * p.K0   # less owners' CFC
+            k_d = (1.0 - psi0) * (1.0 - p.theta_k)
+            if yd_k0_net > 0 and k_d > 0:
+                a1_w = ((c_target - yd_k0_net * d_c / k_d)
+                        / (yd_w0 + yd_k0_net * (1.0 - p.theta_w) / k_d))
+                if a1_w > MAX_WORKERS_MPC:
+                    # workers cannot spend more than their income every year
+                    # without running out of money (EL dissaved in 2019); cap
+                    # them and let the owners match 2019 consumption.
+                    a1_w = MAX_WORKERS_MPC
+                    a1_k = (c_target - a1_w * yd_w0) / yd_k0_net
+                    cd = dict(cd, flag=cd["flag"] + "+workers_capped",
+                              value=a1_k * k_d - a1_w * (1.0 - p.theta_w))
+                else:
+                    a1_k = (d_c + a1_w * (1.0 - p.theta_w)) / k_d
 
         for t in range(H):
             ls = scenario.labour_share.at(t, H)
@@ -584,6 +625,10 @@ class SFCCore(Module):
             # income and FDI net of it (gross flows net out to the same cash)
             cfc_row = ((((p.delta * K_trad_prev + p.delta_ai * K_ai_prev) / K_prev)
                         if K_prev > 0 else p.delta) * Pk * E_row_prev) if behavioural else 0.0
+            # E5: depreciation on the capital domestic owners own (firms' saving)
+            cfc_own = ((((p.delta * K_trad_prev + p.delta_ai * K_ai_prev) / K_prev)
+                        if K_prev > 0 else p.delta)
+                       * Pk * max(K_prev - E_sf_prev - E_row_prev, 0.0)) if behavioural else 0.0
             # inventories+valuables (P52+P53): constant autonomous, owner-
             # financed, NOT added to productive K (closes the identity).
             INV = p.inv0 * Pk
@@ -711,8 +756,8 @@ class SFCCore(Module):
                         + Y_kf - int_L)
                 net_profits = own_fp - tax_k_own - tax_kb_own + Y_kf
                 wealth_k = max(0.0, M_k_prev - L_prev)    # net of debt
-                C_w = p.a1_w * YD_w + p.a2 * M_w_prev
-                C_k = a1_k * YD_k + p.a2 * wealth_k
+                C_w = a1_w * YD_w + p.a2 * M_w_prev
+                C_k = a1_k * (YD_k - cfc_own) + p.a2 * wealth_k     # E5: net of CFC
                 return dict(WB=WB, FP=FP, tax_w=tax_w, tax_k=tax_k, tax_k_base=tax_k_base,
                             ubi_pool=ubi_pool, transfer_pool=transfer_pool,
                             div_total=div_total, div_w=div_w, div_k=div_k,
@@ -1197,7 +1242,10 @@ class SFCCore(Module):
                 "external": ext if behavioural else None,
                 "foreign_stake0": psi0, "ai_foreign_share": self.ai_foreign_share,
                 "levy_pass_through": self.levy_pass_through, "r_world": self.r_world,
-                "owners_mpc": a1_k, "fx_stand_in0": FX_s0,
+                "owners_mpc": a1_k, "workers_mpc": a1_w, "fx_stand_in0": FX_s0,
+                "consumption_differential": (cd["value"] if cd else None),
+                "consumption_differential_flag": (cd["flag"] if cd else None),
+                "consumption_differential_source": (cd["source"] if cd else None),
                 "equity_valuation": self.equity_valuation if behavioural else "book",
                 "params": p.as_dict(), "targets": p.targets,
                 "sources": p.sources, "notes": p.notes, "nx_gap": p.nx_gap,

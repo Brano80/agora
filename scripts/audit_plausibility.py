@@ -111,7 +111,14 @@ def _row(family, geo, name, res, dist, reports, **extra):
                min_owner_nw_y0=_r(min(nw) / Y0), min_owner_money_y0=_r(min(mk) / Y0),
                max_inv_share=_r(max(iy)) if iy else None,
                min_gini=_r(min(gi)) if gi else None,
-               a1_k=_r(params.get("a1_k")), neg_money=neg_money)
+               a1_k=_r(res.meta["owners_mpc"] if res.meta.get("investment_closure")
+                       == "behavioural" and res.meta.get("workers_mpc") is not None
+                       and res.meta.get("consumption_differential") is not None
+                       else params.get("a1_k")), neg_money=neg_money)
+    if res.meta.get("consumption_differential") is not None:      # step E5
+        row.update(workers_mpc=_r(res.meta["workers_mpc"]),
+                   cons_gap=_r(res.meta["consumption_differential"]),
+                   cons_flag=res.meta.get("consumption_differential_flag"))
     if res.periods and "utilisation" in res.periods[0].reported:   # step C supply side
         infl = [p.reported["inflation"] for p in res.periods[1:]]
         row.update(max_inflation=_r(max(infl)) if infl else None,
@@ -190,12 +197,13 @@ def _mc(geo, n, seed=0, tau=0.40, year=2019, horizon=30, closure="behavioural"):
             d = {k: rng.uniform(*v) for k, v in
                  (PRIORS if closure == "behavioural" else LEGACY_PRIORS).items()}
             try:
-                p = calibrate(data, geo=geo, base_year=year, a1_w=d["a1_w"])
+                a1_w = d.get("a1_w", 0.95)
+                p = calibrate(data, geo=geo, base_year=year, a1_w=a1_w)
                 scen = build_custom(p, labour_share_end=d["labour_share_end"],
                                     capex_growth=d.get("capex_growth", CAPEX_AI_GROWTH),
                                     ai_productivity=d.get("ai_productivity"),
                                     capital_tax=tau, horizon=horizon, name="mc", **pol)
-                res = SFCCore(base_year=year, calib_kwargs={"a1_w": d["a1_w"]},
+                res = SFCCore(base_year=year, calib_kwargs={"a1_w": a1_w},
                               **core_kwargs(d)).run(scen, data)
                 reps = check_run(res, strict=False)
                 if max(r.max_residual for r in reps) > 1.0:   # uncertainty.py's skip rule
@@ -332,6 +340,7 @@ def build_report(data, date=None):
     closure = data.get("closure", "legacy")
     step = data.get("step", "B")
     date = date or ("2026-10-28" if closure == "legacy" else
+                    "2026-10-31" if step == "E5" else
                     "2026-10-30" if step == "E" else "2026-10-29")
     rows, mc, pool, errors = data["rows"], data["mc"], data["pooling"], data["errors"]
     geos = sorted({r["geo"] for r in rows if r["family"] != "pooling"})
@@ -355,6 +364,17 @@ def build_report(data, date=None):
             "checked against the new plausibility-v2 laws in `consistency/checks.py`. "
             "The laws run in *audit* mode, so nothing shipped changes; this file reads "
             "what they flag. Reproduce: `python scripts/audit_plausibility.py`.\n")
+    elif step == "E5":
+        add(f"# Plausibility audit — {date} (Phase 7, step E5)\n")
+        add("The step-E engine (`docs/AUDIT-2026-10-stepE.md`) with one change: both "
+            "classes' propensities to consume are solved from 2019 consumption and "
+            "each country's published effect of moving income from wages to profits "
+            "on consumption (Onaran & Obst 2016 for the EU15, Kaczmarski 2024 for "
+            "Poland, the EU15 median elsewhere), and owners consume out of their "
+            "income net of depreciation on the capital they own. Before, workers "
+            "were fixed at 0.95 and owners took the residual, which put them near "
+            "zero or below. Same families, countries and laws. Reproduce: "
+            "`python scripts/audit_plausibility.py --step E5`.\n")
     elif step == "E":
         add(f"# Plausibility audit — {date} (Phase 7, step E)\n")
         add("The same scenario families, countries and laws as the step-A to D "
@@ -574,12 +594,12 @@ def build_report(data, date=None):
     add("## Reading\n")
     if closure != "legacy":
         _reading_b(add, rows, mc, by, step)
-        if step in ("C", "D", "E"):
+        if step in ("C", "D", "E", "E5"):
             _reading_c(add, rows, mc)
-        if step in ("D", "E"):
+        if step in ("D", "E", "E5"):
             _reading_d(add, rows)
-        if step == "E":
-            _reading_e(add, rows, mc, by)
+        if step in ("E", "E5"):
+            _reading_e(add, rows, mc, by, step)
         return "\n".join(L) + "\n"
     add("- Every run counted above passes (or fails) the **accounting** gate exactly as "
         "before; the plausibility laws only add information.")
@@ -612,10 +632,11 @@ def _reading_b(add, rows, mc, by, step="B"):
     n_acc = sum(r["accounting_ok"] for r in rows)
     add(f"- **Accounting:** {n_acc:,} of {len(rows):,} runs balance their books.")
     nw = [r for r in rows if "hh_net_worth_nonnegative" in r["first_fail"]]
-    if step in ("D", "E"):
+    if step in ("D", "E", "E5"):
         add(f"- **Insolvency:** {len(nw)} runs and "
             f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws (step B: 2 runs; "
-            + ("steps C and D: 0). " if step == "E" else "step C: 0). ") +
+            + ("steps C to E: 0). " if step == "E5" else
+               "steps C and D: 0). " if step == "E" else "step C: 0). ") +
             "External positions are no longer split among households by "
             "their money, so no household carries the country's foreign debt.")
     elif step == "C":
@@ -644,13 +665,13 @@ def _reading_b(add, rows, mc, by, step="B"):
         + (". With the external position off household balance sheets (step D) the "
            "trade-linked overdrafts are gone. The law stays advisory until step F "
            "re-validates."
-           if step in ("D", "E") else
+           if step in ("D", "E", "E5") else
            ". No owner overdraft remains outside countries whose calibration is "
            "unusable. Workers' overdrafts arise there too, and in trade-linked runs "
            "from the external-position rule. This law stays advisory until step D."))
     iy = [r for r in rows if "investment_share_bounded" in r["first_fail"]]
     iy_fund = sum(1 for r in iy if policy_form(r["scenario"]) == "ubc")
-    if step in ("C", "D", "E"):
+    if step in ("C", "D", "E", "E5"):
         iy_geo = sorted({r["geo"] for r in iy})
         add(f"- **Investment above 40% of GDP:** {len(iy)} runs ({iy_fund} of them UBC), "
             f"all in {', '.join(iy_geo) or 'no country'} (step B: 385 in the rich "
@@ -663,7 +684,7 @@ def _reading_b(add, rows, mc, by, step="B"):
             "domestic fixed capital; a real fund would also buy financial and foreign "
             "assets. That outlet arrives with step D (the fund may buy foreign equity).")
     gf = [r for r in rows if "gini_floor" in r["first_fail"]]
-    if step == "E":
+    if step in ("E", "E5"):
         cash_g = sum(mc[g]["cash_ubi"]["fails"].get("gini_floor", 0)
                      for g in mc if "cash_ubi" in mc[g])
         ubc_g = sum(mc[g]["ubc"]["fails"].get("gini_floor", 0) for g in mc if "ubc" in mc[g])
@@ -671,7 +692,9 @@ def _reading_b(add, rows, mc, by, step="B"):
         add(f"- **Gini below 0.15:** {len(gf):,} runs (UBC {gform.get('ubc', 0):,}, cash "
             f"{gform.get('cash', 0):,}, other {gform.get('none', 0):,}) and "
             f"{mcc.get('gini_floor', 0):,} draws, {cash_g:,} cash UBI and {ubc_g:,} UBC "
-            "(step D: 720 runs; 5,787 draws, 914 cash). Market inequality now follows "
+            + ("(step E: 233 runs, 217 UBC; 3,654 draws, 34 cash). " if step == "E5" else
+               "(step D: 720 runs; 5,787 draws, 914 cash). ") +
+            "Market inequality now follows "
             "households' pre-tax capital income, so the levy is counted once, as a "
             "transfer. What remains is UBC at high claim rates: a fund that owns "
             "most domestic capital and pays an equal dividend compresses personal "
@@ -694,14 +717,17 @@ def _reading_b(add, rows, mc, by, step="B"):
             "almost all UBC. This is the distribution layer (two-class lognormal), not "
             "financing; it is revisited with step E and re-checked in step F.")
     mpc = sorted({r["geo"] for r in rows if "owners_mpc_in_unit_interval" in r["first_fail"]})
-    add(f"- **Calibration:** owners' MPC outside [0, 1] in {', '.join(mpc) or 'no country'}; "
-        "those countries' results stay unusable under this closure."
+    add(f"- **Calibration:** owners' MPC outside [0, 1] in {', '.join(mpc) or 'no country'}"
+        + ("; those countries' results stay unusable under this closure." if mpc else ".")
         + (" (Step D: LU, SI.) Taxing capital at its observed 30% share of revenue "
            "moves base-year tax off wages; workers, with a consumption propensity of "
            "0.95, then account for nearly all of household consumption, and the "
            "owners' propensity, solved as the residual, falls (DE 0.21 to 0.04) and "
            "turns negative in IE and NL. Step F's calibration review replaces the "
-           "residual with observed saving rates." if step == "E" else ""))
+           "residual with observed saving rates." if step == "E" else
+           " (Step E: IE, LU, NL, SI.) Both propensities are now solved from 2019 "
+           "consumption and the published wage/profit consumption gap, so no "
+           "country needs a residual." if step == "E5" else ""))
 
 
 def _reading_c(add, rows, mc):
@@ -779,7 +805,7 @@ def _reading_d(add, rows):
             "the foreign rent).")
 
 
-def _reading_e(add, rows, mc, by):
+def _reading_e(add, rows, mc, by, step="E"):
     import statistics as _st
     props = [r for r in by.get("proposals", []) if r.get("m")]
     if not props:
@@ -801,6 +827,22 @@ def _reading_e(add, rows, mc, by):
             "austerity or tax rise beyond the estimated reaction is assumed, and "
             "interest rates stay at each country's 2015-2019 rate (no risk premium "
             "until the banks step).")
+    if step == "E5":
+        base = {r["geo"]: r for r in by.get("triad", []) if r["scenario"] == "Baseline"
+                and r.get("workers_mpc") is not None}
+        if base:
+            ws = [r["workers_mpc"] for r in base.values()]
+            ks = [r["a1_k"] for r in base.values()]
+            capped = sorted(g for g, r in base.items() if "workers_capped" in (r["cons_flag"] or ""))
+            filled = sorted(g for g, r in base.items() if (r["cons_flag"] or "").startswith("eu15"))
+            add(f"- **Propensities to consume ({len(base)} countries):** workers median "
+                f"{med(ws):.2f} ({min(ws):.2f}-{max(ws):.2f}), owners median {med(ks):.2f} "
+                f"({min(ks):.2f}-{max(ks):.2f}) out of income net of depreciation. "
+                f"Workers are capped at 1 in {', '.join(capped) or 'none'}, where 2019 "
+                "consumption is too high for the published gap (households dissaved "
+                "or nearly so); there owners take the remainder and the gap is smaller "
+                "than estimated. The EU15 median gap is used for "
+                f"{', '.join(filled) or 'none'}.")
     ubc = [r for r in props if r["proposal"] == "ubc_40" and r.get("q_end") is not None]
     if ubc:
         add(f"- **Fair prices (UBC benchmark):** the fund buys shares at market value; "

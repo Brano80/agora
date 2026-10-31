@@ -135,7 +135,8 @@ def mc_de():
     sg = U.sensitivity("DE", "ubc", n=400, seed=1, metric="gini")
     pretty = {"labour_share_end": "AI labour-share floor", "capex_growth": "AI capex growth",
               "inv_elasticity": "Investment response (C1)", "beta": "Income elasticity β",
-              "omega": "Wealth elasticity ω", "a1_w": "Consumption propensity"}
+              "omega": "Wealth elasticity ω", "a1_w": "Consumption propensity",
+              "consumption_draw": "Wage/profit consumption gap"}
     band = lambda b, k: [round(b[k].p5, 3), round(b[k].p95, 3)]
     return {"n": cb["gini"].n, "ndraws": sg["n"],
             "cash_gini": band(cb, "gini"), "ubc_gini": band(ub, "gini"),

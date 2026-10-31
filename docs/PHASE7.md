@@ -1,6 +1,6 @@
 # Phase 7 — Credibility fixes (from the 2026-10-28 review)
 
-**Status:** IN PROGRESS (0, A, B, C done 2026-10-29; D, E done 2026-10-30). **Rule:** no README claim, outreach, post or Zenodo
+**Status:** IN PROGRESS (0, A, B, C done 2026-10-29; D, E done 2026-10-30; E5 done 2026-10-31). **Rule:** no README claim, outreach, post or Zenodo
 version goes out until step G is done. Step 0 is the only exception.
 
 All findings below were reproduced on the shipped engine (fbbe103) on 2026-10-28.
@@ -409,7 +409,7 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 - **No proposal dominates.** Four of the six are on the DE frontier (child accounts and the source levy are too small to matter), and no point is best on five of the six objectives.
 
 #### Residuals and which step owns them
-- **Owners' consumption propensity (the largest).** It is solved as the base-year residual. Taxing capital at its observed share moves base-year tax off wages, and workers, with a propensity of 0.95, then account for almost all consumption. The owners' residual falls (DE 0.21 → 0.04) and turns negative in IE and NL, which join LU and SI as unusable.
+- **Owners' consumption propensity (the largest). Resolved in E5 below.** It is solved as the base-year residual. Taxing capital at its observed share moves base-year tax off wages, and workers, with a propensity of 0.95, then account for almost all consumption. The owners' residual falls (DE 0.21 → 0.04) and turns negative in IE and NL, which join LU and SI as unusable.
   - The results are sensitive to it. With no capital tax (owners' propensity 0.19), DE's UBC benchmark changes from GNI −7.6% / consumption +11% to −1.0% / +1.7%; cash UBI's consumption gain changes from +27% to +22%.
   - **Step F** (calibration review): replace the residual with observed saving rates by income group (Eurostat ICW) and treat corporate retained earnings as firms' saving.
 - **Equal-present-value and equal-cost comparisons** (the original E1 wording) are not built. Each proposal runs at its own announced size. **Step F**, if the ledger needs it.
@@ -418,6 +418,75 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 - **The debt fund's spread:** it earns 6.6% and borrows at 1.6–2.8%. **Banks step** (the rates) and **step F**.
 - **Large UBC current-account surpluses** are unchanged (749 runs beyond ±10% of GDP). The 3% payout keeps most profit in the fund. **Step F.**
 - **The investment regime is shown only on the rich frontier**, where both regimes run. The standard frontier runs the behavioural closure only.
+
+#### E5: propensities to consume (added and done 2026-10-31)
+**Why.** E3's capital tax moved base-year tax off wages. With workers fixed at a propensity of 0.95, the owners' residual fell to 0.04 in DE and below zero in IE and NL. The engine's effect of moving €1 from wages to profits on consumption was −0.73 in DE, against an econometric estimate of −0.40, so the AI shift's loss of demand was overstated by about four fifths. **Decided 2026-10-31:** solve both propensities from data, as recommended.
+
+**What was built.**
+- **Both propensities are solved from two facts:** 2019 consumption, and each country's published effect of moving one unit of pre-tax income from wages to profits on consumption, d = a1_k(1−ψ)(1−θ_k) − a1_w(1−θ_w). Owners get only the domestically owned part, after tax.
+- **Owners consume out of income net of depreciation on the capital they own.** Replacing worn-out capital is firms' saving, not income to spend.
+  - Without this, workers would have saved over 20% of their income in 15 countries (52% in LU).
+  - With it, they track the household saving rates in the national accounts: correlation 0.67 across 25 countries (IE and LU excluded as conduits), median 11% against 10% observed.
+- **Workers are capped at a propensity of 1**, because above it they would dissave every year and run out of money. The cap binds in EL, RO and SK, where 2019 consumption is too high for the published effect. Owners take the remainder there, and the effect is smaller than estimated: EL −0.15 (estimate −0.56), RO −0.08 and SK −0.26 (EU15 median −0.32).
+- **Code.** The estimates are in `data/connectors/consumption.py`, and `SFCCore` takes `consumption_differential` (an override) and `consumption_draw` (the Monte-Carlo position in the range).
+- **Monte Carlo and the law.** The Monte Carlo now draws the effect; this replaces the workers'-propensity prior. The plausibility law checks the propensity the run actually uses.
+- **Legacy is unchanged.** The step-A audit is still byte-identical. Audit: `docs/AUDIT-2026-10-stepE5.md`.
+
+| Parameter | Default | MC range | Source |
+|---|---|---|---|
+| Effect of moving income from wages to profits on consumption | DE −0.40, FR −0.32, IT −0.41, ES −0.41, NL −0.32, AT −0.28, SE −0.39, FI −0.24, PT −0.40, EL −0.56, IE −0.23, BE −0.15, DK −0.16, LU −0.15 | estimate ± 0.10 | Onaran & Obst 2016, *Cambridge Journal of Economics* 40(6), Table 7 col. A (annual 1961–2013) |
+| … Poland | −0.255 | ± 0.10 | Kaczmarski 2024, *The Polish Journal of Economics* (quarterly 2001–2022) |
+| … BG, CY, CZ, EE, HR, HU, LT, LV, MT, RO, SI, SK | EU15 median −0.32, flagged | −0.56 to −0.15 (the EU15 range) | No country estimate found |
+| Workers' propensity cap | 1.0 | — | Design. Gross household saving in 2019: EL −2.4%, RO −3.2% (Eurostat `nasa_10_ki`) |
+| Cross-check: household saving rates | DE 17.9%, FR 14.2%, IT 10.4%, ES 8.6%, PL 6.2% (gross, 2019) | — | Eurostat `nasa_10_ki` SRG_S14_S15, via DBnomics (retrieved 2026-10-31) |
+
+**Result.**
+
+| DE, 30 years | Step E | Step E5 |
+|---|---|---|
+| Workers' / owners' propensity to consume | 0.95 / 0.04 (gross income) | 0.87 / 0.39 (owners' income net of depreciation) |
+| Effect of moving €1 from wages to profits on consumption | −0.73 | −0.40 (the estimate) |
+| AI shift, no policy: real GDP / GNI / consumption (× 2019) | 1.18 / 0.94 / 0.72 | 1.24 / 0.96 / 0.85 |
+| Cash UBI / UBC (pinned experiment), real GNI | 0.87 / 0.87 | 0.89 / 0.87 |
+| Public debt 2049, no policy (% of GDP) | 128 | 125 |
+| Frontier | 14 points | 17 points: no policy, cash 10–60%, UBC 10–40% and all six proposals; none near-dominant |
+| All 27 countries: runs passing every plausibility law | 80% | 90% |
+| … Monte-Carlo draws | 55% | 63% |
+| Countries with a usable calibration | 23 | 26 (IE is out only for investment above 40% of GDP) |
+
+**DE proposals against no policy (AI shift, 2049):**
+
+| Proposal | Real GNI | Consumption per head, 2020–49 average | Gini | Debt (% of GDP) |
+|---|---|---|---|---|
+| Stock levy (Sanders) | −0.3% | +1.4% | 0.310 | 114 |
+| Pledge, best case | +3.2% | +3.8% | 0.315 | 122 |
+| Debt-financed fund | +3.7% | +1.2% | 0.325 | 137 |
+| Child accounts | ≈0 | ≈0 | 0.331 | 126 |
+| Source levy 3% | −0.1% | −0.3% | 0.330 | 119 |
+| Broad-base cash UBI | −1.6% | +4.1% | 0.278 | 125 |
+| Benchmark: 40% levy, cash UBI | −7.4% | +14.4% | 0.239 | 125 |
+| Benchmark: 40% claim in shares, 3% payout | −9.7% | +3.5% | 0.182 | 120 |
+
+**Across the 26 usable countries** (median against no policy, 2049):
+- With no policy, debt goes from 55% to 117% of GDP. It passes 150% in 8 countries.
+- **Stock levy:** GNI +0.4%, consumption +1.1%.
+- **Pledge (best case):** GNI +2.5%, consumption +3.4%.
+- **Debt fund:** GNI +3.3%, consumption +1.1%, debt +13 pp.
+- **Broad-base cash UBI:** GNI −0.7%, consumption +5.2%.
+- **40% levy as cash:** GNI −4.1%, consumption +14.5%.
+- **40% claim in shares:** GNI −0.1%, consumption −2.4%, plausible in 21 of 26 countries.
+
+**Findings changed by E5 (input to the step-F ledger).**
+- **The consumption gains from redistribution roughly halve.** The 40% cash benchmark goes from +22% to +15% (median) and from +27% to +14% in DE; the broad-base UBI from +6.6% to +5.2%. The ranking is unchanged: cash raises consumption most, and funds raise national income.
+- **The AI shift alone is less contractionary.** DE consumption ends at 0.85× its 2019 level, not 0.72×. The rest of the fall is the AI rent paid abroad and the shift itself.
+- **Every member now calibrates.** LU, SI and NL are usable again. IE is out only for investment above 40% of GDP.
+- **The proposals' order is unchanged.** The debt fund gives the largest gain in national income, and only the best-case pledge reaches the rent paid abroad.
+
+**Residuals and which step owns them.**
+- **EL, RO and SK are capped,** so their effect is smaller than estimated. 12 countries use the EU15 median. **Step F** (calibration review).
+- **BE:** owners' propensity 0.95. In 59 Monte-Carlo draws (of 200 per form) it exceeds 1. BE is a semi-conduit. **Step F.**
+- **The estimates are short-run marginal effects** from growth-rate regressions over 1961–2013. Applying them to 30-year levels is an assumption, carried by the ±0.10 Monte-Carlo range. **Step F** (sensitivity).
+- **Workers now save about 11% of income,** which accumulates as government money. Without banks it cannot finance investment except through the public stand-in lender's capped loans. **Banks step.**
 
 ### Banks (between E and F, ~2–3 days; added 2026-10-29)
 - Replace the public-sector stand-in lender with a banking sector, activating the reserved `banks` sector and the `deposits` instrument. Loans equal deposits, households hold deposits next to (or instead of) government money, and loan interest goes to banks and depositors, not the state.

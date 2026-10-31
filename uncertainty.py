@@ -63,7 +63,10 @@ PRIORS: Dict[str, Tuple[float, float]] = {
     "omega":            (0.0, 0.40),
     # (gamma removed 2026-06-11: transfer incidence is now EXACT in the
     # distribution module, not an assumed compression elasticity)
-    "a1_w":             (0.90, 0.98),   # workers' marginal propensity to consume
+    # Phase 7 E5: both propensities to consume are solved from 2019 consumption
+    # and the published wage/profit consumption gap; this draw moves the gap
+    # within its range (data/connectors/consumption.py; replaces the a1_w prior)
+    "consumption_draw": (-1.0, 1.0),
 }
 # The v1.1 prior (published F12 bands), kept to reproduce them with the legacy
 # investment closure: core_kwargs() routes any draw carrying inv_elasticity to it.
@@ -95,7 +98,8 @@ def core_kwargs(d: Dict[str, float]) -> Dict[str, object]:
     return {k: d[k] for k in ("profit_response", "debt_cap", "loan_rate",
                               "phillips_slope", "export_elasticity",
                               "utilisation_response", "ai_foreign_share",
-                              "levy_pass_through", "fiscal_reaction") if k in d}
+                              "levy_pass_through", "fiscal_reaction",
+                              "consumption_draw") if k in d}
 
 
 def _pctile(xs: List[float], q: float) -> float:
@@ -129,12 +133,13 @@ def _run_draws(geo: str, form: str, tau: float, year: int, horizon: int,
     for _ in range(n):
         d = {k: rng.uniform(*v) for k, v in priors.items()}
         try:
-            p = calibrate(data, geo=geo, base_year=year, a1_w=d["a1_w"])
+            a1_w = d.get("a1_w", 0.95)     # legacy prior; behavioural solves it
+            p = calibrate(data, geo=geo, base_year=year, a1_w=a1_w)
             scen = build_custom(p, labour_share_end=d["labour_share_end"],
                                 capex_growth=d.get("capex_growth", CAPEX_AI_GROWTH),
                                 ai_productivity=d.get("ai_productivity"),
                                 capital_tax=tau, horizon=horizon, name="mc", **pol)
-            core = SFCCore(base_year=year, calib_kwargs={"a1_w": d["a1_w"]},
+            core = SFCCore(base_year=year, calib_kwargs={"a1_w": a1_w},
                            **core_kwargs(d))
             res = core.run(scen, data)
             if max(r.max_residual for r in check_run(res, strict=False)) > 1.0:

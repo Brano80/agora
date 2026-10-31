@@ -85,11 +85,10 @@ def test_every_monte_carlo_draw_keeps_owners_solvent():
         rng = random.Random(7)
         for i in range(60):
             d = {k: rng.uniform(*v) for k, v in PRIORS.items()}
-            p = calibrate(data, geo="DE", base_year=2019, a1_w=d["a1_w"])
+            p = calibrate(data, geo="DE", base_year=2019)
             scen = build_custom(p, labour_share_end=d["labour_share_end"],
                                 capital_tax=0.40, horizon=30, name="mc", **pol)
-            res = SFCCore(base_year=2019, calib_kwargs={"a1_w": d["a1_w"]},
-                          **core_kwargs(d)).run(scen, data)
+            res = SFCCore(base_year=2019, **core_kwargs(d)).run(scen, data)
             assert all(r.passed for r in check_run(res)), (form, i)
             assert not _solvency_failures(res), (form, i, d)
 

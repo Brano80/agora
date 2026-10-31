@@ -31,7 +31,7 @@ UBC_ARM, CASH_ARM, NOPOL_ARM, BASE_ARM = 3, 2, 1, 0
 # Phase 7 B's behavioural closure removes them (tests/test_investment_closure.py).
 LEGACY = {"investment_closure": "legacy"}
 # The v1.1 Monte-Carlo prior for the two inputs Phase 7 B removed.
-V11_PRIORS = {"capex_growth": (0.03, 0.09), "inv_elasticity": (0.0, 1.5)}
+V11_PRIORS = {"capex_growth": (0.03, 0.09), "inv_elasticity": (0.0, 1.5), "a1_w": (0.90, 0.98)}
 
 
 def _arm(geo, idx, **orch_kw):
@@ -89,7 +89,7 @@ def test_enforce_catches_insolvent_monte_carlo_draw():
     draw = {"labour_share_end": 0.30, "capex_growth": 0.09,
             "inv_elasticity": 0.0, "a1_w": 0.95}
     for k, v in draw.items():
-        lo, hi = {**PRIORS, **V11_PRIORS}[k]
+        lo, hi = {**PRIORS, **V11_PRIORS}[k]     # a1_w: the v1.1 prior
         assert lo <= v <= hi, f"{k}={v} outside the published (v1.1) prior"
     rows = DBnomicsConnector(allow_live=False).fetch("DE", 2019)
     data = {k: r["value"] for k, r in rows.items()}
