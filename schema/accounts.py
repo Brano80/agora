@@ -56,7 +56,9 @@ SECTORS: Dict[str, Sector] = {
         Sector("government", "General government", 1,
                 "Taxes, spends, issues government money to cover deficits."),
         Sector("banks", "Banks", 2,
-                "Loans = deposits. Inactive until investment is bank-financed."),
+                "Phase 7 Banks step (behavioural closure): one financial sector (banks, "
+                "insurers, pension funds) with no capital of its own: deposits = bonds + "
+                "loans + the foreign debt-type position; its margin is paid to owners."),
         Sector("central_bank", "Central bank", 2,
                 "Reserves, base money. Inactive in Phase 1."),
         Sector("sovereign_fund", "Sovereign wealth fund", 1,
@@ -87,10 +89,15 @@ INSTRUMENTS: Dict[str, Instrument] = {
     i.code: i
     for i in [
         Instrument("money", "Government money / deposits", 1,
-                   note="The single financial asset in Phase 1; gov liability."),
+                   note="The single financial asset in Phase 1; gov liability. Phase 7 "
+                        "Banks step (behavioural closure): households' deposits, a "
+                        "liability of the financial sector."),
         Instrument("capital", "Fixed capital stock", 1, real=True,
                    note="Real (non-financial) stock; accumulates investment."),
         Instrument("bills", "Government bills", 2, note="Inactive in Phase 1."),
+        Instrument("bonds", "Government bonds", 1,
+                   note="Phase 7 Banks step: public debt, held by the financial sector "
+                        "(behavioural closure). The government's only debt."),
         Instrument("loans", "Loans to capital owners", 1,
                    note="Phase 7 B: owners' borrowing to finance investment, capped and "
                         "interest-bearing. Lender = the public sector as a stand-in until "

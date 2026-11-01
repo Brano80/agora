@@ -1,0 +1,1885 @@
+{
+ "generated": "2026-11-01 20:55",
+ "thresholds": {
+  "max_investment_share": 0.4,
+  "min_personal_gini": 0.15
+ },
+ "by_geo_family": {
+  "AT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "AT|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "AT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "AT|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "AT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "AT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "AT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "BE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "BE|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "BE|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "BE|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "BE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "BE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "BE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "BG|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "BG|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "BG|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "BG|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "BG|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "BG|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "BG|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "CY|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "CY|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "CY|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 3,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "CY|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "CY|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 66,
+   "fails": {
+    "gini_floor": 7
+   }
+  },
+  "CY|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "CY|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "CZ|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "CZ|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 18,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "CZ|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 3,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "CZ|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "CZ|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 51,
+   "fails": {
+    "gini_floor": 22
+   }
+  },
+  "CZ|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "CZ|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "DE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "DE|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "DE|pooling": {
+   "runs": 8,
+   "accounting_ok": 8,
+   "plausible": 8,
+   "fails": {}
+  },
+  "DE|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "DE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "DE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "DE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "DK|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "DK|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "DK|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "DK|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "DK|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "DK|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "DK|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "EE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "EE|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "EE|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "EE|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "EE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "EE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "EE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "EL|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 16,
+    "hh_net_worth_nonnegative": 3,
+    "money_split_shares_valid": 3,
+    "gini_floor": 2
+   }
+  },
+  "EL|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 19,
+    "hh_net_worth_nonnegative": 4,
+    "money_split_shares_valid": 4,
+    "gini_floor": 4
+   }
+  },
+  "EL|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 4,
+    "hh_net_worth_nonnegative": 2,
+    "money_split_shares_valid": 2,
+    "gini_floor": 2
+   }
+  },
+  "EL|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 9,
+    "hh_net_worth_nonnegative": 1,
+    "money_split_shares_valid": 1,
+    "gini_floor": 1
+   }
+  },
+  "EL|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 73,
+    "money_split_shares_valid": 26,
+    "gini_floor": 26,
+    "hh_net_worth_nonnegative": 24
+   }
+  },
+  "EL|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 3
+   }
+  },
+  "EL|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "owners_mpc_in_unit_interval": 4,
+    "hh_net_worth_nonnegative": 1,
+    "money_split_shares_valid": 1,
+    "gini_floor": 1
+   }
+  },
+  "ES|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "ES|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "ES|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "ES|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "ES|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "ES|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "ES|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "FI|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "FI|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "FI|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "FI|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "FI|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "FI|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "FI|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "FR|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "FR|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "FR|pooling": {
+   "runs": 8,
+   "accounting_ok": 8,
+   "plausible": 8,
+   "fails": {}
+  },
+  "FR|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "FR|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "FR|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "FR|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "HR|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "HR|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "HR|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "HR|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "HR|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "HR|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "HR|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "HU|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "HU|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "HU|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "HU|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "HU|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 72,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "HU|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "HU|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "IE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 16,
+    "gini_floor": 1
+   }
+  },
+  "IE|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 19
+   }
+  },
+  "IE|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 9
+   }
+  },
+  "IE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 73,
+    "gini_floor": 28
+   }
+  },
+  "IE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 3
+   }
+  },
+  "IE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 0,
+   "fails": {
+    "investment_share_bounded": 4
+   }
+  },
+  "IT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "IT|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "IT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "IT|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "IT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "IT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "IT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "LT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "LT|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "LT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "LT|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "LT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "LT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "LT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "LU|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "LU|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "LU|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 3,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "LU|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "LU|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "LU|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "LU|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "LV|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "LV|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "LV|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "LV|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "LV|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "LV|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "LV|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "MT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "MT|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "MT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 2,
+   "fails": {
+    "gini_floor": 2
+   }
+  },
+  "MT|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "MT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 58,
+   "fails": {
+    "gini_floor": 15
+   }
+  },
+  "MT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "MT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "NL|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "NL|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "NL|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "NL|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "NL|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "NL|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "NL|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "PL|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 14,
+   "fails": {
+    "gini_floor": 2
+   }
+  },
+  "PL|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 15,
+   "fails": {
+    "gini_floor": 4
+   }
+  },
+  "PL|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 2,
+   "fails": {
+    "gini_floor": 2
+   }
+  },
+  "PL|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 8,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "PL|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 49,
+   "fails": {
+    "gini_floor": 24
+   }
+  },
+  "PL|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "PL|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 3,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "PT|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "PT|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "PT|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "PT|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "PT|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "PT|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "PT|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "RO|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "RO|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "RO|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 3,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "RO|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "RO|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 57,
+   "fails": {
+    "gini_floor": 16
+   }
+  },
+  "RO|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "RO|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "SE|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "SE|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "SE|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "SE|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "SE|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "SE|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "SE|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "SI|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 16,
+   "fails": {}
+  },
+  "SI|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 19,
+   "fails": {}
+  },
+  "SI|pooling": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "SI|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 9,
+   "fails": {}
+  },
+  "SI|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 73,
+   "fails": {}
+  },
+  "SI|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "SI|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 4,
+   "fails": {}
+  },
+  "SK|c1_ladder": {
+   "runs": 16,
+   "accounting_ok": 16,
+   "plausible": 13,
+   "fails": {
+    "gini_floor": 3
+   }
+  },
+  "SK|frontier": {
+   "runs": 19,
+   "accounting_ok": 19,
+   "plausible": 12,
+   "fails": {
+    "gini_floor": 7
+   }
+  },
+  "SK|pooling": {
+   "runs": 6,
+   "accounting_ok": 6,
+   "plausible": 4,
+   "fails": {
+    "gini_floor": 2
+   }
+  },
+  "SK|proposals": {
+   "runs": 9,
+   "accounting_ok": 9,
+   "plausible": 8,
+   "fails": {
+    "gini_floor": 1
+   }
+  },
+  "SK|rich_frontier": {
+   "runs": 73,
+   "accounting_ok": 73,
+   "plausible": 40,
+   "fails": {
+    "gini_floor": 33
+   }
+  },
+  "SK|triad": {
+   "runs": 3,
+   "accounting_ok": 3,
+   "plausible": 3,
+   "fails": {}
+  },
+  "SK|ubc_experiment": {
+   "runs": 4,
+   "accounting_ok": 4,
+   "plausible": 3,
+   "fails": {
+    "gini_floor": 1
+   }
+  }
+ },
+ "monte_carlo": {
+  "AT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 59,
+    "fails": {
+     "gini_floor": 141
+    },
+    "worst_owner_nw_y0": 1.5423,
+    "worst_owner_money_y0": 0.5123
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.6278,
+    "worst_owner_money_y0": 0.3037
+   }
+  },
+  "BE": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 127,
+    "fails": {
+     "owners_mpc_in_unit_interval": 29,
+     "gini_floor": 61
+    },
+    "worst_owner_nw_y0": 1.9994,
+    "worst_owner_money_y0": 0.0
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 171,
+    "fails": {
+     "owners_mpc_in_unit_interval": 29
+    },
+    "worst_owner_nw_y0": 3.8176,
+    "worst_owner_money_y0": 0.2719
+   }
+  },
+  "BG": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 153,
+    "fails": {
+     "gini_floor": 47
+    },
+    "worst_owner_nw_y0": 0.0446,
+    "worst_owner_money_y0": 0.0
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 2.4782,
+    "worst_owner_money_y0": 0.1381
+   }
+  },
+  "CY": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 52,
+    "fails": {
+     "gini_floor": 148
+    },
+    "worst_owner_nw_y0": 1.1176,
+    "worst_owner_money_y0": 0.3889
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.4336,
+    "worst_owner_money_y0": 0.3731
+   }
+  },
+  "CZ": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 28,
+    "fails": {
+     "gini_floor": 172
+    },
+    "worst_owner_nw_y0": 0.9036,
+    "worst_owner_money_y0": 0.2894
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 2.8402,
+    "worst_owner_money_y0": 0.2718
+   }
+  },
+  "DE": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 72,
+    "fails": {
+     "gini_floor": 128
+    },
+    "worst_owner_nw_y0": 2.6704,
+    "worst_owner_money_y0": 0.6443
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.9502,
+    "worst_owner_money_y0": 0.36
+   }
+  },
+  "DK": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 71,
+    "fails": {
+     "gini_floor": 129
+    },
+    "worst_owner_nw_y0": 2.2146,
+    "worst_owner_money_y0": 0.0103
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.8775,
+    "worst_owner_money_y0": 0.2476
+   }
+  },
+  "EE": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 82,
+    "fails": {
+     "gini_floor": 118
+    },
+    "worst_owner_nw_y0": 0.7237,
+    "worst_owner_money_y0": 0.1301
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 2.7339,
+    "worst_owner_money_y0": 0.1401
+   }
+  },
+  "EL": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "owners_mpc_in_unit_interval": 200,
+     "hh_net_worth_nonnegative": 200,
+     "money_split_shares_valid": 200,
+     "gini_floor": 182
+    },
+    "worst_owner_nw_y0": -0.2611,
+    "worst_owner_money_y0": -0.2611
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "owners_mpc_in_unit_interval": 200,
+     "gini_floor": 1
+    },
+    "worst_owner_nw_y0": 2.6957,
+    "worst_owner_money_y0": 0.0905
+   }
+  },
+  "ES": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 74,
+    "fails": {
+     "gini_floor": 126
+    },
+    "worst_owner_nw_y0": 1.6221,
+    "worst_owner_money_y0": 0.1262
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.2728,
+    "worst_owner_money_y0": 0.0512
+   }
+  },
+  "FI": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 56,
+    "fails": {
+     "gini_floor": 144
+    },
+    "worst_owner_nw_y0": 1.5608,
+    "worst_owner_money_y0": 0.0923
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.4803,
+    "worst_owner_money_y0": 0.2028
+   }
+  },
+  "FR": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 85,
+    "fails": {
+     "gini_floor": 115
+    },
+    "worst_owner_nw_y0": 1.5085,
+    "worst_owner_money_y0": 0.2528
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.5382,
+    "worst_owner_money_y0": 0.2019
+   }
+  },
+  "HR": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 43,
+    "fails": {
+     "gini_floor": 157
+    },
+    "worst_owner_nw_y0": 0.5816,
+    "worst_owner_money_y0": 0.3625
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.0241,
+    "worst_owner_money_y0": 0.2081
+   }
+  },
+  "HU": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 54,
+    "fails": {
+     "gini_floor": 146
+    },
+    "worst_owner_nw_y0": 1.1901,
+    "worst_owner_money_y0": -0.0
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.0332,
+    "worst_owner_money_y0": 0.173
+   }
+  },
+  "IE": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "investment_share_bounded": 200,
+     "gini_floor": 173
+    },
+    "worst_owner_nw_y0": 0.8935,
+    "worst_owner_money_y0": 0.253
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "investment_share_bounded": 200,
+     "gini_floor": 21
+    },
+    "worst_owner_nw_y0": 3.6825,
+    "worst_owner_money_y0": 0.2066
+   }
+  },
+  "IT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 69,
+    "fails": {
+     "gini_floor": 131
+    },
+    "worst_owner_nw_y0": 2.3296,
+    "worst_owner_money_y0": 0.9437
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.9818,
+    "worst_owner_money_y0": 0.8846
+   }
+  },
+  "LT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 67,
+    "fails": {
+     "gini_floor": 133
+    },
+    "worst_owner_nw_y0": 1.1078,
+    "worst_owner_money_y0": 0.3929
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 2.999,
+    "worst_owner_money_y0": 0.3709
+   }
+  },
+  "LU": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 114,
+    "fails": {
+     "gini_floor": 86
+    },
+    "worst_owner_nw_y0": 2.6738,
+    "worst_owner_money_y0": 0.7368
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.5166,
+    "worst_owner_money_y0": 0.7368
+   }
+  },
+  "LV": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 129,
+    "fails": {
+     "gini_floor": 71
+    },
+    "worst_owner_nw_y0": 0.2874,
+    "worst_owner_money_y0": 0.0617
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 2.7326,
+    "worst_owner_money_y0": 0.2192
+   }
+  },
+  "MT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 32,
+    "fails": {
+     "gini_floor": 168
+    },
+    "worst_owner_nw_y0": 2.4992,
+    "worst_owner_money_y0": 1.1232
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 4.0155,
+    "worst_owner_money_y0": 1.1181
+   }
+  },
+  "NL": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 44,
+    "fails": {
+     "gini_floor": 156
+    },
+    "worst_owner_nw_y0": 2.0728,
+    "worst_owner_money_y0": 1.0426
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.7415,
+    "worst_owner_money_y0": 0.6099
+   }
+  },
+  "PL": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 21,
+    "fails": {
+     "gini_floor": 179
+    },
+    "worst_owner_nw_y0": 0.3047,
+    "worst_owner_money_y0": 0.1606
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 2.869,
+    "worst_owner_money_y0": 0.1285
+   }
+  },
+  "PT": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 67,
+    "fails": {
+     "gini_floor": 133
+    },
+    "worst_owner_nw_y0": 0.9276,
+    "worst_owner_money_y0": 0.2453
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.0609,
+    "worst_owner_money_y0": 0.1372
+   }
+  },
+  "RO": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 47,
+    "fails": {
+     "gini_floor": 153
+    },
+    "worst_owner_nw_y0": 0.0042,
+    "worst_owner_money_y0": -0.0
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 2.8337,
+    "worst_owner_money_y0": 0.0668
+   }
+  },
+  "SE": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 109,
+    "fails": {
+     "gini_floor": 91
+    },
+    "worst_owner_nw_y0": 2.6481,
+    "worst_owner_money_y0": 0.2677
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.4076,
+    "worst_owner_money_y0": 0.1259
+   }
+  },
+  "SI": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 179,
+    "fails": {
+     "gini_floor": 21
+    },
+    "worst_owner_nw_y0": 1.5957,
+    "worst_owner_money_y0": 0.5077
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 3.1124,
+    "worst_owner_money_y0": 0.3936
+   }
+  },
+  "SK": {
+   "ubc": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 0,
+    "fails": {
+     "gini_floor": 200
+    },
+    "worst_owner_nw_y0": 0.1255,
+    "worst_owner_money_y0": 0.0
+   },
+   "cash_ubi": {
+    "n": 200,
+    "used": 200,
+    "skipped": 0,
+    "plausible": 200,
+    "fails": {},
+    "worst_owner_nw_y0": 2.7546,
+    "worst_owner_money_y0": 0.0821
+   }
+  }
+ },
+ "pooling": [
+  {
+   "bloc": "EU bloc (manifesto/dashboard)",
+   "form": "cash_ubi",
+   "n_geos": 26,
+   "n_viable": 26,
+   "gate_consistent": true,
+   "pooled_runs": 26,
+   "pooled_plausible": 25,
+   "national_runs": 26,
+   "national_plausible": 25
+  },
+  {
+   "bloc": "EU bloc (manifesto/dashboard)",
+   "form": "ubc",
+   "n_geos": 26,
+   "n_viable": 26,
+   "gate_consistent": true,
+   "pooled_runs": 26,
+   "pooled_plausible": 20,
+   "national_runs": 26,
+   "national_plausible": 20
+  },
+  {
+   "bloc": "DE+FR+SK (posts)",
+   "form": "cash_ubi",
+   "n_geos": 3,
+   "n_viable": 3,
+   "gate_consistent": true,
+   "pooled_runs": 3,
+   "pooled_plausible": 3,
+   "national_runs": 3,
+   "national_plausible": 3
+  },
+  {
+   "bloc": "DE+FR (posts)",
+   "form": "cash_ubi",
+   "n_geos": 2,
+   "n_viable": 2,
+   "gate_consistent": true,
+   "pooled_runs": 2,
+   "pooled_plausible": 2,
+   "national_runs": 2,
+   "national_plausible": 2
+  }
+ ],
+ "errors": []
+}

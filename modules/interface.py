@@ -126,6 +126,9 @@ class Scenario:
     # multi-region pooled-dividend arm; enters the current account vs RoW.
     intl_transfer: Optional[LeverPath] = None
     description: str = ""
+    # the AIShock the scenario was built from (Banks step: the euro-area
+    # reference run replays it); None for hand-built scenarios
+    ai_shock: Optional[object] = None
 
     def levers(self) -> Dict[str, LeverPath]:
         return {

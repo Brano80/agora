@@ -115,6 +115,14 @@ def _row(family, geo, name, res, dist, reports, **extra):
                        == "behavioural" and res.meta.get("workers_mpc") is not None
                        and res.meta.get("consumption_differential") is not None
                        else params.get("a1_k")), neg_money=neg_money)
+    if res.meta.get("banks"):                                        # Banks step
+        e, Y = res.periods[-1].reported, res.periods[-1].reported["gdp"]
+        r0 = res.periods[0].reported
+        row.update(policy_end=_r(e["policy_rate"], 5), gov_rate_end=_r(e["gov_rate_avg"], 5),
+                   gov_rate_new_end=_r(e["gov_rate_new"], 5),
+                   bank_profit_end=_r(e["bank_profits"] / Y if Y else None),
+                   deposits0=_r(r0["deposits"] / r0["gdp"] if r0["gdp"] else None),
+                   fx_holder=res.meta.get("fx_holder"))
     if res.meta.get("consumption_differential") is not None:      # step E5
         row.update(workers_mpc=_r(res.meta["workers_mpc"]),
                    cons_gap=_r(res.meta["consumption_differential"]),
@@ -340,6 +348,7 @@ def build_report(data, date=None):
     closure = data.get("closure", "legacy")
     step = data.get("step", "B")
     date = date or ("2026-10-28" if closure == "legacy" else
+                    "2026-11-01" if step == "banks" else
                     "2026-10-31" if step == "E5" else
                     "2026-10-30" if step == "E" else "2026-10-29")
     rows, mc, pool, errors = data["rows"], data["mc"], data["pooling"], data["errors"]
@@ -364,6 +373,18 @@ def build_report(data, date=None):
             "checked against the new plausibility-v2 laws in `consistency/checks.py`. "
             "The laws run in *audit* mode, so nothing shipped changes; this file reads "
             "what they flag. Reproduce: `python scripts/audit_plausibility.py`.\n")
+    elif step == "banks":
+        add(f"# Plausibility audit — {date} (Phase 7, Banks step)\n")
+        add("The step-E5 engine (`docs/AUDIT-2026-10-stepE5.md`) with a **financial "
+            "sector**: households hold deposits at banks, insurers and pension funds "
+            "(one sector with no capital of its own), which hold the government's "
+            "bonds, the owners' loans and the country's foreign debt-type position "
+            "and pay their interest margin to owners. The government pays interest "
+            "only on its bonds; rates move from their 2019 level to a 2% neutral rate "
+            "without reacting; new public borrowing pays the country's spread plus "
+            "3 bp per point of debt added beyond the euro area's. IE and CY keep the "
+            "public stand-in for the foreign position. Same families, countries and "
+            "laws. Reproduce: `python scripts/audit_plausibility.py --step banks`.\n")
     elif step == "E5":
         add(f"# Plausibility audit — {date} (Phase 7, step E5)\n")
         add("The step-E engine (`docs/AUDIT-2026-10-stepE.md`) with one change: both "
@@ -594,11 +615,11 @@ def build_report(data, date=None):
     add("## Reading\n")
     if closure != "legacy":
         _reading_b(add, rows, mc, by, step)
-        if step in ("C", "D", "E", "E5"):
-            _reading_c(add, rows, mc)
-        if step in ("D", "E", "E5"):
+        if step in ("C", "D", "E", "E5", "banks"):
+            _reading_c(add, rows, mc, step)
+        if step in ("D", "E", "E5", "banks"):
             _reading_d(add, rows)
-        if step in ("E", "E5"):
+        if step in ("E", "E5", "banks"):
             _reading_e(add, rows, mc, by, step)
         return "\n".join(L) + "\n"
     add("- Every run counted above passes (or fails) the **accounting** gate exactly as "
@@ -632,10 +653,13 @@ def _reading_b(add, rows, mc, by, step="B"):
     n_acc = sum(r["accounting_ok"] for r in rows)
     add(f"- **Accounting:** {n_acc:,} of {len(rows):,} runs balance their books.")
     nw = [r for r in rows if "hh_net_worth_nonnegative" in r["first_fail"]]
-    if step in ("D", "E", "E5"):
+    if step in ("D", "E", "E5", "banks"):
         add(f"- **Insolvency:** {len(nw)} runs and "
             f"{mcc.get('hh_net_worth_nonnegative', 0)} Monte-Carlo draws (step B: 2 runs; "
-            + ("steps C to E: 0). " if step == "E5" else
+            + ("steps C to E5: 0), "
+               + ", ".join(f"{g} {n}" for g, n in Counter(r["geo"] for r in nw).most_common())
+               + " - the economy whose calibration fails below. " if step == "banks" else
+               "steps C to E: 0). " if step == "E5" else
                "steps C and D: 0). " if step == "E" else "step C: 0). ") +
             "External positions are no longer split among households by "
             "their money, so no household carries the country's foreign debt.")
@@ -665,13 +689,13 @@ def _reading_b(add, rows, mc, by, step="B"):
         + (". With the external position off household balance sheets (step D) the "
            "trade-linked overdrafts are gone. The law stays advisory until step F "
            "re-validates."
-           if step in ("D", "E", "E5") else
+           if step in ("D", "E", "E5", "banks") else
            ". No owner overdraft remains outside countries whose calibration is "
            "unusable. Workers' overdrafts arise there too, and in trade-linked runs "
            "from the external-position rule. This law stays advisory until step D."))
     iy = [r for r in rows if "investment_share_bounded" in r["first_fail"]]
     iy_fund = sum(1 for r in iy if policy_form(r["scenario"]) == "ubc")
-    if step in ("C", "D", "E", "E5"):
+    if step in ("C", "D", "E", "E5", "banks"):
         iy_geo = sorted({r["geo"] for r in iy})
         add(f"- **Investment above 40% of GDP:** {len(iy)} runs ({iy_fund} of them UBC), "
             f"all in {', '.join(iy_geo) or 'no country'} (step B: 385 in the rich "
@@ -684,7 +708,7 @@ def _reading_b(add, rows, mc, by, step="B"):
             "domestic fixed capital; a real fund would also buy financial and foreign "
             "assets. That outlet arrives with step D (the fund may buy foreign equity).")
     gf = [r for r in rows if "gini_floor" in r["first_fail"]]
-    if step in ("E", "E5"):
+    if step in ("E", "E5", "banks"):
         cash_g = sum(mc[g]["cash_ubi"]["fails"].get("gini_floor", 0)
                      for g in mc if "cash_ubi" in mc[g])
         ubc_g = sum(mc[g]["ubc"]["fails"].get("gini_floor", 0) for g in mc if "ubc" in mc[g])
@@ -692,7 +716,8 @@ def _reading_b(add, rows, mc, by, step="B"):
         add(f"- **Gini below 0.15:** {len(gf):,} runs (UBC {gform.get('ubc', 0):,}, cash "
             f"{gform.get('cash', 0):,}, other {gform.get('none', 0):,}) and "
             f"{mcc.get('gini_floor', 0):,} draws, {cash_g:,} cash UBI and {ubc_g:,} UBC "
-            + ("(step E: 233 runs, 217 UBC; 3,654 draws, 34 cash). " if step == "E5" else
+            + ("(step E5: 246 runs, 233 UBC; 3,673 draws, 28 cash). " if step == "banks" else
+               "(step E: 233 runs, 217 UBC; 3,654 draws, 34 cash). " if step == "E5" else
                "(step D: 720 runs; 5,787 draws, 914 cash). ") +
             "Market inequality now follows "
             "households' pre-tax capital income, so the levy is counted once, as a "
@@ -727,10 +752,16 @@ def _reading_b(add, rows, mc, by, step="B"):
            "residual with observed saving rates." if step == "E" else
            " (Step E: IE, LU, NL, SI.) Both propensities are now solved from 2019 "
            "consumption and the published wage/profit consumption gap, so no "
-           "country needs a residual." if step == "E5" else ""))
+           "country needs a residual." if step == "E5" else
+           " (Step E5: none.) Households now earn interest only on their deposits "
+           "(step E5 paid them the government's rate on all public debt), so where "
+           "2019 consumption is high relative to income the propensities rise. In EL, "
+           "where households spent more than their income in 2019, the owners' "
+           "propensity exceeds 1: EL is unusable until step F reviews its calibration."
+           if step == "banks" else ""))
 
 
-def _reading_c(add, rows, mc):
+def _reading_c(add, rows, mc, step=None):
     sup = [r for r in rows if r.get("max_inflation") is not None and not r.get("proposal")]
     if not sup:
         return
@@ -767,8 +798,14 @@ def _reading_c(add, rows, mc):
            "building as the profit share climbs (the profit response is applied far "
            "outside its sample; step F); with no policy, demand falls short under "
            "the AI shift." if low else ""))
-    add("- Interest rates are still fixed (no monetary-policy response until the "
-        "banks step), so demand-led growth is not yet leaned against.")
+    if step == "banks":
+        add("- Policy rates move from 2019 to the neutral rate and do not react "
+            "(decided 2026-11-01): with no mortgages or asset prices in the model, "
+            "higher rates raise households' interest income and would feed a boom, "
+            "not cool it. A reacting rule waits for step F.")
+    else:
+        add("- Interest rates are still fixed (no monetary-policy response until the "
+            "banks step), so demand-led growth is not yet leaned against.")
 
 
 def _reading_d(add, rows):
@@ -825,9 +862,34 @@ def _reading_e(add, rows, mc, by, step="E"):
             "the AI rent is paid abroad as licence and cloud fees, so the profits it "
             "replaces wages with are largely outside the domestic tax base. No "
             "austerity or tax rise beyond the estimated reaction is assumed, and "
-            "interest rates stay at each country's 2015-2019 rate (no risk premium "
-            "until the banks step).")
-    if step == "E5":
+            + ("rates move from 2019 to the 2% neutral rate; new borrowing pays the "
+               "country's spread plus 3 bp per point of debt added beyond the euro "
+               "area's (step E5: median 117% in 2049, 8 countries above 150%)."
+               if step == "banks" else
+               "interest rates stay at each country's 2015-2019 rate (no risk premium "
+               "until the banks step)."))
+    if step == "banks":
+        nb = [r for r in none.values() if r.get("gov_rate_end") is not None]
+        if nb:
+            dep = [r["deposits0"] for r in nb if r.get("deposits0") is not None]
+            bp = [r["bank_profit_end"] for r in nb if r.get("bank_profit_end") is not None]
+            stand = sorted({r["geo"] for r in rows if r.get("fx_holder") == "government"})
+            add(f"- **Rates (no policy, AI shift, 2049):** policy rate "
+                f"{100 * med(r['policy_end'] for r in nb):.1f}% everywhere (2019 level to the "
+                f"neutral rate, no reaction); average rate on public debt median "
+                f"{100 * med(r['gov_rate_end'] for r in nb):.1f}% "
+                f"({100 * min(r['gov_rate_end'] for r in nb):.1f}-"
+                f"{100 * max(r['gov_rate_end'] for r in nb):.1f}%), new borrowing median "
+                f"{100 * med(r['gov_rate_new_end'] for r in nb):.1f}%.")
+            add(f"- **Financial sector:** households' deposits start at public debt plus "
+                f"the foreign debt-type position, median {100 * med(dep):.0f}% of GDP; its "
+                f"margin, paid to owners, is a median {100 * med(bp):.1f}% of GDP in 2049; "
+                "its balance sheet closes in every run. The foreign position no longer "
+                "runs through the budget, which had been charging net debtors' "
+                "governments the interest on their private sector's foreign debt "
+                "(and crediting creditors'). Public stand-in kept for "
+                f"{', '.join(stand) or 'none'}.")
+    if step in ("E5", "banks"):
         base = {r["geo"]: r for r in by.get("triad", []) if r["scenario"] == "Baseline"
                 and r.get("workers_mpc") is not None}
         if base:
@@ -901,9 +963,11 @@ def _reading_e(add, rows, mc, by, step="E"):
     add("- **Caveats:** the pledge row assumes every foreign AI provider pays out like "
         "Anthropic's pledge and in proportion to its European fees; the stock levy "
         "has no valuation, relocation or compensation response; the debt-financed "
-        "fund earns the world equity return (6.6%) while the state borrows at its "
-        "2015-2019 rate, a spread that a higher-rate world would narrow. Step F "
-        "re-validates all of it.")
+        "fund earns the world equity return (6.6%) while the state borrows at "
+        + ("its market rate (policy rate + spread + premium). "
+           if step == "banks" else
+           "its 2015-2019 rate, a spread that a higher-rate world would narrow. ")
+        + "Step F re-validates all of it.")
 
 
 def compact(data):
@@ -932,12 +996,12 @@ def main():
     ap.add_argument("--assemble", help="merge all *.json parts in this directory into the docs")
     ap.add_argument("--closure", choices=("behavioural", "legacy"), default="behavioural",
                     help="investment closure to audit (legacy = the v1.1 engine, step A)")
-    ap.add_argument("--step", default="E",
+    ap.add_argument("--step", default="banks",
                     help="Phase 7 step the behavioural audit documents (file suffix)")
     ap.add_argument("--out", help="report path (default: docs/AUDIT-2026-10[-step<S>].md)")
     ap.add_argument("--json", help="summary path (default: docs/audit-2026-10[-step<S>].json)")
     a = ap.parse_args()
-    sfx = "" if a.closure == "legacy" else f"-step{a.step}"
+    sfx = "" if a.closure == "legacy" else f"-step{a.step[:1].upper()}{a.step[1:]}"
     a.out = a.out or os.path.join(ROOT, "docs", f"AUDIT-2026-10{sfx}.md")
     a.json = a.json or os.path.join(ROOT, "docs", f"audit-2026-10{sfx}.json")
 

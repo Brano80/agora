@@ -82,6 +82,8 @@ def calibrate(
     capital_tax_share: float = 0.0,  # P6 broad revenue base: share of base-year net
                                      # tax raised on CAPITAL (0 = legacy wage-only base)
     i_rate: float = 0.0,        # interest on gov debt; 0 keeps Phase 1-3 behaviour
+    pb_rate: Optional[float] = None,  # Banks step: the long-run borrowing rate the
+                                      # structural primary balance is set at (None = i_rate)
     g_nominal: Optional[float] = None,  # Phase 7 E: nominal trend growth; when set,
                                 # net taxes hold debt/GDP at its base-year level
     world_growth: float = 0.015,  # exports grow with FOREIGN demand, not own output
@@ -132,7 +134,8 @@ def calibrate(
         # Phase 7 E: the STRUCTURAL primary balance that holds debt/GDP at its
         # base-year level given the interest rate and nominal growth,
         # pb* = (i - g) * debt; deviations are corrected by the fiscal rule.
-        theta = max(0.05, min(0.60, (G0 + (i_rate - g_nominal) * debt) / (ls0 * Y0)))
+        r_pb = i_rate if pb_rate is None else pb_rate
+        theta = max(0.05, min(0.60, (G0 + (r_pb - g_nominal) * debt) / (ls0 * Y0)))
     tau_fisc = 0.0   # theta now carries the fiscal balance; proportional top-up unused
     # Phase 6 broad revenue base: split the SAME total base-year net tax
     # (theta*WB0) into a labour rate (theta_w on wages) + a baseline CAPITAL rate

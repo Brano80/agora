@@ -166,4 +166,5 @@ def to_scenario(p: SFCParams, ai: AIShock, pol: Policy,
                      f"policy: capital levy {pol.capital_tax*100:.0f}%, "
                      f"UBI {'on' if pol.ubi else 'off'}, "
                      f"UBC {'on' if pol.ubc else 'off'}."),
+        ai_shock=ai,
     )

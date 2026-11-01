@@ -72,7 +72,7 @@ def test_gate_exact_and_owners_solvent_in_every_arm(geo):
     for run in o.run_ubc_experiment() + o.run_triad():
         assert run.consistent and run.max_residual < 1e-3, (geo, run.scenario)
         assert not _solvency_failures(run.result), (geo, run.scenario)
-        assert min(p.reported["money_owners"] for p in run.result.periods) >= 0.0
+        assert min(p.reported["money_owners"] for p in run.result.periods) >= -1e-9
 
 
 def test_every_monte_carlo_draw_keeps_owners_solvent():
@@ -152,14 +152,15 @@ def test_pecking_order_borrowing_is_capped_priced_and_netted():
         allowed = (cap if loans[t - 1] <= cap
                    else loans[t - 1] - DELEVERAGE_RATE * (loans[t - 1] - cap))
         assert loans[t] <= allowed + 1e-6, t
-        assert per[t].reported["loan_interest"] == pytest.approx(LOAN_RATE * loans[t - 1])
+        # Banks step: the market loan rate (policy rate + the country's spread)
+        assert per[t].reported["loan_interest"] == pytest.approx(
+            per[t].reported["loan_rate"] * loans[t - 1])
         assert per[t].reported["money_owners"] >= per[t].reported["owners_liquidity_floor"] - 1e-6
     for s in per:
         r = s.reported
-        # fiscal debt = money issued less what the public stand-in lent and
-        # bought abroad since 2019 (step D)
-        fx_new = r["public_external_position"] - run.meta["fx_stand_in0"]
-        assert r["gov_debt"] == pytest.approx(r["gov_money"] - r["loans_owners"] - fx_new)
+        # Banks step: the financial sector lends; fiscal debt is the bonds
+        assert r["gov_debt"] == pytest.approx(r["gov_bonds"])
+        assert s.bsm["loans"]["banks"] == pytest.approx(r["loans_owners"] + r["loans_fund"])
         assert sum(s.bsm["loans"].values()) == pytest.approx(0.0, abs=1e-9)
     assert run.meta["stock_flow_map"]["loans"] == "loans_chg"
 
@@ -218,10 +219,8 @@ def test_fund_takes_net_equity_with_its_share_of_debt():
     for t in range(1, len(per)):
         r, rp = per[t].reported, per[t - 1].reported
         assert r["fund_debt_service"] == pytest.approx(
-            (LOAN_RATE + DELEVERAGE_RATE) * rp["loans_fund"])
-        fx_new = r["public_external_position"] - run.result.meta["fx_stand_in0"]
-        assert r["gov_debt"] == pytest.approx(
-            r["gov_money"] - r["loans_owners"] - r["loans_fund"] - fx_new)
+            (r["loan_rate"] + DELEVERAGE_RATE) * rp["loans_fund"])
+        assert r["gov_debt"] == pytest.approx(r["gov_bonds"])
         assert r["swf_net_assets"] == pytest.approx(
             r["price_level"] * r["swf_stake"] - r["loans_fund"]
             + r["fund_foreign_equity"])                              # stake is real

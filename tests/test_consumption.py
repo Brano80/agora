@@ -53,6 +53,11 @@ def test_year0_reproduces_and_the_gap_is_the_published_one(geo):
     assert y0["consumption"] == pytest.approx(tgt["hh_consumption"], rel=1e-9)
     assert y0["gdp"] == pytest.approx(tgt["gdp_expenditure"], rel=1e-9)
     a1_w, a1_k = m["workers_mpc"], m["owners_mpc"]
+    if geo == "EL":     # Banks step: 2019 consumption exceeds income -> unusable, flagged
+        assert a1_w == MAX_WORKERS_MPC and a1_k > 1.0
+        assert any(c.name == "owners_mpc_in_unit_interval"
+                   for r in check_run(res, plausibility="audit") for c in r.advisories())
+        return
     assert 0.5 < a1_w <= MAX_WORKERS_MPC and 0.2 < a1_k < 1.0, (geo, a1_w, a1_k)
     pr = m["params"]
     gap = a1_k * (1 - m["foreign_stake0"]) * (1 - pr["theta_k"]) - a1_w * (1 - pr["theta_w"])
@@ -65,16 +70,19 @@ def test_year0_reproduces_and_the_gap_is_the_published_one(geo):
                    for r in check_run(res, plausibility="audit") for c in r.advisories())
 
 
-def test_only_the_dissaving_economies_are_capped():
+def test_only_the_high_consumption_economies_are_capped():
+    # Banks step: households earn interest on their deposits only (step E5 paid
+    # them the government's rate on all public debt), so where 2019 consumption
+    # is high relative to income workers spend all of it
     capped = sorted(g for g in MEMBERS
                     if "workers_capped" in _no_policy(_orch(g)).meta["consumption_differential_flag"])
-    assert capped == ["EL", "RO", "SK"]
+    assert capped == ["CY", "EL", "ES", "PT", "RO", "SK"]
 
 
 def test_de_gap_halves_the_old_one_and_workers_save_like_households():
     m = _no_policy(_orch("DE")).meta
-    assert m["workers_mpc"] == pytest.approx(0.869, abs=0.002)
-    assert m["owners_mpc"] == pytest.approx(0.389, abs=0.002)
+    assert m["workers_mpc"] == pytest.approx(0.858, abs=0.002)    # Banks step
+    assert m["owners_mpc"] == pytest.approx(0.375, abs=0.002)
     # step E3 had 0.95 / 0.04: a gap of -0.73 against the estimated -0.40
     # DE households save 17.9% gross, ~11% net of depreciation (Eurostat nasa_10_ki, 2019)
     assert 0.10 < 1 - m["workers_mpc"] < 0.18

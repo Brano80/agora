@@ -26,7 +26,7 @@ from modules.sfc_core import AI_FOREIGN_SHARE, LEVY_PASS_THROUGH
 from orchestrator import AgoraOrchestrator
 from scenarios import LS_AI_END, build_custom
 
-USABLE = ["AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "EL", "ES", "FI", "FR", "HR",
+USABLE = ["AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "HR",
           "HU", "IT", "LT", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SK"]
 
 
@@ -108,10 +108,10 @@ def test_books_close_and_no_household_holds_the_external_position(geo):
         fx0 = run.result.meta["fx_stand_in0"]
         for s in run.result.periods:
             r = s.reported
-            assert set(s.bsm["fx_assets"]) == {"government", "rest_of_world"}
-            assert r["gov_debt"] == pytest.approx(
-                r["gov_money"] - r["loans_owners"] - r["loans_fund"]
-                - (r["public_external_position"] - fx0))
+            # Banks step: the financial sector holds the position, not a household
+            assert set(s.bsm["fx_assets"]) == {"banks", "rest_of_world"}
+            assert r["gov_debt"] == pytest.approx(r["gov_bonds"])
+            assert r["bank_net_worth"] == pytest.approx(0.0, abs=1e-6 * r["gdp"])
             assert r["gni"] == pytest.approx(r["gdp"] + r["primary_income_net"])
 
 

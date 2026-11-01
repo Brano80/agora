@@ -1,6 +1,6 @@
 # Phase 7 — Credibility fixes (from the 2026-10-28 review)
 
-**Status:** IN PROGRESS (0, A, B, C done 2026-10-29; D, E done 2026-10-30; E5 done 2026-10-31). **Rule:** no README claim, outreach, post or Zenodo
+**Status:** IN PROGRESS (0, A, B, C done 2026-10-29; D, E done 2026-10-30; E5 done 2026-10-31; Banks done 2026-11-01). **Rule:** no README claim, outreach, post or Zenodo
 version goes out until step G is done. Step 0 is the only exception.
 
 All findings below were reproduced on the shipped engine (fbbe103) on 2026-10-28.
@@ -492,6 +492,104 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 - Replace the public-sector stand-in lender with a banking sector, activating the reserved `banks` sector and the `deposits` instrument. Loans equal deposits, households hold deposits next to (or instead of) government money, and loan interest goes to banks and depositors, not the state.
 - Re-check the fiscal accounts once the government no longer carries the loans, and re-run the step-B tests.
 - **Done when:** loans have a private counterpart, the gate is exact, and the step-B solvency results hold.
+- **Status: DONE 2026-11-01, with one country lost.** Loans have a private counterpart and the gate is exact in every run. The step-B solvency results hold everywhere except Greece, which becomes unusable (below). Audit: `docs/AUDIT-2026-10-stepBanks.md`.
+- **Decided 2026-11-01.**
+  - One financial sector (banks, insurers, pension funds) with no capital of its own; its margin is paid to owners.
+  - The foreign debt-type position moves to it, because the government had been paying the interest on the private sector's foreign debt.
+  - The policy rate moves from its 2019 level to the neutral rate and does not react. A Taylor rule was built and tested, but it has the wrong sign without mortgages and asset prices; it stays in the code for step F.
+  - Investment stays insensitive to interest rates.
+
+#### What was built
+- **The financial sector** (`banks`), with no capital of its own.
+  - **Holds:** the government's bonds (new instrument `bonds`), the owners' and the fund's loans, and the country's foreign debt-type position (everything abroad except equity).
+  - **Financed by** households' deposits, the old `money` instrument, now its liability.
+  - **Pays out its margin as profit:** bond, loan and foreign interest received, less what it pays savers. The foreign-owned share of capital goes abroad.
+  - **Untaxed,** like all interest income in the model: the 2019 tax rates were set on wages and profits alone.
+  - **Its net worth is zero in every period** (tested).
+- **The government pays interest only on its own bonds.** Before, it paid households the government rate on all public debt, earned the interest on owners' loans, and received or paid the interest on the whole country's foreign position. That last flow charged net-debtor governments for their private sector's foreign debt: by 2049, 79% of GDP for EL, 65% PT, 30% ES and 19% FR; and credited creditors 30% DE, 41% BE and 50% NL.
+- **Year-0 deposits** = 2019 public debt + the foreign debt-type position. That matches Eurostat's household non-equity net financial assets far better than public debt alone: correlation 0.62 against 0.20, across 23 countries. The average error is unchanged, because the model has no existing corporate debt or mortgages.
+- **IE and CY keep the public stand-in.** Their households would start with almost no deposits, because multinationals' intra-group debt is in the position. The stand-in only holds the position: it earns nothing, so the budget carries no conduit flows.
+- **Rates.**
+  - **Policy rate:** moves from its 2019 level (AMECO short-term rate) to the 2% neutral rate, closing 40% of the gap a year (92% in five years).
+    - Euro members, DK, BG and HR face the ECB path; DK keeps its 2019 spread.
+    - CZ, HU, PL, RO and SE follow their own path from their own 2019 rates.
+    - No reaction to booms or slumps, and the same path in every policy arm.
+  - **Government:** new borrowing costs the policy rate plus the country's spread, plus 3 bp per point of debt added since 2019 beyond the euro area's own path.
+    - The estimate is a spread over Germany, so the common AI shock does not raise anyone's premium.
+    - The euro-area path comes from a reference run of the euro-area aggregate under the same AI scenario.
+    - The average rate on the debt stock moves 1/7 of the way to the new rate each year.
+  - **Households:** deposits earn their 2019 rate plus 25% of policy-rate moves. The rest of their claims (bonds, insurance, pensions) earn the government's average rate, so the household rate is a blend weighted by each country's deposit share.
+  - **Loans:** the policy rate plus the country's 2015–19 lending spread.
+  - **Foreign position:** a net creditor's foreign assets earn the euro-area long rate. A net debtor's foreign liabilities, mostly its government debt held abroad, cost the government's average rate.
+- **The structural primary balance** that holds the 2019 debt ratio is now set at the rate the government expects to pay over 30 years (its 2015–19 rate rolling into policy + spread), not at the 2015–19 rate. Baseline debt stays within 13 points of 2019 everywhere except IT (21) and the two unusable countries.
+- **Other changes.**
+  - The loan rate is now the market rate; `loan_rate=` still fixes it.
+  - The Monte Carlo draws the neutral rate, the risk premium, the deposit beta and the loan spread.
+  - `SFCCore(banks=False)` reproduces step E5 exactly.
+  - The step-A audit is still byte-identical.
+- **Data:** `data/connectors/rates.py` with cache `data/cache/rates.json`, built by `scripts/build_rates.py` from five DBnomics calls.
+
+#### Parameters and sources
+| Parameter | Default | MC range | Source |
+|---|---|---|---|
+| 2019 policy rate | EA −0.36%, CZ 2.12%, PL 1.72%, RO 3.14%, HU 0.19%, SE −0.03% | — | AMECO ISN, 2019 |
+| Neutral rate | 2.0% nominal | 1.75–2.25% | ECB Economic Bulletin 1/2025 (nominal r* 1¾–2¼%) |
+| Speed to neutral | 40% of the gap a year | — | ECB policy-rate smoothing (~0.85–0.9 a quarter) |
+| Rate floor | −0.5% (ECB, SE), 0 (CZ, HU, PL, RO) | — | Historical lows |
+| Government spread over the policy rate | euro: EA term premium 1.15 pp + the country's 2019 10-year spread over the euro area (DE 0.50, FR 0.88, IT 2.70, ES 1.41, EL 3.34 pp); floaters: their own 2015–19 10-year minus 3-month | — | AMECO ILN, ISN |
+| Risk premium | 3 bp per pp of debt added beyond the euro area | 0–6 bp | Pamies, Carnot & Pătărău 2021, EC Discussion Paper 141 (euro area 2000–19, spreads over Germany) |
+| Debt maturity | 7 years | — | ECB Occasional Paper 132 (average residual maturity ~6.6 years); 7–8 since QE |
+| Deposit beta | 0.25 | 0.1–0.4 | ECB WP 3255 (household sight deposits, long-run 0.247) |
+| Household deposit share | DE 50%, FR 42%, IT 52%, NL 19%, PL 79% | — | Eurostat `nasa_10_f_bs`: F2 / (F2 + F3 + F6), 2019 |
+| 2019 deposit rate | ~0–0.1% (PL 0.49%) | — | ECB MIR, household overnight deposits |
+| Loan spread over the policy rate | DE 2.59, FR 2.29, IT 2.75, EL 4.76 pp; euro-area 2.55 pp for countries without data | ± 1 pp | ECB MIR, outstanding loans to firms, 2015–19 |
+
+#### Result
+| DE, 30 years | Step E5 | Banks |
+|---|---|---|
+| Rates | government 1.55% throughout (2015–19 implicit), no policy rate | policy −0.36% → 2.0%; government 2.3% by 2049 (no policy) |
+| AI shift, no policy: real GNI / consumption (× 2019) | 0.96 / 0.85 | 1.00 / 0.89 |
+| … public debt 2049 (% of GDP) | 125 | 137 |
+| Cash UBI / UBC (pinned experiment), real GNI | 0.89 / 0.87 | 0.91 / 0.89 |
+| Workers' / owners' propensity | 0.87 / 0.39 | 0.86 / 0.375 |
+| Frontier | 17 points | 16 points, all six proposals on it; none near-dominant |
+| All 27 countries: plausible runs / Monte-Carlo draws | 90% / 63% | 88% / 63% |
+| Usable countries | 26 | 25 (EL lost) |
+
+**Public debt in 2049 with no policy (AI shift), step E5 → Banks:**
+- **Net debtors fall:** ES 224 → 209, PT 250 → 236, CY 182 → 143, SK 120 → 109, PL 115 → 108.
+- **Net creditors rise:** DE 125 → 137, NL 102 → 124, MT 43 → 84, SI 112 → 132.
+- **IT and FR rise** (245 → 286, 218 → 241), because their spreads and the normal rate are above their 2015–19 rates.
+- **Median of the 25 usable countries:** 115 → 127.
+
+**DE proposals against no policy (AI shift, 2049):**
+
+| Proposal | Real GNI | Consumption per head 2020–49 | Debt (% of GDP) |
+|---|---|---|---|
+| Stock levy | −0.3% | +1.2% | 123 |
+| Pledge, best case | +3.2% | +3.6% | 132 |
+| Debt-financed fund | +3.2% | +1.8% | 163 |
+| Broad-base cash UBI | −1.8% | +3.9% | 136 |
+| 40% levy, cash UBI | −8.7% | +13.1% | 135 |
+| 40% claim in shares, 3% | −11.0% | +3.3% | 130 |
+
+**Across the 25 usable countries:**
+- **Debt fund:** GNI +2.4%, debt +27 pp (step E5: +3.3%, +13 pp), because it now borrows at market rates and pays the premium on the debt it adds.
+- **Other proposals:** within half a point of step E5, except the 40% cash benchmark's consumption gain (+13.1%, was +14.5%). The broad-base UBI raises consumption +4.9% and the stock levy +0.9%.
+
+#### Findings changed by the Banks step (input to the step-F ledger)
+- **The fiscal paths of steps D–E5 were biased by the foreign position.** Net debtors' governments paid their private sector's foreign interest and creditors' governments received it. Corrected: debtor countries' debt falls, creditors' rises.
+- **The debt-financed fund costs twice as much debt** (+27 pp against +13 pp) for less national income, once it borrows at market rates with a premium.
+- **The ranking of proposals is unchanged.**
+- **Greece becomes unusable.** Step E5 fitted Greece's 2019 consumption only because households were paid the government's rate on 183% of GDP of public debt. Paid on their deposits alone, Greek households spent more than their income in 2019. The owners' propensity comes out at 1.47, owners go insolvent in some runs, and the debt path explodes.
+
+#### Residuals and which step owns them
+- **No monetary reaction.** A reacting rule needs mortgages and asset prices to have the right sign. **Step F.**
+- **EL:** calibration review (2019 dissaving, official-sector debt at long fixed maturities). **Step F.**
+- **No existing corporate debt or mortgages,** so deposits match household data only in rank, not in level. **Step F.**
+- **The risk premium is linear;** the estimate is non-linear at high debt. IT's debt passes 280% with no policy. **Step F** (sensitivity: 0–6 bp in the Monte Carlo).
+- **Uniform 2% inflation target and neutral rate,** including for the floaters (HU 3%, PL and RO 2.5% targets). **Step F.**
+- **The financial sector has no capital, loan losses or foreign ownership of its own.** It uses the economy's foreign share. **Out of scope.**
 
 ### F. Re-validate (~2 days)
 - **F1.** Backtest with investment and consumption endogenous, driving only government spending and world demand. Report GDP, I, C and debt errors against a naive trend/random-walk benchmark; the model must beat it.

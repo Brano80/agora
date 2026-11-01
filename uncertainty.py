@@ -34,7 +34,8 @@ PRIORS: Dict[str, Tuple[float, float]] = {
                                         # (2014) European range (FR 0.088 .. DE 0.376)
     "debt_cap":         (0.0, 0.22),    # owners' new borrowing / owned capital: 0 (no
                                         # credit) .. the size of today's NFC debt stock
-    "loan_rate":        (0.015, 0.055), # +-2pp around the ECB NFC cost of borrowing (3.57%)
+    # Banks step: the loan rate is the policy rate + the country's spread (MIR)
+    "loan_spread_shift": (-0.01, 0.01), # +-1pp on that spread
     # Phase 7 C: supply side and prices
     "ai_productivity":  (0.0, 0.006),   # AI pp/yr while adopting: 0 .. OECD 2024 US upper 0.6
     "phillips_slope":   (0.01, 0.15),   # ECB WP 3133 slope range (0.02-0.19 per pp u) x Okun
@@ -45,6 +46,11 @@ PRIORS: Dict[str, Tuple[float, float]] = {
     "levy_pass_through": (0.5, 1.0),    # source levy passed on (Langenmayr & Muddasani 2026)
     # Phase 7 E: the fiscal block
     "fiscal_reaction": (0.0003, 0.0005),  # Bohn 0.03-0.05 (ECB WP 2036), per pp of debt/GDP
+    # Banks step: rates
+    "neutral_rate":     (0.0175, 0.0225), # nominal r*, ECB Economic Bulletin 1/2025
+    "risk_premium":     (0.0, 0.06),      # spread per unit of excess debt/GDP: 0-6 bp per pp
+                                          # (Pamies et al. 2021: ~3 bp, unstable, non-linear)
+    "deposit_beta":     (0.1, 0.4),       # ECB WP 3255: 0.1 (2022-24) .. 0.3-0.4 (earlier cycles)
     # beta is UNIDENTIFIED in macro data (disposable-Gini cross-section R2=.02;
     # FE panel 2010-24 beta=.05 R2=.006 - redistribution absorbs the shift). The
     # OECD IDD market Gini (2026-06-14) removes that confound and QUANTIFIES it:
@@ -95,7 +101,8 @@ def core_kwargs(d: Dict[str, float]) -> Dict[str, object]:
     `inv_elasticity` runs the legacy closure (reproduces the published bands)."""
     if "inv_elasticity" in d:
         return {"investment_closure": "legacy", "inv_elasticity": d["inv_elasticity"]}
-    return {k: d[k] for k in ("profit_response", "debt_cap", "loan_rate",
+    return {k: d[k] for k in ("profit_response", "debt_cap", "loan_spread_shift",
+                              "neutral_rate", "risk_premium", "deposit_beta",
                               "phillips_slope", "export_elasticity",
                               "utilisation_response", "ai_foreign_share",
                               "levy_pass_through", "fiscal_reaction",

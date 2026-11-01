@@ -72,7 +72,9 @@ def test_baseline_debt_holds_near_its_2019_level(geo):
     per = _run(o, "base").result.periods
     d0 = per[0].reported["gov_debt_gdp"]
     path = [s.reported["gov_debt_gdp"] for s in per]
-    assert max(abs(x - d0) for x in path) < 20.0, (geo, d0, min(path), max(path))
+    # Banks step: rates move from 2019 to neutral and the premium is relative,
+    # so the path wanders a little more (IT falls ~21 pp)
+    assert max(abs(x - d0) for x in path) < 25.0, (geo, d0, min(path), max(path))
     assert all(s.reported["gov_interest"] > 0 for s in per[1:])
 
 

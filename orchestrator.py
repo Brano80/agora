@@ -20,7 +20,8 @@ from typing import Dict, List, Optional, Tuple
 
 from modules.interface import Module, Scenario, RunResult
 from modules.sfc_core import (SFCCore, DEBT_CAP, LOAN_RATE, LIQUIDITY_FLOOR,
-                              AI_FOREIGN_SHARE, LEVY_PASS_THROUGH, fiscal_calibration)
+                              AI_FOREIGN_SHARE, LEVY_PASS_THROUGH, expected_gov_rate,
+                              fiscal_calibration)
 from modules.distribution import DistributionModule
 from modules.input_output import InputOutputModule
 from calibration import calibrate, SFCParams
@@ -81,9 +82,9 @@ class AgoraOrchestrator:
                  capital_tax_share: Optional[float] = None, fund_payout: float = 0.0,
                  investment_closure: str = "behavioural",
                  profit_response: Optional[float] = None, debt_cap: float = DEBT_CAP,
-                 loan_rate: float = LOAN_RATE, liquidity_floor: float = LIQUIDITY_FLOOR,
+                 loan_rate: Optional[float] = None, liquidity_floor: float = LIQUIDITY_FLOOR,
                  ai_foreign_share: float = AI_FOREIGN_SHARE,
-                 levy_pass_through: float = LEVY_PASS_THROUGH):
+                 levy_pass_through: float = LEVY_PASS_THROUGH, banks: bool = True):
         self.geo = geo
         self.year = year
         self.inv_elasticity = float(inv_elasticity)
@@ -98,7 +99,9 @@ class AgoraOrchestrator:
         # Phase 7 B investment closure ("behavioural" default; "legacy" = v1.1)
         self.investment_closure = investment_closure
         self.profit_response = profit_response
-        self.debt_cap, self.loan_rate = float(debt_cap), float(loan_rate)
+        self.debt_cap = float(debt_cap)
+        self.loan_rate = None if loan_rate is None else float(loan_rate)   # None = market rate
+        self.banks = bool(banks)                 # Phase 7 Banks step (behavioural only)
         self.liquidity_floor = float(liquidity_floor)
         # Phase 7 D external sector
         self.ai_foreign_share = float(ai_foreign_share)
@@ -125,7 +128,7 @@ class AgoraOrchestrator:
                   debt_cap=self.debt_cap, loan_rate=self.loan_rate,
                   liquidity_floor=self.liquidity_floor,
                   ai_foreign_share=self.ai_foreign_share,
-                  levy_pass_through=self.levy_pass_through)
+                  levy_pass_through=self.levy_pass_through, banks=self.banks)
         return kw
 
     def _regime_core(self, inv_elasticity: float) -> SFCCore:
@@ -163,11 +166,12 @@ class AgoraOrchestrator:
     def params(self) -> SFCParams:
         if self._data is None:
             self.load_data()
+        kw = fiscal_calibration(self.geo, self.investment_closure, i_rate=self.i_rate,
+                                capital_tax_share=self.capital_tax_share)
+        if self.investment_closure == "behavioural" and self.banks:
+            kw["pb_rate"] = expected_gov_rate(self.geo, kw["i_rate"])   # as the core does
         return calibrate(self._data, geo=self.geo, base_year=self.year,
-                         sources=self._sources,
-                         **fiscal_calibration(self.geo, self.investment_closure,
-                                              i_rate=self.i_rate,
-                                              capital_tax_share=self.capital_tax_share))
+                         sources=self._sources, **kw)
 
     def run_scenario(self, scenario: Scenario) -> ScenarioRun:
         if self._data is None:

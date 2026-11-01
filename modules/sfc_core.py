@@ -104,6 +104,9 @@ from data.connectors.capacity import capacity_utilisation_for
 from data.connectors.consumption import consumption_differential_for
 from data.connectors.external import R_WORLD, external_position_for
 from data.connectors.fiscal import fiscal_position_for
+from data.connectors.rates import (DEBT_MATURITY, DEPOSIT_BETA, EURO_AREA, NEUTRAL_RATE,
+                                   RATE_FLOOR, RATE_SMOOTHING, RISK_PREMIUM,
+                                   TAYLOR_GAP, TAYLOR_INFLATION, rates_for)
 
 
 # --------------------------------------------------------------------------- #
@@ -239,7 +242,7 @@ class SFCCore(Module):
                  debt_target: Optional[float] = None, i_rate: Optional[float] = None,
                  fund_payout: float = 0.0, investment_closure: str = "behavioural",
                  profit_response: Optional[float] = None, debt_cap: float = DEBT_CAP,
-                 loan_rate: float = LOAN_RATE, liquidity_floor: float = LIQUIDITY_FLOOR,
+                 loan_rate: Optional[float] = None, liquidity_floor: float = LIQUIDITY_FLOOR,
                  deleverage_rate: float = DELEVERAGE_RATE,
                  inflation_target: float = INFLATION_TARGET,
                  phillips_slope: float = PHILLIPS_SLOPE,
@@ -253,7 +256,16 @@ class SFCCore(Module):
                  external: Optional[dict] = None,
                  equity_valuation: str = "market",
                  consumption_differential: Optional[float] = None,
-                 consumption_draw: float = 0.0):
+                 consumption_draw: float = 0.0,
+                 banks: bool = True,
+                 policy_rate_path: Optional[List[float]] = None,
+                 neutral_rate: float = NEUTRAL_RATE,
+                 risk_premium: float = RISK_PREMIUM,
+                 deposit_beta: float = DEPOSIT_BETA,
+                 loan_spread_shift: float = 0.0,
+                 policy_rule: str = "neutral"):
+        # every setting, so the euro-area reference run (Banks step) can copy them
+        self._init_kwargs = {k: v for k, v in locals().items() if k not in ("self", "__class__")}
         self.base_year = base_year
         self.calib_kwargs = calib_kwargs or {}
         # C1 (enclosure-vs-diffusion): elasticity of investment to owners'
@@ -288,7 +300,8 @@ class SFCCore(Module):
         self.profit_response = (None if profit_response is None
                                 else float(profit_response))   # None = country default
         self.debt_cap = float(debt_cap)
-        self.loan_rate = float(loan_rate)
+        # None = market rate (policy rate + spread) with banks; LOAN_RATE without
+        self.loan_rate = None if loan_rate is None else float(loan_rate)
         self.liquidity_floor = float(liquidity_floor)
         self.deleverage_rate = float(deleverage_rate)
         # Phase 7 C supply side / prices (behavioural closure only)
@@ -314,6 +327,22 @@ class SFCCore(Module):
         self.consumption_differential = (None if consumption_differential is None
                                          else float(consumption_differential))
         self.consumption_draw = float(consumption_draw)
+        # Banks step (behavioural only): a financial sector intermediates;
+        # interest rates follow a policy rule (see docstring and rates.py)
+        self.banks = bool(banks)
+        self.policy_rate_path = None if policy_rate_path is None else list(policy_rate_path)
+        self.neutral_rate = float(neutral_rate)
+        self.risk_premium = float(risk_premium)
+        self.deposit_beta = float(deposit_beta)
+        self.loan_spread_shift = float(loan_spread_shift)
+        if policy_rule not in ("taylor", "neutral"):
+            raise ValueError("policy_rule must be 'taylor' or 'neutral'")
+        # "neutral" (default, decided 2026-11-01): rates move from their 2019 level
+        # to the neutral rate and do not react. A reacting rule has the wrong sign
+        # here: higher rates raise households' interest income and nothing (no
+        # mortgages, no asset prices) pushes the other way. "taylor" is kept for
+        # step F, once those channels exist.
+        self.policy_rule = policy_rule
         self.params: Optional[SFCParams] = None
 
     def declares_inputs(self) -> List[str]:
@@ -356,6 +385,25 @@ class SFCCore(Module):
             "ai_stake_to_budget", "pledge_distributions", "broad_tax_rate",
         ]
 
+    def _calibrate(self, geo, data):
+        """calibrate() with this closure's fiscal settings -> (params, kwargs, reaction)."""
+        ck = dict(self.calib_kwargs)
+        fk = fiscal_calibration(geo, self.investment_closure,
+                                i_rate=self.i_rate_override,
+                                capital_tax_share=ck.get("capital_tax_share"))
+        if ck.get("capital_tax_share") is None:
+            ck["capital_tax_share"] = fk["capital_tax_share"]
+        if self.i_rate_override is not None or self.investment_closure == "behavioural":
+            ck.setdefault("i_rate", fk["i_rate"])
+        if "g_nominal" in fk:
+            ck.setdefault("g_nominal", fk["g_nominal"])
+        if self.investment_closure == "behavioural" and self.banks:
+            ck.setdefault("pb_rate", expected_gov_rate(geo, fk["i_rate"], self.neutral_rate))
+        p = calibrate(data, geo=geo, base_year=self.base_year,
+                      sources=data.get("_sources", {}) if isinstance(data, dict) else {},
+                      **ck)
+        return p, ck
+
     def run(self, scenario: Scenario, data: Dict[str, float],
             context: Optional[dict] = None) -> RunResult:
         ck = dict(self.calib_kwargs)
@@ -368,6 +416,12 @@ class SFCCore(Module):
             ck.setdefault("i_rate", fk["i_rate"])         # calibration matches the run rate
         if "g_nominal" in fk:
             ck.setdefault("g_nominal", fk["g_nominal"])
+        if self.investment_closure == "behavioural" and self.banks:
+            # Banks step: the structural primary balance holds the 2019 debt ratio
+            # at the rate the government expects to pay on average over the
+            # horizon (its 2015-19 rate rolling over into policy rate + spread)
+            ck.setdefault("pb_rate", expected_gov_rate(scenario.geo, fk["i_rate"],
+                                                       self.neutral_rate))
         fiscal_reaction = (self.fiscal_reaction if self.fiscal_reaction is not None
                            else (FISCAL_REACTION if self.investment_closure == "behavioural"
                                  else 0.0))
@@ -389,6 +443,10 @@ class SFCCore(Module):
                       else p.i_rate)
         periods: List[PeriodState] = []
         behavioural = self.investment_closure == "behavioural"
+        banks = behavioural and self.banks
+        loan_fixed = (self.loan_rate if self.loan_rate is not None
+                      else (None if banks else LOAN_RATE))
+        r_l = loan_fixed if loan_fixed is not None else LOAN_RATE
         gamma = (self.profit_response if self.profit_response is not None
                  else profit_response_for(scenario.geo)) if behavioural else 0.0
         pi0 = (1.0 - p.ls0) * (1.0 - p.theta_k)   # base-year owners' net profit share
@@ -431,6 +489,59 @@ class SFCCore(Module):
         rprof0 = rprof_prev = None
         q = 1.0
         pi_row_prev = pi0
+        # Banks step: a financial sector (banks, insurers, pension funds) with no
+        # capital of its own holds the government's bonds, the owners' loans and
+        # the country's foreign debt-type position, financed by households'
+        # deposits; it pays its interest margin out as profit. IE and CY keep the
+        # public stand-in for the foreign position (households would start with
+        # no deposits). Rates follow a policy rule: the ECB path from the euro-
+        # area aggregate under the same AI scenario (euro members, DK, BG, HR) or
+        # the country's own Taylor rule (CZ, HU, PL, RO, SE).
+        rc = rates_for(scenario.geo) if banks else None
+        B = p.M_w0 + p.M_k0                              # government bonds (2019 debt)
+        fx_bank = bool(banks and not rc["stand_in"])
+        if fx_bank:
+            sh_w0 = (p.M_w0 / B) if B > 0 else 0.3
+            D0 = B + FX_s0
+            M_w, M_k = sh_w0 * D0, (1.0 - sh_w0) * D0
+            liq_ratio = (self.liquidity_floor * M_k / p.K0) if p.K0 > 0 else 0.0
+        i_g = i_rate_eff                                 # average rate on public debt
+        i_p = r_dep = r_h = r_fx = i_new = 0.0
+        ea_path, ea_ref = None, None
+        ea_debt = None              # euro-area debt ratio path (relative risk premium)
+        gov_debt_rep = B
+        debt_ratio0 = (B / p.Y0) if p.Y0 else 0.0
+        pi_b = tax_bank = bank_row = bank_own = 0.0
+        if banks:
+            geo_u = (scenario.geo or "").upper()
+            if geo_u != EURO_AREA:
+                if self.policy_rate_path is not None:
+                    ea_path, ea_ref = list(self.policy_rate_path), "given"
+                elif self.policy_rule == "neutral":
+                    ea_path = _neutral_path(rc["ea_policy0"], self.neutral_rate, H)
+                    ea_ref = "ECB rate: 2019 level to the neutral rate"
+                else:
+                    ref = _euro_reference(self, scenario, H)
+                    ea_path, ea_ref = ref["policy"], ref["label"]
+                if self.risk_premium:
+                    # the premium estimate is a SPREAD over the euro area: only the
+                    # debt a country adds beyond the euro area's own path counts
+                    ea_debt = _euro_reference(self, scenario, H)["debt_ratio"]
+            peg = rc["policy0"] - rc["ea_policy0"]       # DK's 2019 spread; 0 in the euro
+            i_p = rc["policy0"]
+            ea_rate = rc["ea_policy0"] if ea_path is None else ea_path[0]
+            r_dep = rc["deposit_rate0"]
+            r_h = rc["deposit_share"] * r_dep + (1.0 - rc["deposit_share"]) * i_g
+            r_l = loan_fixed if loan_fixed is not None else (
+                i_p + rc["loan_spread"] + self.loan_spread_shift)
+            # a net creditor's foreign debt-type assets earn the euro-area long
+            # rate; a net debtor's foreign liabilities are largely its government
+            # debt held abroad, so they cost the government's average rate
+            r_fx = (ea_rate + rc["ea_term"]) if FX_s0 >= 0 else i_g
+            i_new = i_p + rc["gov_spread"]
+            # year-0 bank profit (no loans yet), paid to owners after tax
+            pi_b0 = i_g * B + (r_fx * FX_s0 if fx_bank else 0.0) - r_h * (M_w + M_k)
+            bank_own0 = (1.0 - psi0) * pi_b0
         # Phase 7 E5: both classes' propensities to consume. Two facts pin them:
         # 2019 consumption (C0 - a2*M0, which calibrate() matched with its own
         # a1_w and residual a1_k) and the country's published effect of moving
@@ -455,6 +566,11 @@ class SFCCore(Module):
             yd_k0_new = ((1.0 - psi0) * (1.0 - p.ls0) * (1.0 - p.theta_k) * p.Y0
                          + i_rate_eff * p.M_k0 + self.r_world * A_kf)
             c_target = p.a1_w * yd_w0 + p.a1_k * yd_k0_old      # = C0 - a2 * M0
+            if banks:      # deposits, their rate and the banks' margin change year-0 incomes
+                c_target += p.a2 * (p.M_w0 + p.M_k0 - M_w - M_k)
+                yd_w0 = p.ls0 * (1.0 - p.theta_w) * p.Y0 + r_h * M_w
+                yd_k0_new = ((1.0 - psi0) * (1.0 - p.ls0) * (1.0 - p.theta_k) * p.Y0
+                             + r_h * M_k + self.r_world * A_kf + bank_own0)
             yd_k0_net = yd_k0_new - p.delta * (1.0 - psi0) * p.K0   # less owners' CFC
             k_d = (1.0 - psi0) * (1.0 - p.theta_k)
             if yd_k0_net > 0 and k_d > 0:
@@ -472,6 +588,7 @@ class SFCCore(Module):
                     a1_k = (d_c + a1_w * (1.0 - p.theta_w)) / k_d
 
         for t in range(H):
+            infl_last = infl                            # last year's inflation (policy rule)
             ls = scenario.labour_share.at(t, H)
             if behavioural:
                 if t > 0:      # price setting reacts to last year's demand pressure
@@ -482,6 +599,34 @@ class SFCCore(Module):
             else:
                 pfac = P_world = 1.0
             Pk = P                                      # 1.0 in legacy
+            if banks and t > 0:
+                if ea_path is None or rc["regime"] == "own":
+                    tgt = self.neutral_rate
+                    if self.policy_rule == "taylor":
+                        tgt += (TAYLOR_INFLATION * (infl_last - self.inflation_target)
+                                + TAYLOR_GAP * (gap_prev - gap0))   # 2019 stance = 2019 slack
+                    i_p = max(rc.get("rate_floor", RATE_FLOOR),
+                              RATE_SMOOTHING * i_p + (1.0 - RATE_SMOOTHING) * tgt)
+                else:
+                    i_p = ea_path[t] + peg
+                ea_rate = i_p if ea_path is None else ea_path[t]
+                debt_ratio_prev = (gov_debt_rep / Y_prev) if Y_prev else debt_ratio0
+                # new borrowing: policy rate + the country's term/credit spread +
+                # a premium on the debt it added since 2019 beyond the euro area's
+                # (Pamies et al. estimate spreads over Germany); the average rate
+                # follows as debt rolls over
+                excess = debt_ratio_prev - debt_ratio0
+                if ea_debt is not None:
+                    excess -= ea_debt[t - 1] - ea_debt[0]
+                elif geo_u == EURO_AREA:
+                    excess = 0.0            # the aggregate has no spread over itself
+                i_new = i_p + rc["gov_spread"] + self.risk_premium * excess
+                i_g += (i_new - i_g) / DEBT_MATURITY
+                r_dep = max(0.0, rc["deposit_rate0"] + self.deposit_beta * (i_p - rc["policy0"]))
+                r_h = rc["deposit_share"] * r_dep + (1.0 - rc["deposit_share"]) * i_g
+                if loan_fixed is None:
+                    r_l = i_p + rc["loan_spread"] + self.loan_spread_shift
+                r_fx = (ea_rate + rc["ea_term"]) if FX_s >= 0 else i_g
             base_A = scenario.ai_capex.at(t, H) * p.Y0   # autonomous AI-capex
             G = (scenario.gov_override.at(t, H)
                  if scenario.gov_override is not None
@@ -509,6 +654,8 @@ class SFCCore(Module):
             if fiscal_reaction:
                 debt_gdp_prev = ((100.0 * (M_w + M_k - L - L_sf - (FX_s - FX_s0)) / Y_prev)
                                  if Y_prev else debt_target)
+                if banks:
+                    debt_gdp_prev = (100.0 * gov_debt_rep / Y_prev) if Y_prev else debt_target
                 delta_theta = fiscal_reaction * (debt_gdp_prev - debt_target)
             else:
                 delta_theta = 0.0
@@ -521,6 +668,7 @@ class SFCCore(Module):
             K_trad_prev, K_ai_prev = K_trad, K_ai
             F_w_prev, F_k_prev, E_sf_prev = F_w, F_k, E_sf
             L_prev, L_sf_prev = L, L_sf
+            B_prev = B
             E_row_prev, A_kf_prev, A_sff_prev, FX_s_prev = E_row, A_kf, A_sff, FX_s
             # D1: foreign owners' share of domestic capital (UBC cannot dilute it)
             psi = (min(E_row_prev / K_prev, 1.0) if (behavioural and K_prev > 0) else 0.0)
@@ -582,7 +730,7 @@ class SFCCore(Module):
                                  + self.utilisation_response * (gap_prev - gap0))
                 fund_desired = phi * Y_prev * pfac * fund_share
                 expected_net = phi * fpd_share_prev * (1.0 - theta_k) * Y_prev * pfac - (
-                    self.loan_rate + self.deleverage_rate) * L_sf_prev + self.r_world * A_sff_prev
+                    r_l + self.deleverage_rate) * L_sf_prev + self.r_world * A_sff_prev
                 # Replacement comes out of the depreciation allowance (CFC) before
                 # any dividend: owners do not pay out capital consumption and
                 # neither does the fund, so `reinvest` applies to NET profits and
@@ -605,10 +753,13 @@ class SFCCore(Module):
             sh_w_m = (M_w_prev / gov_debt_prev) if gov_debt_prev > 0 else 0.5
             interest = i_rate_eff * gov_debt_prev
             int_w, int_k = interest * sh_w_m, interest * (1.0 - sh_w_m)
-            int_L = self.loan_rate * L_prev if behavioural else 0.0   # owners -> lender
+            int_L = r_l * L_prev if behavioural else 0.0   # owners -> lender
             # the fund's assumed debt: interest + repayment as loans mature
             # (predetermined, so the demand solve stays linear)
-            int_sf = self.loan_rate * L_sf_prev if behavioural else 0.0
+            int_sf = r_l * L_sf_prev if behavioural else 0.0
+            if banks:      # the government pays on its bonds; savers earn the household rate
+                interest = i_g * B_prev
+                int_w, int_k = r_h * M_w_prev, r_h * M_k_prev
             rep_sf = self.deleverage_rate * L_sf_prev if behavioural else 0.0
             fund_service = int_sf + rep_sf
             # D3: income on equity abroad (world return) and on the net external
@@ -618,6 +769,19 @@ class SFCCore(Module):
             dA_kf = g_wn * A_kf_prev if behavioural else 0.0
             Y_sf = self.r_world * A_sff_prev if behavioural else 0.0
             int_fx = i_rate_eff * FX_s_prev if behavioural else 0.0
+            if banks:
+                # the public stand-in (IE, CY) only holds the position: its income
+                # belongs to the conduits' intra-group flows, not the budget
+                int_fx = r_fx * FX_s_prev if fx_bank else 0.0
+                # the financial sector's margin: paid out, the foreign-owned share
+                # abroad (predetermined -> linear solve). Untaxed, like all interest
+                # income in the model: the 2019 tax rates were set on wages and
+                # profits alone, so taxing the margin would be revenue they never had
+                pi_b = (interest + int_L + int_sf + (int_fx if fx_bank else 0.0)
+                        - int_w - int_k)
+                tax_bank = 0.0
+                bank_row = psi * (pi_b - tax_bank)
+                bank_own = pi_b - tax_bank - bank_row
             s_lev = (scenario.source_levy.at(t, H)
                      if (behavioural and t >= self.policy_start) else 0.0)
             levy_to = "ubi" if ubi_on else ("fund" if ubc_on else "gov")
@@ -753,7 +917,7 @@ class SFCCore(Module):
                 tax_k_base = tax_kb_own + theta_k * FP_row + tax_fund
                 YD_w = WB - tax_w + ubi_w + div_w + int_w + tr_w
                 YD_k = (own_fp - tax_k_own - tax_kb_own + ubi_k + div_k + int_k + tr_k
-                        + Y_kf - int_L)
+                        + Y_kf - int_L + bank_own)
                 net_profits = own_fp - tax_k_own - tax_kb_own + Y_kf
                 wealth_k = max(0.0, M_k_prev - L_prev)    # net of debt
                 C_w = a1_w * YD_w + p.a2 * M_w_prev
@@ -872,7 +1036,7 @@ class SFCCore(Module):
             CA = NX + T_int                         # current account (incl. transfers)
             if behavioural:                         # D: + net primary income
                 prim_net = (Y_kf + Y_sf + int_fx - (b["FP_row_net"] - cfc_row)
-                            - (b["F_gross"] - b["levy"]))
+                            - (b["F_gross"] - b["levy"]) - bank_row)
                 CA = NX + T_int + prim_net + b["pledge_in"]
             else:
                 prim_net = 0.0
@@ -884,9 +1048,10 @@ class SFCCore(Module):
             nafa_k = b["YD_k"] - b["C_k"] - A_priv - INV
             dH_s = (G + b["ubi_pool"] + interest) - (b["tax_w"] + b["tax_k"] + b["tax_k_base"])  # gov money issued (incl. debt interest)
             if behavioural:
-                dH_s += dL - int_L - fund_service   # the public lender issues money to lend
-                dH_s += b["levy_fund"] - b["levy"] - int_fx   # D: levy revenue, fx income
-                dH_s += seed - b["ai_gov"]                     # E2: fund seed, AI-stake surplus
+                if not banks:
+                    dH_s += dL - int_L - fund_service   # the public lender issues money to lend
+                dH_s += b["levy_fund"] - b["levy"] - (0.0 if fx_bank else int_fx)
+                dH_s += seed - b["ai_gov"] - tax_bank          # E2: fund seed, AI-stake surplus
 
             # current account accrues as net foreign assets, split by money wealth
             tot_money = M_w_prev + M_k_prev
@@ -905,10 +1070,13 @@ class SFCCore(Module):
                 # current account plus FDI inflows less purchases of equity abroad
                 dA_sff = fund_abroad + b["levy_fund"] + seed
                 dFX_s = CA + (A_row - cfc_row) - dA_kf - dA_sff
-                dH_s += dFX_s
+                if not fx_bank:
+                    dH_s += dFX_s           # the public stand-in buys the position
                 FX_s = FX_s_prev + dFX_s
                 A_kf = A_kf_prev + dA_kf
                 A_sff = A_sff_prev + dA_sff
+            if banks:
+                B = B_prev + dH_s           # bonds issued to cover the deficit
 
             M_w = M_w_prev + dM_w
             M_k = M_k_prev + dM_k
@@ -983,9 +1151,21 @@ class SFCCore(Module):
                 "fx_chg":          {"hh_workers": -dfx_w, "hh_owners": -dfx_k,
                                     "rest_of_world": dfx_w + dfx_k},
             }
-            if interest:
+            if interest and not banks:
                 tfm["interest"] = {"hh_workers": int_w, "hh_owners": int_k,
                                    "government": -interest}
+            if banks:      # the financial sector's rows
+                tfm["money_chg"] = {"hh_workers": -dM_w, "hh_owners": -dM_k,
+                                    "banks": dM_w + dM_k}
+                tfm["bonds_chg"] = {"government": dH_s, "banks": -dH_s}
+                if int_w or int_k:
+                    tfm["interest"] = {"hh_workers": int_w, "hh_owners": int_k,
+                                       "banks": -(int_w + int_k)}
+                if interest:
+                    tfm["gov_interest"] = {"government": -interest, "banks": interest}
+                if pi_b:
+                    tfm["bank_profits"] = {"banks": -pi_b, "government": tax_bank,
+                                           "hh_owners": bank_own, "rest_of_world": bank_row}
             if b["tax_k_base"]:
                 tfm["tax_capital_base"] = {"government": b["tax_k_base"],
                                            "hh_owners": -b["tax_k_base"]}
@@ -1049,7 +1229,7 @@ class SFCCore(Module):
                     if Y_sf:
                         tfm["equity_income_abroad"]["sovereign_fund"] = Y_sf
                 if int_fx:
-                    tfm["fx_interest"] = {"government": int_fx, "rest_of_world": -int_fx}
+                    tfm["fx_interest"] = {("banks" if fx_bank else "government"): int_fx, "rest_of_world": -int_fx}
                 if b["div_total"]:
                     tfm["dividend_swf"] = {"hh_workers": b["div_w"], "hh_owners": b["div_k"],
                                            "sovereign_fund": -b["div_total"]}
@@ -1072,15 +1252,16 @@ class SFCCore(Module):
                                                  "rest_of_world": dA_kf + dA_sff}
                     if dA_sff:
                         tfm["foreign_equity_chg"]["sovereign_fund"] = -dA_sff
-                tfm["fx_chg"] = {"government": -dFX_s, "rest_of_world": dFX_s}
-                tfm["loans_chg"] = {"hh_owners": dL - d_tr, "government": -(dL - rep_sf)}
+                tfm["fx_chg"] = {("banks" if fx_bank else "government"): -dFX_s, "rest_of_world": dFX_s}
+                tfm["loans_chg"] = {"hh_owners": dL - d_tr,
+                                    ("banks" if banks else "government"): -(dL - rep_sf)}
                 if L_sf_prev or d_tr:
                     tfm["loans_chg"]["sovereign_fund"] = d_tr - rep_sf
                 if d_tr:
                     tfm["debt_assumption"] = {"hh_owners": d_tr, "sovereign_fund": -d_tr}
                 if int_L or int_sf:
                     tfm["loan_interest"] = {"hh_owners": -int_L,
-                                            "government": int_L + int_sf}
+                                            ("banks" if banks else "government"): int_L + int_sf}
                     if int_sf:
                         tfm["loan_interest"]["sovereign_fund"] = -int_sf
 
@@ -1094,7 +1275,8 @@ class SFCCore(Module):
             }
 
             if behavioural:
-                bsm["fx_assets"] = {"government": FX_s, "rest_of_world": -FX_s}
+                bsm["fx_assets"] = {("banks" if fx_bank else "government"): FX_s,
+                                    "rest_of_world": -FX_s}
                 fe = {"hh_owners": A_kf, "rest_of_world": -(A_kf + A_sff)}
                 if A_sff or A_sff_prev:
                     fe["sovereign_fund"] = A_sff
@@ -1105,15 +1287,21 @@ class SFCCore(Module):
                 if E_row > 0:
                     capr["rest_of_world"] = Pk * E_row
                 bsm["capital"] = capr
-                bsm["loans"] = {"hh_owners": -L, "government": L + L_sf}
+                bsm["loans"] = {"hh_owners": -L, ("banks" if banks else "government"): L + L_sf}
                 if L_sf or L_sf_prev:
                     bsm["loans"]["sovereign_fund"] = -L_sf
+            if banks:      # deposits are the financial sector's liability; it holds the bonds
+                bsm["money"] = {"hh_workers": M_w, "hh_owners": M_k, "banks": -(M_w + M_k)}
+                bsm["bonds"] = {"banks": B, "government": -B}
             gov_money = M_w + M_k
             gov_debt = gov_money - L - L_sf   # net of the public lender's loans (0 in legacy)
             nfa = F_w + F_k
             if behavioural:      # D: fiscal debt excludes the stand-in's external position
                 gov_debt -= (FX_s - FX_s0)
                 nfa = FX_s + A_kf + A_sff - Pk * E_row          # NIIP (equity at book value)
+            if banks:            # Banks step: the government's debt is its bonds
+                gov_debt = B - (0.0 if fx_bank else (FX_s - FX_s0))
+                gov_debt_rep = gov_debt
             interest_gdp = 100.0 * interest / Y if Y else 0.0
             pop = p.population or 1.0
             reported = {
@@ -1171,7 +1359,7 @@ class SFCCore(Module):
                            + b["pledge_in"])
                 gni = Y + prim_net
                 reported.update({
-                    "deficit": dH_s - dFX_s,
+                    "deficit": dH_s - (0.0 if fx_bank else dFX_s),
                     "gni": gni, "gni_real": gni / Pk, "primary_income_net": prim_net,
                     "ai_rent": b["R"], "ai_rent_abroad": b["F_gross"] - b["levy"],
                     "ai_rent_levy": b["levy"], "ai_rent_reached": reached,
@@ -1191,7 +1379,7 @@ class SFCCore(Module):
                     "niip": nfa, "niip_gdp": 100.0 * nfa / Y if Y else 0.0,
                     # E: owners' capital income BEFORE capital taxes and levies
                     # (drives MARKET inequality in the distribution layer)
-                    "capital_income_hh_gross": b["own_fp"] + Y_kf,
+                    "capital_income_hh_gross": b["own_fp"] + Y_kf + (1.0 - psi) * pi_b,
                     "tax_rate_labour": theta_w, "tax_rate_capital": theta_k,
                     "swf_net_assets": Pk * E_sf - L_sf + A_sff,
                     # E1: what the fund's holdings are worth at market prices
@@ -1203,6 +1391,15 @@ class SFCCore(Module):
                     "ai_stake_to_budget": b["ai_gov"], "pledge_distributions": b["pledge_in"],
                     "broad_tax_rate": t_b,
                 })
+                if banks:
+                    reported.update({
+                        "policy_rate": i_p, "gov_rate_avg": i_g, "gov_rate_new": i_new,
+                        "deposit_rate": r_dep, "household_rate": r_h, "loan_rate": r_l,
+                        "fx_rate": r_fx, "bank_profits": pi_b, "bank_profits_abroad": bank_row,
+                        "bank_tax": tax_bank, "gov_bonds": B, "deposits": M_w + M_k,
+                        "bank_net_worth": (B + L + L_sf + (FX_s if fx_bank else 0.0)
+                                           - (M_w + M_k)),
+                    })
                 pi_row_prev = (b["FP_row_net"] / (psi * Y)) if (psi > 0 and Y > 0) else pi0
                 # E1: after-tax net profit rate on capital, for next year's q
                 rprof_prev = ((b["FP"] * (1.0 - theta_k) - blended_delta * Pk * K_prev)
@@ -1219,13 +1416,18 @@ class SFCCore(Module):
             module=self.name, scenario=scenario.name, geo=scenario.geo,
             periods=periods,
             meta={
-                "stock_flow_map": ({"money": "money_chg", "fx_assets": "fx_chg",
-                                    "loans": "loans_chg",
-                                    "foreign_equity": "foreign_equity_chg"} if behavioural
+                "stock_flow_map": (({"money": "money_chg", "fx_assets": "fx_chg",
+                                     "loans": "loans_chg",
+                                     "foreign_equity": "foreign_equity_chg"}
+                                    | ({"bonds": "bonds_chg"} if banks else {}))
+                                   if behavioural
                                    else {"money": "money_chg", "fx_assets": "fx_chg"}),
                 "investment_closure": self.investment_closure,
                 "profit_response": gamma, "debt_cap": self.debt_cap,
-                "loan_rate": self.loan_rate, "liquidity_floor": self.liquidity_floor,
+                "loan_rate": (loan_fixed if loan_fixed is not None else "market"),
+                "liquidity_floor": self.liquidity_floor,
+                "banks": banks, "rates": rc, "ecb_reference": ea_ref,
+                "fx_holder": ("banks" if fx_bank else ("government" if behavioural else None)),
                 "deleverage_rate": self.deleverage_rate,
                 "inflation_target": self.inflation_target,
                 "phillips_slope": self.phillips_slope,
@@ -1251,3 +1453,70 @@ class SFCCore(Module):
                 "sources": p.sources, "notes": p.notes, "nx_gap": p.nx_gap,
             },
         )
+
+
+# --------------------------------------------------------------------------- #
+# Banks step: the euro-area reference - the euro-area aggregate run under the
+# SAME AI scenario with no national policy. Its debt path nets the common
+# shock out of each country's risk premium (the estimate is a spread over the
+# euro area); under policy_rule="taylor" its rule also gives the ECB path.
+# --------------------------------------------------------------------------- #
+def expected_gov_rate(geo, i_g0: float, neutral: float = NEUTRAL_RATE,
+                      horizon: int = 30) -> float:
+    """Average rate on public debt over the standard 30-year horizon with no risk
+    premium: the 2015-19 rate rolling over (1/DEBT_MATURITY a year) into the
+    policy path (2019 level to neutral) + the country's spread. The structural
+    primary balance is set at it (Banks step)."""
+    rc = rates_for(geo)
+    own = (geo or "").upper() == EURO_AREA or rc["regime"] == "own"
+    path = _neutral_path(rc["policy0"] if own else rc["ea_policy0"], neutral, horizon)
+    peg = 0.0 if own else rc["policy0"] - rc["ea_policy0"]
+    i_g, acc = float(i_g0), []
+    for t in range(1, horizon):
+        i_g += (path[t] + peg + rc["gov_spread"] - i_g) / DEBT_MATURITY
+        acc.append(i_g)
+    return sum(acc) / len(acc) if acc else float(i_g0)
+
+
+def _neutral_path(i0: float, neutral: float, H: int) -> List[float]:
+    """Policy rate from its 2019 level to neutral, closing 1 - RATE_SMOOTHING of
+    the gap a year (~92% in five years); no reaction to booms or slumps."""
+    return [neutral + (i0 - neutral) * RATE_SMOOTHING ** t for t in range(H)]
+
+
+_ECB_CACHE: Dict[tuple, List[float]] = {}
+_ECB_CACHE_MAX = 512
+
+
+def _euro_reference(core: "SFCCore", scenario: Scenario, H: int) -> Dict[str, object]:
+    from modules.ai_shock import AIShock, Policy, to_scenario
+    from data.connectors.dbnomics import DBnomicsConnector
+    ai = getattr(scenario, "ai_shock", None)
+    label = "euro area under the scenario's AI shock" if ai is not None else \
+        "euro area baseline (the scenario carries no AI shock)"
+    if ai is None:
+        ai = AIShock("Baseline", labour_share_end=None)
+    kw = dict(core._init_kwargs)
+    kw.update(policy_rate_path=None, consumption_differential=None, capacity=None,
+              external=None)
+    key = (repr(ai), H, core.base_year,
+           tuple(sorted((k, repr(v)) for k, v in kw.items())))
+    if key not in _ECB_CACHE:
+        rows = DBnomicsConnector(allow_live=False).fetch(EURO_AREA, core.base_year)
+        data = {c: r["value"] for c, r in rows.items()}
+        data["_sources"] = {c: r["source"] for c, r in rows.items()}
+        ref = SFCCore(**kw)
+        p_ea, _ = ref._calibrate(EURO_AREA, data)
+        scen = to_scenario(p_ea, ai, Policy("none"), name="euro-area reference",
+                           horizon=H, geo=EURO_AREA)
+        res = ref.run(scen, data)
+        if len(_ECB_CACHE) >= _ECB_CACHE_MAX:
+            _ECB_CACHE.clear()
+        _ECB_CACHE[key] = {
+            "policy": [per.reported["policy_rate"] for per in res.periods],
+            "debt_ratio": [per.reported["gov_debt"] / per.reported["gdp"]
+                           for per in res.periods],
+            "label": label}
+    out = dict(_ECB_CACHE[key])
+    return {"policy": list(out["policy"]), "debt_ratio": list(out["debt_ratio"]),
+            "label": out["label"]}
