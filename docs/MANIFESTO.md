@@ -16,6 +16,22 @@ substantive change gets a dated changelog entry. Engine findings are always
 labelled *illustrative / conditional* — AGORA is a sandbox, not an oracle.
 Disagreement and open questions are kept visible, not resolved prematurely.
 
+> **Status, 2026-11-08 (v1.2).** The Phase 7 rebuild ([`PHASE7.md`](PHASE7.md)) re-ran every
+> finding below; each now carries its ledger status ([`FINDINGS-LEDGER.md`](FINDINGS-LEDGER.md)).
+> What the model supports today, under the stated AI shock:
+> 1. **The welfare state's tax base erodes.** Wage-tax revenue roughly halves as a share of GDP;
+>    public debt rises in all 24 usable members (median 55% to 127% of GDP by 2048).
+> 2. **Cash and ownership trade consumption now for wealth later.** Cash UBI gives more
+>    consumption in every Monte-Carlo draw; UBC gives lower inequality and moves ownership in every
+>    draw; both cost output. Neither dominates; the choice is a values call.
+> 3. **Europe does not own most of the machine.** 70% of the AI rent is paid abroad by default;
+>    domestic taxes and claims cannot reach it.
+>
+> Retracted: the dividend overtaking cash (F5), "validated" (F9), reinvestment as a cure (F6b,
+> F14), "UBC dominates" and "inaction is never on the frontier", and "pooling halves the gap" (Q2).
+> The theses in §2 and §4 are kept as written, as the record of what was tested. The public study is
+> v1.2, *Who Owns the Machine?* (`scripts/build_manifesto.py`).
+
 ---
 
 ## 0. Why this document exists
@@ -167,27 +183,37 @@ consistency, never a forecast.*
   ~0.47 and at-risk-of-poverty from ~17% to ~28%; the top decile's share jumps
   while the bottom 40%'s collapses. A capital-tax-funded UBI ("Abundance
   Settlement") contains both. *Mechanism demonstration, not a prediction.*
+  > **Ledger 2026-11-08: changed.** Same direction, a fifth to a quarter of the size: DE Gini 0.297 to 0.333, poverty 17.2% to 20.0% by 2048; cash UBI 0.242 and 7.7%.
 - **F2 (2026-06).** As the labour share falls, the wage-tax base erodes and
   government deficits/debt rise — a structural fiscal signal of the AI transition,
   independent of the inequality result.
+  > **Ledger 2026-11-08: survives.** DE debt 60% to 140% of GDP; 24-member median 55% to 127%, 7 above 150%. Now the study's finding 1.
 - **F3 (2026-06, DE & FR).** Opening the economy (rest-of-world + net foreign
   assets) is stock-flow consistent to ~1e-4 MEUR. A persistent current-account
   surplus (DE ~5% of GDP) accumulates a large net-creditor position (~117% of
   GDP over 30y) — the savings-glut dynamic, the mirror of another region's
   debt. This is exactly why the **national-vs-global** question (Q2) needs the
   multi-region extension: one economy's surplus is another's deficit.
+  > **Ledger 2026-11-08: survives, unvalidated.** Baseline NIIP 67% to 160% of GDP; the current account is the backtest's weakest variable and there is no exchange-rate feedback.
 - **F4 (2026-06, DE & FR).** With a sector input-output layer, the AI labour-
   share shock lands very unevenly: high-exposure sectors (ICT/finance/business,
   industry) shed labour share fastest while low-exposure sectors (construction,
   agriculture) barely move. The aggregate decoupling is the sum of a few sectors
   automating hard, not a uniform drift — relevant for *targeted* policy (which
   sectors to tax / retrain / socialise). Sectoral VA reconciles to GDP.
+  > **Ledger 2026-11-08: survives.** ICT, finance & business labour share 0.45 to 0.02 (the floor); construction 0.63 to 0.47.
 - **F5 (2026-06-07, DE & FR) — the flow-vs-stock crux, answered in the sandbox.** Running cash UBI against Universal Basic Capital at *equal cost* (same AI shock, same capital-levy intensity τ=40%, identical government deficit path), the trade-off is real and it **reverses over time**. Cash UBI compresses inequality immediately (macro Gini 0.30→0.14 in year 1) and helps most in the first decade. UBC starts slow — the early years build the endowment — but the citizens' fund stake compounds: its dividend **overtakes the cash transfer around year 11**, and by the 30-year horizon citizens own ~100% of the capital stock, the dividend is ~10× the cash transfer, the macro Gini falls to ~0.04 (vs cash UBI's ~0.33), and poverty is eliminated. *Redistribution (flow) is faster; predistribution (stock) compounds.* The activation of the `sovereign_fund` did not open an accounting leak — the gate closes to ~1e-4 MEUR every period. **Big caveat:** investment is held on the same path in both arms; endogenising owners' incentive response (C1) is the next stress test. **(Addressed 2026-06-14 — see F14: the verdict survives endogenous investment once the fund reinvests.)** Full write-up: `docs/UBC-EXPERIMENT.md`.
+  > **Ledger 2026-11-08: crossover retracted; equality edge survives, smaller.** The dividend stays below cash every year to 2048 (€5,324 against €7,739); citizens own 84%; Gini 0.202 against 0.242; poverty 4.5% against 7.7%.
 - **F6 (2026-06-07, DE) — does predistribution choke investment? (crux C1, quantified).** Endogenising investment as a response to owners' RETAINED capital-income share (elasticity ε, swappable), the UBC vs cash-UBI verdict splits cleanly. The *distributional* result is **robust**: the dividend still overtakes the cash transfer at ~year 11 and UBC ends far more equal (Gini ~0.04 vs ~0.33) at every ε, because the crossover happens before investment paths diverge. The *level* result is **not**: with a strong disincentive (ε=1) UBC ends with a capital stock ~40% below the cash path, because in the current model only private owners fund capex and the fund pays out 100% — so as owners are diluted out, nobody invests. The clean fix (and next thread): let the fund **reinvest** (it owns the capital), moving the investment function from departing owners to the public fund. Until then, read ε>0 as UBC's pessimistic bound. Gate stays clean at all ε. See `docs/UBC-EXPERIMENT.md`.
+  > **Ledger 2026-11-08: changed.** Investment responds to profits by default; dilution costs little in DE (UBC GDP 1.00x cash with no reinvestment).
 - **F6b (2026-06-07) — C1 resolved by fund reinvestment.** Letting the fund reinvest a fraction of its profit share (`ubc_reinvest`) removes the collapse entirely: even a modest rate (r≥0.3) leaves UBC with a LARGER capital stock than cash UBI under ε=1, because as private owners are diluted out the fund picks up the capex — by the late horizon all investment is fund-financed. C1 is therefore a *governance-design* question, not a refutation of predistribution: 'who invests when capital is socialised?' → the fund does. Gate clean at every reinvest rate.
+  > **Ledger 2026-11-08: retracted as a cure.** Reinvestment trades dividend for capital: UBC GDP 1.03-1.04x cash at 30-60% reinvestment, 0.97x at 100% (DE); 0.89-0.97x in FR.
 - **F7 (2026-06-07, DE + FR) — national vs global AI dividend (Q2, first result).** With two countries modelled as separately-gated open economies, a purely NATIONAL cash dividend lets the between-country gap GROW under the AI shock (pop-weighted between-country Gini 0.019→0.048 over 30y, as richer DE throws off the bigger dividend); pooling the dividend GLOBALLY narrows it ~34% and transfers per-capita income DE→FR. Q2 confirmed in-sandbox: a national AI dividend entrenches the cross-country gap, a pooled one shrinks it. (UBC partly self-equalises across countries; cash does not.) **Update (increment 2): adding POLAND (~EUR14k/capita) nearly TRIPLES the national between-country Gini (0.048→0.138 for DE+FR→DE+FR+PL); pooling sends the largest transfer to Poland. Tight bilateral trade (gravity matrix + damped regional fixed point) now couples the bloc two-way: per-country gate intact, intra-bloc trade reconciles to ~1e-9, output propagates across borders.** Architecture is N-country; the path is to fill in toward EU27. `docs/MULTI-REGION.md`.
+  > **Ledger 2026-11-08: survives, revised.** DE+FR+PL pooling narrows the gap 31% (cash) and 29% (UBC) by 2048.
 - **F8 (2026-06-07, DE) — only ownership touches WEALTH (the dimension that matters).** With wealth now a dynamic outcome: cash UBI and no-policy leave the top-10% WEALTH share parked at the observed ~60% (cash redistributes income, never the capital), while UBC collapses it to ~21% (wealth Gini 0.50->0.11) by socialising the capital itself. Robustness (Monte-Carlo, #53): across the full prior span UBC's inequality and poverty bands sit ENTIRELY below cash UBI's — the "owning beats receiving" verdict is not a point-estimate artifact. See `docs/FINDINGS.md`.
+  > **Ledger 2026-11-08: survives.** Top-10% wealth 59.6% (cash) against 16.9% (UBC); separated in 100% of 500 joint draws (DE, FR, SK).
 - **F9 (2026-06-07, DE + FR) — FIRST historical backtest: the demand core is validated, the fiscal block is not.** Driving the model with the ACTUAL labour-share, investment and government paths over 2014-2019 (and 2010-2019), it reproduces realised **GDP to ~1-1.6% mean error** — strong validation of the consumption / import / output mechanics. But **government debt/GDP is off by ~28-37%**: the income-tax rate theta is calibrated to the GINI, so it does double duty and the implied primary balance (hence the debt path) is arbitrary. IMPLICATION: the inequality, poverty and WEALTH results (demand+distribution side) are backtest-supported; the fiscal-sustainability claim (F2) is directional only until the government block is calibrated to the actual balance. The cross-section β fit is uninformative (R^2=0.02), as expected. This is exactly what "validate before trusting" is for. **FIXED (2026-06-07): theta is now calibrated to the FISCAL BALANCE (debt-stabilising, ~30% effective rate), not the Gini — which had forced it to ~47% and a 10%-of-GDP phantom surplus that crashed debt negative. Inequality is anchored by the distribution module's personal Gini instead. Government debt/GDP is now bounded and realistic (DE baseline holds ~56-60% vs the observed 58.7%). Live backtest CONFIRMS it: GDP error ~1% (DE 1.16%, FR 1.04%); gov-debt error fell from ~30-37% to FR 2.46% (PASS) and DE 12.78%. France (roughly debt-stabilising stance) is matched almost exactly; Germany's residual ~13% IS its discretionary austerity (black-zero surpluses cutting debt 75%->59%), which a constant-stance sandbox correctly does not invent. The model is now historically validated; F2 (fiscal) upgraded from directional-only to validated-for-constant-stance.** With the books realistic, the policy frontier shifts: UBC dominates cash UBI on the trade-offs too, so the remaining choice is the UBC levy's INTENSITY, not flow-vs-stock.
+  > **Ledger 2026-11-08: retracted.** The 2011-19 backtest from 2010 data beats a random walk and a static multiplier in only 37% of cases (median GDP error 3.9%). `docs/VALIDATION-2026-11.md`.
 - *(future)* National vs global dividend on between-country inequality — **blocked
   on the multi-region extension**; logged as the headline Phase-4+ research
   question.
@@ -226,6 +252,8 @@ consistency, never a forecast.*
 ---
 
 ## Changelog
+
+- **2026-11-08 (Phase 7 step G: v1.2, the public record corrected)** — Every finding re-run on the step-F engine and annotated with its ledger status (`docs/FINDINGS-LEDGER.md`). Thesis rewritten around the three results that survive (status box at the top; decided by Brano 2026-11-08). The study is regenerated as v1.2, *Who Owns the Machine? AI, the labour share and Europe's policy choices*, replacing *Owning the Machine*. Year labels corrected: the 30-period horizon ends in 2048, not 2049.
 
 - **2026-06-17 (engine credibility upgrades A/B/C)** — Three additions hardening the data. (A) **Endogenous wealth accumulation** (`omega`, default 0.15): no-policy & cash top-10% wealth share now CONCENTRATES with the rising capital share instead of staying flat (DE 55.5→60.7% over 30y) — removes the "flat baseline" objection and makes the UBC comparison conservative. The cross-section was uninformative (R² .06, wrong sign), so the default is a documented r>g value with a wide MC prior. (B) **Joint uncertainty + sensitivity**: the Monte-Carlo now samples all six assumptions together and the UBC-beats-cash verdict survives the FULL joint prior (UBC Gini p5–p95 0.01–0.20 vs cash 0.25–0.39, non-overlapping); a first-order sensitivity ranking shows the investment response (C1) drives ~50% of outcome variance, capex ~28%, β ~11%, ω ~0% on income (it acts on wealth). (C) **Sourced AI exposure**: sector exposure now from the OECD (2024) Sectoral Taxonomy of AI Intensity (NACE A38) + Felten-Raj-Seamans (2021) AIIE — exposure is *cognitive*, so Industry falls 0.70→0.45 and services rise. 196 tests, gate exact (~7e-9). Findings **F17–F19**. Dashboard regenerated.
 
@@ -275,6 +303,8 @@ consistency, never a forecast.*
 
 ## F10 (2026-06-11) — The poverty floor, made honest
 
+> **Ledger 2026-11-08: changed.** Cash 7.7%, UBC 4.5%: both cut poverty, neither abolishes it.
+
 The distribution module no longer assumes a transfer->compression elasticity
 (gamma). Income is now modelled as a flat universal transfer PLUS lognormal
 market income, so shares, Gini and poverty follow exactly from the transfer's
@@ -295,6 +325,8 @@ still an assumption pending the panel estimate.)
 ---
 
 ## F11 (2026-06-11) — Gated pooling: multipliers help cash, overshoot UBC
+
+> **Ledger 2026-11-08: changed.** DE+FR+PL: 31% cash, 29% UBC; UBC no longer narrows more.
 
 The Q2 pooled (global) dividend now runs through each country's books — a new
 `intl_transfer` lever delivers the net pooling transfer to households with the
@@ -322,6 +354,8 @@ available. Rebuild snapshots to activate.
 
 ## F12 (2026-06-12) — beta is unidentified in macro data; the verdict doesn't care
 
+> **Ledger 2026-11-08: survives.** UBC beats cash on Gini and poverty in DE, FR and SK across 500 joint draws (100%; FR poverty 98%).
+
 The within-country fixed-effects panel (25 EU countries x 2010-2024, 275 obs)
 returns beta = 0.05 with R^2 = 0.006 — like the level cross-section before it
 (R^2 = 0.02), it identifies nothing. The reading is NOT "beta is small": the
@@ -342,6 +376,8 @@ which see market income before redistribution — a connector away.
 ---
 
 ## F13 (2026-06-14) — the market-Gini connector lands; the redistribution wedge, quantified
+
+> **Ledger 2026-11-08: unaffected** (data result).
 
 The OECD IDD connector supplies the pre-tax/pre-transfer (MARKET) Gini that F12
 said was "a connector away". It does two things. **(1)** It QUANTIFIES why
@@ -365,6 +401,8 @@ affecting), gate-clean.
 
 ## F21 (2026-06-24) — the citizens' dividend, grounded in real sovereign-wealth-fund rules
 
+> **Ledger 2026-11-08: changed.** Under the 3% rule the DE dividend is €5,324 (not ~€25,000); the fund owns 84% of domestic capital.
+
 The UBC dividend was paying out the FULL domestic profit share each year — which
 inflated it (DE ~EUR82k/person at the horizon) and, by paying everything out, never
 let the fund compound. Anchoring it to how real citizen funds actually operate fixes
@@ -381,6 +419,8 @@ borrowed from GPFG/Alaska is the payout rule, not the return. Switchable
 (`fund_payout=`), default OFF, gate exact (~1.5e-8), 200 tests.
 
 ## F20 (2026-06-24) — a responsible government dissolves the "fiscal vs equality" trade-off
+
+> **Ledger 2026-11-08: retracted.** No-policy debt median 127% of GDP; in DE the proposals move it by -15 to +29 pp.
 
 Phase 6 gave AGORA a proper fiscal block: a broad revenue base (a baseline capital
 tax alongside the wage tax, so revenue follows the capital share) and a fiscal-
@@ -399,6 +439,8 @@ is unchanged until regenerated with the block. 199 tests, gate exact.)
 
 ## F19 (2026-06-17) — AI exposure is cognitive, not robotic: grounding it moves the shock from factories to offices
 
+> **Ledger 2026-11-08: unaffected** (input data).
+
 Replacing the round-number sectoral exposure guess [0.30/0.70/0.20/0.50/0.90/0.40]
 with sourced values from the OECD (2024) *Sectoral Taxonomy of AI Intensity* (NACE
 A38 High/Medium/Low) cross-referenced with Felten-Raj-Seamans (2021) AIIE gives
@@ -410,6 +452,8 @@ and the exposure column links to its source. Swappable; gate unaffected.
 
 ## F18 (2026-06-17) — the verdict survives the FULL joint assumption space, and we can name what drives it
 
+> **Ledger 2026-11-08: changed.** Separation survives 19 priors x 500 draws; but β drives 91% of the UBC Gini variance, not the investment response.
+
 Sampling all six uncertain assumptions JOINTLY (labour-share floor, capex growth,
 investment response, β, ω, consumption propensity), UBC's Gini band (p5–p95 ≈
 0.01–0.20) sits entirely below cash UBI's (≈ 0.25–0.39) — "owning beats receiving"
@@ -420,6 +464,8 @@ decomposition ranks the drivers of the UBC outcome: the **investment response (C
 parameter to pin down empirically is therefore the capex-dilution elasticity, not β.
 
 ## F17 (2026-06-17) — endogenising wealth concentration removes the "flat baseline" and strengthens UBC
+
+> **Ledger 2026-11-08: survives.** No-policy top-10% wealth share 55.5% to 59.7%.
 
 The old model held the top-10% WEALTH share constant unless UBC acted, so no-policy
 and cash were flat lines — a fair criticism ("why is the baseline conveniently
@@ -433,6 +479,8 @@ uninformative (slope −0.26, R² .06, confounded like β), so ω is a documente
 default with a wide Monte-Carlo prior, not a spurious point estimate.
 
 ## F16 (2026-06-14) — grounding beta refines the headline: ownership is the durable UBC win, income compression is conditional
+
+> **Ledger 2026-11-08: survives.** Top-10% wealth 15-17% under UBC in every regime; the income-Gini edge goes at full reinvestment.
 
 Lowering the default beta 0.6 -> 0.13 (F15) shrinks the no-policy AI inequality
 (DE 30y gini_personal 0.50 -> 0.34, poverty 0.30 -> 0.21) and the cash-UBI gini
@@ -461,6 +509,8 @@ GDP and income Gini.
 
 ## F15 (2026-06-14) — the market-Gini identifier resolves, and beta is unidentified even PRE-tax
 
+> **Ledger 2026-11-08: unaffected** (data result).
+
 F12 proposed the pre-tax (market) Gini as the clean identifier; the live OECD IDD
 market-Gini (INC_MRKT_GINI, OECD/DSD_WISE_IDD@DF_IDD, AGE=_T) within-country FE
 panel now runs end to end: **beta = 0.128, R^2 = 0.024** (71 obs, 6 countries,
@@ -487,6 +537,8 @@ INC_MRKT_GINI, self-relaxing dimension filter).
 
 ## F14 (2026-06-14) — crux C1 closed on the pinned experiment: endogenous investment, cured by reinvestment
 
+> **Ledger 2026-11-08: changed.** Reinvestment is a dial between dividend and capital, not a cure; UBC's Gini rises to 0.278 at full reinvestment, above cash's 0.242.
+
 F5's caveat ("investment held on the same path in both arms") is now lifted.
 Running the actual cash-vs-UBC arms with investment ENDOGENOUS (elasticity to
 owners' retained capital-income share, eps=0.75), gated end to end:
@@ -507,6 +559,8 @@ reproduces the numbers.
 ---
 
 ## F11 amendment (2026-06-12) — the overshoot was the solver, not the economics
+
+> **Ledger 2026-11-08: changed.** See F11: 31% cash, 29% UBC.
 
 Running the all-EU pooled UBC arm exposed it: the single corrective pass drove
 Italy (a large giver under compounding UBC pools) into negative household
@@ -529,6 +583,8 @@ crashed mid-script; cash-only numbers from that run are superseded too).
 
 ## Q2 ANSWERED (2026-06-12) — the all-EU national-vs-global dividend
 
+> **Ledger 2026-11-08: changed.** 24 members, 2048: pooling narrows the between-country Gini 32% (cash) and 21% (UBC), not half.
+
 Definitive run: 25 countries (IE dropped as MNC-distorted), tau=40%, 30y, both
 arms gated end-to-end (worst residual ~1e-8), pooling iterated to the fixed
 point. Result:
@@ -549,6 +605,8 @@ where the political constraint will bind. Magnitudes are model-scale under the
 stated shock, not forecasts.
 
 ### F22 — An AI-specific levy is a seed, not the engine (2026-06-30)
+
+> **Ledger 2026-11-08: unaffected** (sizing study outside the engine).
 Sizing check (`scripts/study_ai_levy_base.py`): an AI-specific levy in the EU — an EU-wide
 digital-services tax (CEPS-style ~€12bn/yr) plus a 5–10% levy on the AI/data-centre capex
 build-out (EU share ~10% of the ~$650bn 2026 global capex) — raises only **~€33–40 per
@@ -561,6 +619,8 @@ the engine; the AI levy is a fast-growing supplement that seeds the fund.** Owne
 households now and captures the value the flow tax leaks.
 
 ### F23 — "UBC dominates cash" is conditional on the investment assumption (2026-07-07)
+
+> **Ledger 2026-11-08: survives, strengthened.** With investment responding, no policy, cash UBI at every rate and the real proposals are on the DE frontier; UBC at 40-60% is off it. No form dominates.
 Richer policy search (`orchestrator.rich_policy_search`: form x tau x investment
 regime x fund-reinvestment, every candidate gated; `policy_search.search_policies_rich`).
 Under **fixed investment** (dilution cannot bite) the DE frontier is **UBC-only** across

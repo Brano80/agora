@@ -95,15 +95,17 @@ f_workers = st.sidebar.slider("Worker population share", 0.5, 0.95, 0.80, 0.01)
 a1_w = st.sidebar.slider("Workers' MPC", 0.5, 1.0, 0.95, 0.01)
 wealth_share_owners = st.sidebar.slider("Owners' share of money wealth",
                                         0.3, 0.95, 0.70, 0.05)
-beta = st.sidebar.slider("Capital share → inequality (β)", 0.0, 1.5, 0.6, 0.05)
+beta = st.sidebar.slider("Capital share → inequality (β)", 0.0, 1.5, 0.13, 0.01,
+    help="Model default 0.13 (OECD market-Gini panel). Unidentified in macro data; it drives "
+         "most of the UBC Gini's uncertainty, not the ranking.")
 gamma = st.sidebar.slider("UBI → compression (γ)", 0.0, 1.5, 0.5, 0.05)
 i_rate = st.sidebar.slider("Interest on gov debt (%/yr)", 0.0, 6.0, 0.0, 0.5,
     help="Debt service on government money/bills. >0 compounds the deficit — "
          "hardens the fiscal-sustainability picture as the wage-tax base erodes.") / 100.0
 inv_elasticity = st.sidebar.slider(
     "Investment → owners' retained return (ε, crux C1)", 0.0, 2.0, 0.0, 0.1,
-    help="0 = autonomous capex. >0 = taxing/diluting owners' capital income deters investment; UBC's falling retained share (1-φ) bites harder over time "
-         "than a flat capital tax (1-τ).")
+    help="Legacy closure only. Under the default (behavioural) closure investment already "
+         "follows profits and spare capacity, so this slider has no effect there.")
 
 # --------------------------------------------------------------------------- #
 # Run
@@ -348,13 +350,13 @@ _g_cash_end = _cash_r.periods[-1].reported["gini"]
 st.info(
     f"**Read-out.** Cash UBI compresses inequality immediately (Gini {_g_cash0:.2f} "
     f"in year 1) and helps most in the first decade. UBC starts slow — it is "
-    f"building the endowment — but its dividend overtakes the cash transfer in "
-    + (f"**{_cross}**" if _cross else "—") +
-    f", and by {_yrs[-1]} citizens own {_ubc_r.periods[-1].reported['swf_share']*100:.0f}% "
+    f"building the endowment — and its dividend "
+    + (f"overtakes the cash transfer in **{_cross}**" if _cross
+       else f"stays below the cash transfer to {_yrs[-1]}") +
+    f". By {_yrs[-1]} citizens own {_ubc_r.periods[-1].reported['swf_share']*100:.0f}% "
     f"of the capital stock, with the macro Gini at {_g_ubc_end:.2f} vs cash UBI's "
-    f"{_g_cash_end:.2f}. The trade-off is real: redistribution (flow) is faster, "
-    "predistribution (stock) compounds. This is a sandbox comparison, not a forecast, "
-    "and it assumes the dilution leaves investment unchanged — an open question.")
+    f"{_g_cash_end:.2f}. The trade-off is real: cash gives more consumption sooner, "
+    "ownership moves wealth. This is a sandbox comparison, not a forecast.")
 
 # --------------------------------------------------------------------------- #
 # PHASE 4 — multi-objective policy search & the trade-off (Pareto) frontier
@@ -369,7 +371,7 @@ st.caption("Given the AI shock, every policy (no-policy / cash UBI / UBC across 
 
 class _GatedRun:
     def __init__(self, result, dist, reports):
-        self.result, self.dist = result, dist
+        self.result, self.dist, self.reports = result, dist, reports
         self.consistent = all(r.passed for r in reports)
         self.max_residual = max((r.max_residual for r in reports), default=0.0)
 
@@ -416,9 +418,9 @@ st.dataframe(_front.style.format({
 st.caption(f"{len(_pts)} policies evaluated, all consistency-gated "
            f"(worst residual {max(pt.max_residual for pt in _pts):.1e} MEUR); "
            f"{int((_pdf.status=='on frontier').sum())} on the frontier. "
-           "'No policy' is dominated. The frontier spans BOTH cash UBI (wins on "
-           "stability) and UBC (wins on growth/equality/resilience) — there is no "
-           "single best, only a trade-off you choose along.")
+           + ("'No policy' is on it. " if (_pdf[_pdf.form == "none"].status == "on frontier").any()
+              else "'No policy' is dominated. ")
+           + "There is no single best, only a trade-off you choose along.")
 
 # --------------------------------------------------------------------------- #
 # MULTI-REGION — the national vs global AI dividend (Q2)

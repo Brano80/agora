@@ -23,12 +23,12 @@ import uncertainty as U                                     # noqa: E402
 GEOS = ("DE", "FR", "SK")
 FORMS = ("none", "cash_ubi", "ubc")
 N = 500
-METRICS = {"gini": ("Personal Gini, 2049", "{:.3f}"),
-           "poverty": ("Poverty rate, 2049", "{:.3f}"),
-           "gni_end": ("Real national income, 2049 (MEUR, 2019 prices)", "{:,.0f}"),
-           "consumption_pc_avg": ("Real consumption per person, 2020-49 average (EUR)", "{:,.0f}"),
-           "citizen_wealth_pc": ("Citizens' fund wealth per person, 2049 (EUR)", "{:,.0f}"),
-           "gdp_end": ("Real GDP, 2049 (MEUR, 2019 prices)", "{:,.0f}")}
+METRICS = {"gini": ("Personal Gini, 2048", "{:.3f}"),
+           "poverty": ("Poverty rate, 2048", "{:.3f}"),
+           "gni_end": ("Real national income, 2048 (MEUR, 2019 prices)", "{:,.0f}"),
+           "consumption_pc_avg": ("Real consumption per person, 2020-48 average (EUR)", "{:,.0f}"),
+           "citizen_wealth_pc": ("Citizens' fund wealth per person, 2048 (EUR)", "{:,.0f}"),
+           "gdp_end": ("Real GDP, 2048 (MEUR, 2019 prices)", "{:,.0f}")}
 SENS_METRICS = ("gini", "consumption_pc_avg", "gni_end")
 
 

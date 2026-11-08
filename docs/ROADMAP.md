@@ -102,10 +102,10 @@ LLM steps via MCP sampling + wire scout/optimiser as crew tools.
 
 **Effort.** investigate ~0.5-1d · minimal server ~2-3d · Elicitation/Sampling +~1d each · MCP Apps out of spike scope. Record the outcome here + in `STATE.md` when run.
 
-### Phase 7 — Credibility fixes (IN PROGRESS: 0, A, B, C, D, E done 2026-10-30; E5 2026-10-31; Banks 2026-11-01; F 2026-11-08)
+### Phase 7 — Credibility fixes (IN PROGRESS: 0, A, B, C, D, E done 2026-10-30; E5 2026-10-31; Banks 2026-11-01; F, G 2026-11-08; H, I open)
 Review found the headline results rest on gate-clean but economically implausible runs: no supply side, unconstrained investment financing (owners insolvent), no foreign ownership of AI capital, book-value equity transfer. Step-by-step plan, evidence and acceptance criteria: `docs/PHASE7.md`.
 
-Step F result: the 2011–19 backtest does not beat naive benchmarks (37% of cells beat both; `docs/VALIDATION-2026-11.md`); year-1 multipliers sit in the published ranges. The ownership result survives every draw; the dividend crossover, "validated" and "UBC dominates" are retracted (`docs/FINDINGS-LEDGER.md`). **Next: step G**, correcting the README, manifesto, dashboard and Zenodo record from the ledger.
+Step F result: the 2011–19 backtest does not beat naive benchmarks (37% of cells beat both; `docs/VALIDATION-2026-11.md`); year-1 multipliers sit in the published ranges. The ownership result survives every draw; the dividend crossover, "validated" and "UBC dominates" are retracted (`docs/FINDINGS-LEDGER.md`). Step G corrected the public record (README, study v1.2 *Who Owns the Machine?*, plain-English brief, dashboard, manifesto status lines; `docs/CORRECTION-v1.2.md`). Publishing Zenodo v1.2 and the GitHub release is the author's step. **Next: H** (housekeeping), then **I** (relaunch).
 
 ## Standing principles (apply to every phase)
 Sandbox, not an oracle · transparency over authority (every parameter sourced &

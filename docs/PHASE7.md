@@ -670,7 +670,7 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 **Audit (27 countries):**
 - 3,455 runs, all gate-clean; 88% plausible (Banks: 88%). Monte-Carlo draws: 63% plausible.
 - UBC insolvency: 7 runs (all RO) and 87 draws (Banks: 35 runs, 200 draws).
-- No-policy debt in 2049: median 127% of GDP; 7 of 24 countries above 150%.
+- No-policy debt in 2048: median 127% of GDP; 7 of 24 countries above 150%.
 
 **Monte Carlo** (19 priors, 500 draws, DE, FR, SK):
 - UBC beats cash UBI on the Gini, poverty and fund wealth in 100% of paired draws (FR poverty 98%).
@@ -698,7 +698,7 @@ Full table: `docs/FINDINGS-LEDGER.md`.
 - **Year-2 multipliers are above the literature** (spending 1.16, labour tax 0.76). There is no monetary response and investment follows the accelerator. Read short-run responses as upper bounds. **Documented; open.**
 - **The inflation anchor biases debt down** in a low-inflation decade (above). **Decision 4: kept, documented.**
 - **External drift.** The current account is the weakest variable, and the DE baseline NIIP rises 67% → 160% of GDP. There is no exchange-rate or price channel on imports. **Open.**
-- **Possible FISIM double count.** The bank margin (median 4.0% of GDP by 2049) is paid to owners on top of a profit share calibrated to GDP, which already includes financial firms' operating surplus. **Open** (financial-sector accounts).
+- **Possible FISIM double count.** The bank margin (median 4.0% of GDP by 2048) is paid to owners on top of a profit share calibrated to GDP, which already includes financial firms' operating surplus. **Open** (financial-sector accounts).
 - **The utilisation response is an assumption,** with an MC range and no estimate. **Open.**
 - **Floaters** (CZ, HU, PL, RO, SE) are scored in euros in the backtest; their exchange-rate moves sit in the deflator.
 - **Public investment is treated as private** in the projections; only the backtest moves it into government spending. **Open.**
@@ -710,6 +710,41 @@ Full table: `docs/FINDINGS-LEDGER.md`.
 - **G2.** Regenerate the manifesto (`build_manifesto.py`), the dashboard (`build_dashboard.py`) and the post audit (`build_posts.py`).
 - **G3.** Publish Zenodo v1.2 with a correction note (same process as v1.1), plus a GitHub release.
 - **G4.** Update CLAUDE.md "Current status" (stale since Phase 3), ROADMAP and STATE.
+- **Status: DONE 2026-11-08, except G3's publishing, which is the author's step.** Correction note: `docs/CORRECTION-v1.2.md`.
+- **Decided 2026-11-08:**
+  - The thesis is rewritten around the three results that survive step F:
+    1. the welfare state's tax base erodes;
+    2. cash and ownership trade consumption now for wealth later;
+    3. Europe does not own most of the machine.
+  - UBC appears as one side of a trade-off.
+  - Zenodo v1.2 with a correction note; no public correction post. The LinkedIn posts stay paused.
+- **What was done:**
+  - **G1, README.** New headline from the three findings, with the correction box, the backtest result and the limits. The test count is 422. The charts are regenerated from the engine (`AGORA_tradeoff_DE.png`, `AGORA_fiscal_EU.png`).
+  - **Removed** (still in git history):
+    - the frontier charts and `social_1_wealth.png`;
+    - `AGORA_Policy_Brief_UBC.pdf`, which argued from v1.1 results and had no builder.
+  - **G2, the study.** `scripts/build_manifesto.py` is rewritten: *Who Owns the Machine? AI, the labour share and Europe's policy choices* (v1.2, 10 pages).
+    - Every number comes from the gated engine at build time. The backtest and the Monte Carlo are read from their JSON files.
+    - Part V states the backtest failure and lists each retracted v1.1 claim.
+    - The builder also writes the README charts. They follow the dataviz rules: one axis per panel, a palette validated for colour blindness, direct labels.
+  - **G2, `docs/FINDINGS.md`.** Rewritten as the v1.2 plain-English brief, including a table of Germany after ten years.
+  - **G2, `docs/MANIFESTO.md`.** A status box at the top and a ledger line under every finding. The original text is kept as the record.
+  - **G2, the dashboard** (`scripts/build_dashboard.py` → `docs/index.html`).
+    - Correction banner and corrected notes.
+    - Real GDP and national income, consumption and payments per person in 2019 prices.
+    - The Monte Carlo is read from the step-F robustness run.
+    - The 24 usable countries only.
+  - **Streamlit app** (`dashboard/app.py`).
+    - Fixed a crash in the frontier section (`_GatedRun` had no `reports`).
+    - Default β set to 0.13.
+    - The ε slider is labelled legacy-only.
+    - The read-out and the frontier caption now come from the run.
+  - **The post audit** (`build_posts.py`) was not rerun. The posts stay paused, and no correction post goes out (decided).
+  - **G3, prepared.**
+    - `scripts/launch_zenodo.py` carries the v1.2 title, a description with a correction paragraph and the version, for `ZENODO_NEW_VERSION=21127193`.
+    - `docs/CORRECTION-v1.2.md` is the GitHub release text.
+  - **G4.** ROADMAP, STATE and CLAUDE.md updated.
+- **Year labels.** The 30-period horizon runs 2019–2048. The step-F ledger, robustness and PHASE7 text are corrected to 2048. The audit reports (`AUDIT-2026-10*.md`, `AUDIT-2026-11-stepF.md`) and earlier sections of this file keep their "2049" label as generated. It means the horizon's last year, 2048.
 
 ### H. Housekeeping (~0.5 day, any time)
 - **H1.** Scout: pause the 08:00 and 09:10 tasks until G, or fix them:

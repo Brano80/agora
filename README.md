@@ -2,93 +2,106 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20726928.svg)](https://doi.org/10.5281/zenodo.20726928)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-green.svg)](https://creativecommons.org/licenses/by/4.0/)
-![tests](https://img.shields.io/badge/tests-241%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-422%20passing-brightgreen)
 ![status](https://img.shields.io/badge/status-research%20preview-orange)
 
-**AGORA** is an open, **stock-flow-consistent** model of the European economy built
-to answer one question rigorously: *as AI raises productivity, who gets the gains —
-and which policies actually share them?* It compares policies (cash UBI vs
-**Universal Basic Capital**) inside one accounting-complete world, calibrated to
-live data and validated against history.
+**AGORA** is an open, **stock-flow-consistent** model of 24 EU economies. It asks what
+happens to households and public finances if AI moves income from work to capital, and
+what cash transfers and citizen ownership (**Universal Basic Capital**) can and cannot do
+about it. Every policy runs inside one accounting-complete world, calibrated to each
+country's 2019 data.
 
 > **Sandbox, not oracle.** AGORA produces *scenario comparisons under explicit,
-> swappable assumptions* — not forecasts. Every parameter is inspectable and
-> sourced; every scenario must pass a consistency gate (no money created or lost
-> in the accounts) before any result is reported.
+> swappable assumptions*, not forecasts. Every parameter is sourced or labelled as an
+> assumption with a Monte-Carlo range; every scenario must pass a consistency gate (no
+> money created or lost in the accounts) before any result is reported.
 
-> ⚠️ **Known issues: headline results under revision (2026-10-28).** A review found
-> that several headline numbers below come from runs that pass the accounting gate but
-> are not economically plausible. Until the fixes in [`docs/PHASE7.md`](docs/PHASE7.md)
-> land, treat the headline results, frontier charts, study PDF and dashboard as
-> **provisional**:
-> 1. **No supply side.** Output is purely demand-led, with no capacity limit or price
->    level, so redistribution raises GDP mechanically. The growth claims below ("the UBC
->    economy ends larger", "predistribution needn't cost growth") follow from this
->    closure; they are not findings.
->    *Fixed in the engine on 2026-10-29 (Phase 7 step C,
->    [`docs/AUDIT-2026-10-stepC.md`](docs/AUDIT-2026-10-stepC.md)): real output is now
->    capped by capacity, with prices. Over 30 years cash UBI is roughly neutral for real
->    output and UBC depends on whether the fund reinvests; the numbers above are not yet
->    regenerated.*
-> 2. **Unconstrained investment financing.** Investment follows an assumed path, and
->    capital owners finance it with unlimited interest-free borrowing from the state.
->    Their money balance goes negative in over half the policy runs, cash UBI and UBC
->    alike, and in about a third of UBC runs they end insolvent, owing more than they own.
->    *Fixed in the engine on 2026-10-29 (Phase 7 step B,
->    [`docs/AUDIT-2026-10-stepB.md`](docs/AUDIT-2026-10-stepB.md)); the published
->    numbers above still come from the old engine until they are regenerated.*
-> 3. **No foreign ownership of capital.** All capital, AI capital included, is modelled
->    as domestically owned, so the model cannot yet say how much of a largely
->    foreign-owned AI rent European policies can reach.
->    *Fixed in the engine on 2026-10-30 (Phase 7 step D,
->    [`docs/AUDIT-2026-10-stepD.md`](docs/AUDIT-2026-10-stepD.md)): foreign owners hold
->    their observed share of capital and 70% of the AI rent is paid abroad. Taxes on
->    domestic capital and dilution reach none of that foreign part; a source levy
->    reaches little, because providers pass it on. The numbers above are not yet
->    regenerated.*
-> 4. **Book-value equity transfer and a stylised policy.** The UBC experiment valued the
->    shares it transferred at book value, and its 40%-a-year claim is far larger than any
->    real proposal.
->    *Fixed in the engine on 2026-10-30 (Phase 7 step E,
->    [`docs/AUDIT-2026-10-stepE.md`](docs/AUDIT-2026-10-stepE.md)): shares are priced at
->    market value and every arm faces a government with real borrowing costs and a fiscal
->    rule. Six real 2026 proposals (a stock levy, pledges, a debt-financed fund, child
->    accounts, a source levy, a broad-base UBI) now run against the 40% benchmarks; none
->    moves national income by more than about 4%. The numbers above are not yet
->    regenerated.*
->
-> An audit of the 3,057 scenario runs behind the published numbers finds that every one
-> balances its books, but only 13% also pass the new plausibility checks:
-> [`docs/AUDIT-2026-10.md`](docs/AUDIT-2026-10.md).
->
-> What stands: the accounting framework, the live EU data pipeline and the consistency
-> gate. Whether "ownership beats cash" survives the fixes is open. Corrections will ship
-> as a new versioned release.
+> **Correction, v1.2 (November 2026).** An October 2026 review found that the earlier
+> headline results came from runs that balanced their books but were not economically
+> plausible. The engine was rebuilt (capacity limits and prices, credit constraints,
+> foreign ownership of capital and of the AI rent, market-priced shares, banks, existing
+> loans, each country's own capital stock and trend growth, gradual consumption:
+> [`docs/PHASE7.md`](docs/PHASE7.md)) and every published claim was re-run. These did
+> not survive: the citizens' dividend overtaking cash, "UBC dominates cash and inaction",
+> "with reinvestment the UBC economy ends larger", "pooling halves the European gap" and
+> "validated against history". Each finding and its status:
+> [`docs/FINDINGS-LEDGER.md`](docs/FINDINGS-LEDGER.md).
 
-📄 **Read the study:** *Owning the Machine — A Governance of Abundance for Europe* (12 pp) → [`AGORA_Manifesto.pdf`](AGORA_Manifesto.pdf) · permanent copy: https://doi.org/10.5281/zenodo.20726928 · SSRN: (forthcoming)
-📋 **One-page policy brief:** [`AGORA_Policy_Brief_UBC.pdf`](AGORA_Policy_Brief_UBC.pdf) — practical paths to implement UBC and where the capital comes from.
+📄 **Read the study:** *Who Owns the Machine? AI, the labour share and Europe's policy choices* (v1.2, 10 pp) → [`AGORA_Manifesto.pdf`](AGORA_Manifesto.pdf) · all versions: https://doi.org/10.5281/zenodo.20726928
 🔗 **Live dashboard:** https://brano80.github.io/agora/
 
 ---
 
-## The headline result *(provisional, see Known issues above)*
-![Only ownership touches wealth](social_1_wealth.png)
+## What the model shows
 
-Under an AI labour-share shock (Germany, 30-year scenario):
-- **Cash UBI** lowers income inequality but leaves the **top-10% wealth share ~56%** — it redistributes the income capital throws off, never the capital.
-- **Universal Basic Capital** (a citizens' fund paying a per-capita dividend) collapses it to **~20%** — it distributes the asset itself.
-- With fund **reinvestment**, the UBC economy ends *larger* than the cash economy — predistribution needn't cost growth. *(Artifact of the demand-led closure; under revision.)*
-- A **pooled EU dividend** roughly **halves** between-country inequality.
-- Across a multi-objective frontier, **UBC policies dominate** both cash UBI and inaction. *(Holds only with investment held fixed; with investment responding, cash re-enters the frontier: finding F23.)*
+One stated scenario: AI pushes the labour share from 66% to 30% of income by 2048, with an
+investment boom in AI capital. Germany is the worked example; every number below is
+regenerated by [`scripts/build_manifesto.py`](scripts/build_manifesto.py).
 
-![UBC owns the policy frontier — equality and growth together (Germany, France, Slovakia)](AGORA_frontier_DE_FR_SK.png)
+### 1. The welfare state's tax base erodes
+European welfare states are funded mostly by taxes on wages. With no policy response,
+German wage-tax revenue falls from 13.8% to 7.1% of GDP by 2048; taxes on profits rise
+from 5.9% to 8.9%, not enough to make up the gap. Public debt rises in all 24 member
+states, from a median of 55% to 127% of GDP, and 7 end above 150%. This holds whatever
+one thinks of basic income.
 
-*At equal cost, Universal Basic Capital is non-dominated across all five objectives (growth, equality, poverty, fiscal sustainability, stability); cash UBI and “do nothing” are dominated everywhere. Per-country charts: [DE](AGORA_frontier_DE.png).*
+![With no policy, public debt rises in every member state](AGORA_fiscal_EU.png)
+
+### 2. Cash and ownership trade consumption now for wealth later
+A 40% levy on profits is either paid out as a cash basic income or taken as shares in a
+citizens' fund that pays out 3% of its value a year (Norway's rule).
+- **Cash UBI** raises average consumption per person by 13% over no policy, but leaves
+  the top-10% share of wealth where it was heading (60%).
+- **Universal Basic Capital** raises consumption by 1%, cuts the top-10% wealth share
+  from 56% to 17% and ends with the lower income Gini (0.20 against 0.24).
+- **The dividend stays below the cash transfer** every year to 2048 (€5,324 against
+  €7,739 per person).
+- **Both cost output.** GDP ends about 8% below the no-policy path, because both tax the
+  profits that fund investment.
+
+Neither form dominates. Across 500 joint draws of 19 uncertain assumptions (Germany,
+France, Slovakia), UBC is more equal in every draw and cash gives more consumption in
+every draw ([`docs/ROBUSTNESS-2026-11.md`](docs/ROBUSTNESS-2026-11.md)). The size of the
+inequality gap depends mostly on one parameter that recent data cannot identify; the
+direction does not.
+
+![Cash raises consumption; only ownership changes who owns](AGORA_tradeoff_DE.png)
+
+### 3. Europe does not own most of the machine
+By 2048 the AI rent reaches 36% of German GDP, and 70% of it is paid abroad as licence
+and cloud fees (the US providers' share of Europe's cloud market). Real GDP rises 10%
+while real national income falls 13%, and consumption per person ends 23% below 2019.
+Domestic taxes and claims reach only the domestic part: a 40% claim in shares reaches 25%
+of the AI rent, and a 3% levy on fees paid abroad reaches 0.3% of the foreign part,
+because providers pass it on. Six real 2026 proposals (a stock levy, AI pledges, a
+borrowing-financed fund, child accounts, a source levy, a broad-base UBI) each move
+national income by a few per cent at most.
+
+A dividend pooled across the Union narrows the gap between member states by 32% (cash) or
+21% (UBC) by 2048, with transfers of up to €15,822 per person a year from the richest
+members.
+
+### What the model cannot tell you
+- **It is not a forecaster.** Started in 2010 and fed the policy and world demand that
+  actually happened, it tracks 2011–2019 no better than a random walk or a static
+  multiplier: it beats both in 37% of country-variable cases
+  ([`docs/VALIDATION-2026-11.md`](docs/VALIDATION-2026-11.md)). Its first-year fiscal
+  multipliers sit inside the published ranges; year-two responses are above them.
+- **The AI shock is assumed,** and its size drives most results.
+- **No exchange rates or monetary reaction;** inflation is anchored near 2%.
+- **EL, IE and LU are excluded** ([`schema/coverage.py`](schema/coverage.py)).
 
 ## How it's built
-- **Stock-flow-consistent core** + pluggable modules (distribution · input-output · AI-shock · citizens' fund · multi-region) through a common schema.
-- **Live data:** Eurostat national accounts, AMECO wage shares, BIS household debt, OECD wealth distribution, Eurostat **FIGARO** input-output — integrated via DBnomics; 26 EU members calibrated.
-- **Validated:** back-tested to 2010–2019 history (~2.3% mean GDP error; government-debt path within the 10% bound); a consistency gate enforced on every run (residuals ~1e-10 of GDP); **241 automated tests**.
+- **Stock-flow-consistent core** with capacity limits, prices, a banking sector and a
+  government with a fiscal rule, plus pluggable modules (distribution · input-output ·
+  AI shock · citizens' fund · multi-region) through a common schema.
+- **Data:** Eurostat national and financial accounts, AMECO (wage shares, capital
+  stocks, interest rates), ECB bank rates, OECD income and wealth distribution, Eurostat
+  **FIGARO** input-output, the 2024 Ageing Report, integrated via DBnomics. 24 EU members
+  usable.
+- **Checked:** a consistency gate on every run (residuals ~1e-10 of GDP); plausibility
+  laws (88% of 3,455 audited runs pass: [`docs/AUDIT-2026-11-stepF.md`](docs/AUDIT-2026-11-stepF.md));
+  a 2011–2019 backtest against naive benchmarks; **422 automated tests**.
 - Pure standard-library Python engine.
 
 ## Drive it in plain language (MCP + agent crew)
@@ -110,13 +123,14 @@ comparison, or the Pareto frontier — always with the numbers and **never a
 python agent_crew.py "What's the policy frontier for Germany under an AI shock?"
 ```
 ```
-AGORA crew -- policy frontier on DE (30y). 4 non-dominated policies out of 13;
+AGORA crew -- policy frontier on DE (30y). 16 non-dominated policies out of 19;
 no single 'best' -- each trades one objective for another.
-  - UBC t=20%: GDP 9,382,116, Gini 0.250, poverty 0.090, debt/GDP 143.
-  - UBC t=30%: GDP 10,496,531, Gini 0.193, poverty 0.016, debt/GDP 136.
-  - UBC t=40%: GDP 12,414,605, Gini 0.119, poverty 0.000, debt/GDP 125.
-  - UBC t=50%: GDP 14,699,402, Gini 0.056, poverty 0.000, debt/GDP 118.
-  Sandbox, not a forecast; every candidate passed the consistency gate.
+  - No policy: GDP 3,882,863, Gini 0.333, poverty 0.200, debt/GDP 140.
+  - Cash UBI τ=40%: GDP 3,562,377, Gini 0.242, poverty 0.077, debt/GDP 137.
+  - UBC τ=30%: GDP 3,644,770, Gini 0.201, poverty 0.044, debt/GDP 130.
+  - Voluntary AI pledges, best case (Anthropic-style): GDP 4,002,916, Gini 0.317, ...
+  ...
+  Sandbox, not a forecast; every candidate passed the consistency gate. The choice is yours.
 ```
 
 **Why it's trustworthy as a tool** — the guardrails live in the tool layer, not
@@ -137,23 +151,26 @@ Full tool list + setup: [`docs/MCP.md`](docs/MCP.md) · crew design: [`docs/PHAS
 
 ## Quickstart
 ```bash
-python -m pytest tests/ -q              # run the test suite (241)
-python -m streamlit run dashboard/app.py # explore scenarios
-python scripts/run_triad.py --geo DE     # baseline / AI-shift / settlement
+python -m pytest tests/ -q                # run the test suite (422)
+python -m streamlit run dashboard/app.py  # explore scenarios
+python scripts/run_triad.py --geo DE      # baseline / AI shift / settlement
+python scripts/build_manifesto.py         # rebuild the study and the charts above
 ```
 
 ## Repository map
 - `schema/` canonical SNA accounts · `modules/` model adapters · `consistency/` the gate
 - `data/` live connectors + cached snapshots · `orchestrator.py` · `scenarios.py`
-- `docs/` architecture, manifesto, findings · `tests/`
+- `validation.py` the 2011–2019 backtest · `uncertainty.py` the Monte Carlo
+- `docs/` method, findings ledger, validation, audits · `tests/`
 
 ## Citation
 ```bibtex
 @misc{agora2026,
-  title  = {Owning the Machine: A Governance of Abundance for Europe},
+  title  = {Who Owns the Machine? AI, the Labour Share and Europe's Policy Choices},
   author = {Branislav Ambroz},
   year   = {2026},
-  note   = {AGORA — an open, consistency-gated model of AI's distributional impact},
+  note   = {AGORA, an open, consistency-gated model of AI's distributional and fiscal
+            impact. Version 1.2 (corrects v1.0 and v1.1, "Owning the Machine")},
   doi    = {10.5281/zenodo.20726928},
   url    = {https://doi.org/10.5281/zenodo.20726928}
 }
