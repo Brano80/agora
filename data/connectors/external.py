@@ -102,9 +102,11 @@ def from_dbnomics(d4_docs: List[dict], gdp_docs: List[dict], niip_docs: List[dic
 
 
 def summarise(series: Dict[str, Dict[str, float]], base_year: int = 2019,
-              window=WINDOW) -> Optional[Dict[str, object]]:
+              window=None) -> Optional[Dict[str, object]]:
     """Window means of inward / outward equity income over GDP, and the
     base-year NIIP. None when the base year or the window is missing."""
+    if window is None:          # the five years to the base year (2015-2019 for 2019)
+        window = (base_year - (WINDOW[1] - WINDOW[0]), base_year)
     inw, outw, gdp = series.get("inward", {}), series.get("outward", {}), series.get("gdp", {})
     yrs = [str(y) for y in range(window[0], window[1] + 1)
            if str(y) in inw and str(y) in outw and gdp.get(str(y))]

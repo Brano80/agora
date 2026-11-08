@@ -94,6 +94,11 @@ INSTRUMENTS: Dict[str, Instrument] = {
                         "liability of the financial sector."),
         Instrument("capital", "Fixed capital stock", 1, real=True,
                    note="Real (non-financial) stock; accumulates investment."),
+        Instrument("housing", "Dwellings financed by household loans", 1, real=True,
+                   note="Phase 7 F: housing is not modelled. Households' existing loans "
+                        "financed dwellings worth at least the loans (loan-to-value at "
+                        "most 1), so the dwellings are carried at the loans' face value: "
+                        "a lower bound that adds no housing equity."),
         Instrument("bills", "Government bills", 2, note="Inactive in Phase 1."),
         Instrument("bonds", "Government bonds", 1,
                    note="Phase 7 Banks step: public debt, held by the financial sector "
@@ -101,7 +106,9 @@ INSTRUMENTS: Dict[str, Instrument] = {
         Instrument("loans", "Loans to capital owners", 1,
                    note="Phase 7 B: owners' borrowing to finance investment, capped and "
                         "interest-bearing. Lender = the public sector as a stand-in until "
-                        "the banks sector is activated (asset of the lender, liability of owners)."),
+                        "the banks sector is activated (asset of the lender, liability of owners). "
+                        "Phase 7 F: plus firms' and households' existing loans (Eurostat "
+                        "financial accounts), owed by owners and workers to the banks."),
         Instrument("deposits", "Bank deposits", 2, note="Inactive in Phase 1."),
         Instrument("equity", "Firm equity", 2, note="Inactive in Phase 1."),
         Instrument("reserves", "Central-bank reserves", 2, note="Inactive."),

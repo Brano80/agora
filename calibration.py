@@ -86,6 +86,8 @@ def calibrate(
                                       # structural primary balance is set at (None = i_rate)
     g_nominal: Optional[float] = None,  # Phase 7 E: nominal trend growth; when set,
                                 # net taxes hold debt/GDP at its base-year level
+    primary_balance: Optional[float] = None,  # Phase 7 F backtest: the OBSERVED base-year
+                                # primary balance (share of GDP) instead of the structural one
     world_growth: float = 0.015,  # exports grow with FOREIGN demand, not own output
     g_fiscal: float = 0.015,    # debt-stabilising growth for the fiscal anchor
     gini_target: Optional[float] = None,
@@ -127,7 +129,11 @@ def calibrate(
     # the flaw the historical backtest caught (F9). Inequality is anchored
     # separately by the distribution module's personal Gini, so decoupling theta
     # costs nothing on the reported-inequality side. (tax_k0 = 0 at baseline.)
-    if g_nominal is None:
+    if primary_balance is not None:
+        # Phase 7 F (historical backtest): start from the base year's actual
+        # primary balance, cyclical part included; the fiscal rule then steers
+        theta = max(0.05, min(0.60, (G0 + float(primary_balance) * gdp_full) / (ls0 * Y0)))
+    elif g_nominal is None:
         target_deficit = g_fiscal * debt
         theta = max(0.05, min(0.60, (G0 - target_deficit) / (ls0 * Y0)))
     else:

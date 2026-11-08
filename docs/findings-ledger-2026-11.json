@@ -1,0 +1,921 @@
+{
+ "generated": "2026-11-08",
+ "pinned": {
+  "DE": {
+   "arms": {
+    "Baseline": {
+     "gini0": 0.297,
+     "gini_end": 0.2995391553070773,
+     "gini_10y": 0.2992013413573723,
+     "poverty0": 0.17172461226085245,
+     "poverty_end": 0.17388110823718506,
+     "poverty_10y": 0.17359527545630526,
+     "top10_wealth0": 0.55549144744873,
+     "top10_wealth_end": 0.5584212420338193,
+     "fund_share_end": 0.0,
+     "fund_share_10y": 0.0,
+     "gdp_real_index": 1.462411524948684,
+     "gni_real_index": 1.5098405592852016,
+     "debt0": 60.13881675168109,
+     "debt_end": 51.98367798914088,
+     "niip0": 66.72679067258098,
+     "niip_end": 160.25488518383114,
+     "consumption_pc_avg": 28700.189713479722,
+     "capital_index": 1.4315190663712187,
+     "transfer_pc_end": 0.0,
+     "transfer_pc_10y": 0.0
+    },
+    "AI shift, no policy": {
+     "gini0": 0.297,
+     "gini_end": 0.3327873521834111,
+     "gini_10y": 0.3089250039899931,
+     "poverty0": 0.17172461226085245,
+     "poverty_end": 0.20043600239725007,
+     "poverty_10y": 0.18169185243571961,
+     "top10_wealth0": 0.55549144744873,
+     "top10_wealth_end": 0.5967845461218967,
+     "fund_share_end": 0.0,
+     "fund_share_10y": 0.0,
+     "gdp_real_index": 1.0976974215988384,
+     "gni_real_index": 0.8731486792759753,
+     "debt0": 60.13881675168109,
+     "debt_end": 139.70990001321047,
+     "niip0": 66.72679067258098,
+     "niip_end": 152.1147667715643,
+     "consumption_pc_avg": 19639.25821946525,
+     "capital_index": 1.1346514501701788,
+     "transfer_pc_end": 0.0,
+     "transfer_pc_10y": 0.0
+    },
+    "AI + Cash UBI": {
+     "gini0": 0.297,
+     "gini_end": 0.24172278741755843,
+     "gini_10y": 0.24868061080972356,
+     "poverty0": 0.17172461226085245,
+     "poverty_end": 0.07653246218887583,
+     "poverty_10y": 0.10016153162998948,
+     "top10_wealth0": 0.55549144744873,
+     "top10_wealth_end": 0.5959588848513041,
+     "fund_share_end": 0.0,
+     "fund_share_10y": 0.0,
+     "gdp_real_index": 1.0070949343397728,
+     "gni_real_index": 0.7959163258481657,
+     "debt0": 60.13881675168109,
+     "debt_end": 137.04243002493664,
+     "niip0": 66.72679067258098,
+     "niip_end": 96.04920672970758,
+     "consumption_pc_avg": 22176.803280810287,
+     "capital_index": 0.9562970855158582,
+     "transfer_pc_end": 7738.908723556028,
+     "transfer_pc_10y": 6675.226498305659
+    },
+    "AI + Universal Basic Capital": {
+     "gini0": 0.297,
+     "gini_end": 0.20160872232718766,
+     "gini_10y": 0.2685865284088319,
+     "poverty0": 0.17172461226085245,
+     "poverty_end": 0.04543348498923028,
+     "poverty_10y": 0.13828269722371622,
+     "top10_wealth0": 0.55549144744873,
+     "top10_wealth_end": 0.1689853943732066,
+     "fund_share_end": 0.8412473502094149,
+     "fund_share_10y": 0.6111992726199239,
+     "gdp_real_index": 1.0119028735076294,
+     "gni_real_index": 0.7792194501456566,
+     "debt0": 60.13881675168109,
+     "debt_end": 130.79681118436397,
+     "niip0": 66.72679067258098,
+     "niip_end": 101.81575491768824,
+     "consumption_pc_avg": 19827.494884688775,
+     "capital_index": 1.0186850615898186,
+     "transfer_pc_end": 5323.995066185969,
+     "transfer_pc_10y": 1836.349892253765
+    }
+   },
+   "dividend_overtakes_cash_year": null,
+   "c1_ladder": {
+    "0.0": {
+     "gdp_ubc_over_cash": 1.004774067472605,
+     "gini_ubc": 0.20160872232718766,
+     "gini_cash": 0.24172278741755843,
+     "top10_wealth_ubc": 0.1689853943732066
+    },
+    "0.3": {
+     "gdp_ubc_over_cash": 1.0288464036953482,
+     "gini_ubc": 0.212427767720484,
+     "gini_cash": 0.24172278741755843,
+     "top10_wealth_ubc": 0.15415485507582438
+    },
+    "0.6": {
+     "gdp_ubc_over_cash": 1.035008227073411,
+     "gini_ubc": 0.22575181011207307,
+     "gini_cash": 0.24172278741755843,
+     "top10_wealth_ubc": 0.14800953685110657
+    },
+    "1.0": {
+     "gdp_ubc_over_cash": 0.9657011526179274,
+     "gini_ubc": 0.27753212690502954,
+     "gini_cash": 0.24172278741755843,
+     "top10_wealth_ubc": 0.14790905960170464
+    }
+   }
+  },
+  "FR": {
+   "arms": {
+    "Baseline": {
+     "gini0": 0.292,
+     "gini_end": 0.29381981779260197,
+     "gini_10y": 0.2937363307968327,
+     "poverty0": 0.16742370667841738,
+     "poverty_end": 0.16899744620163853,
+     "poverty_10y": 0.16892545812567766,
+     "top10_wealth0": 0.49934696197509804,
+     "top10_wealth_end": 0.5014467517357927,
+     "fund_share_end": 0.0,
+     "fund_share_10y": 0.0,
+     "gdp_real_index": 1.3197787377814312,
+     "gni_real_index": 1.3255472688850038,
+     "debt0": 100.4699600057246,
+     "debt_end": 97.62764400077859,
+     "niip0": -27.471751404768852,
+     "niip_end": -6.964360119061672,
+     "consumption_pc_avg": 22263.211559972406,
+     "capital_index": 1.4005886519259512,
+     "transfer_pc_end": 0.0,
+     "transfer_pc_10y": 0.0
+    },
+    "AI shift, no policy": {
+     "gini0": 0.292,
+     "gini_end": 0.3289213247093369,
+     "gini_10y": 0.3038604305045148,
+     "poverty0": 0.16742370667841738,
+     "poverty_end": 0.19750520564678248,
+     "poverty_10y": 0.1775085124362994,
+     "top10_wealth0": 0.49934696197509804,
+     "top10_wealth_end": 0.5419484904858713,
+     "fund_share_end": 0.0,
+     "fund_share_10y": 0.0,
+     "gdp_real_index": 0.9474349599630034,
+     "gni_real_index": 0.6843871440666383,
+     "debt0": 100.4699600057246,
+     "debt_end": 255.8425247761109,
+     "niip0": -27.471751404768852,
+     "niip_end": -80.8011562284567,
+     "consumption_pc_avg": 14784.496825583954,
+     "capital_index": 1.0540575512977364,
+     "transfer_pc_end": 0.0,
+     "transfer_pc_10y": 0.0
+    },
+    "AI + Cash UBI": {
+     "gini0": 0.292,
+     "gini_end": 0.2317117054047232,
+     "gini_10y": 0.2416831972484939,
+     "poverty0": 0.16742370667841738,
+     "poverty_end": 0.06349952244680235,
+     "poverty_10y": 0.09238502231088824,
+     "top10_wealth0": 0.49934696197509804,
+     "top10_wealth_end": 0.5410241060372842,
+     "fund_share_end": 0.0,
+     "fund_share_10y": 0.0,
+     "gdp_real_index": 0.9705846058023397,
+     "gni_real_index": 0.7042543325881574,
+     "debt0": 100.4699600057246,
+     "debt_end": 241.46266298859277,
+     "niip0": -27.471751404768852,
+     "niip_end": -140.41646805223067,
+     "consumption_pc_avg": 17124.568654429408,
+     "capital_index": 1.0525788257562196,
+     "transfer_pc_end": 6175.51593467928,
+     "transfer_pc_10y": 5231.635619958967
+    },
+    "AI + Universal Basic Capital": {
+     "gini0": 0.292,
+     "gini_end": 0.20397940053373756,
+     "gini_10y": 0.28431896673475315,
+     "poverty0": 0.16742370667841738,
+     "poverty_end": 0.049057709519542636,
+     "poverty_10y": 0.1603556019097902,
+     "top10_wealth0": 0.49934696197509804,
+     "top10_wealth_end": 0.16379654246968245,
+     "fund_share_end": 0.8336072857291954,
+     "fund_share_10y": 0.5624912168984986,
+     "gdp_real_index": 0.9436558169466166,
+     "gni_real_index": 0.6795886489124823,
+     "debt0": 100.4699600057246,
+     "debt_end": 242.90703005020202,
+     "niip0": -27.471751404768852,
+     "niip_end": -86.97112227565053,
+     "consumption_pc_avg": 15134.061585798827,
+     "capital_index": 1.0005974124671397,
+     "transfer_pc_end": 3939.69932199612,
+     "transfer_pc_10y": 54.01241637352025
+    }
+   },
+   "dividend_overtakes_cash_year": null,
+   "c1_ladder": {
+    "0.0": {
+     "gdp_ubc_over_cash": 0.9722550834880981,
+     "gini_ubc": 0.20397940053373756,
+     "gini_cash": 0.2317117054047232,
+     "top10_wealth_ubc": 0.16379654246968245
+    },
+    "0.3": {
+     "gdp_ubc_over_cash": 0.9667288455232415,
+     "gini_ubc": 0.22245665046648286,
+     "gini_cash": 0.2317117054047232,
+     "top10_wealth_ubc": 0.15659197300111471
+    },
+    "0.6": {
+     "gdp_ubc_over_cash": 0.9475099909873839,
+     "gini_ubc": 0.23546904382624653,
+     "gini_cash": 0.2317117054047232,
+     "top10_wealth_ubc": 0.15654354432320938
+    },
+    "1.0": {
+     "gdp_ubc_over_cash": 0.8928968039964394,
+     "gini_ubc": 0.2778931321722517,
+     "gini_cash": 0.2317117054047232,
+     "top10_wealth_ubc": 0.15677203952973207
+    }
+   }
+  }
+ },
+ "proposals_DE": {
+  "none": {
+   "gni_real_end": 3169477.8591663614,
+   "gni_vs_2019": 0.8731486792759753,
+   "consumption_pc_avg": 19639.258219465253,
+   "gini_end": 0.3327873521834111,
+   "poverty_end": 0.20043600239725007,
+   "wealth_top10_end": 0.5967845461218967,
+   "debt_gdp_end": 139.70990001321047,
+   "ai_rent_reached": 0.0,
+   "ai_rent_foreign_reached": 0.0,
+   "citizen_wealth_pc_end": 0.0,
+   "dividend_pc_end": 0.0
+  },
+  "stock_levy": {
+   "gni_real_end": 3158369.2253858214,
+   "gni_vs_2019": 0.8700883995248525,
+   "consumption_pc_avg": 19857.462215971707,
+   "gini_end": 0.313544711742149,
+   "poverty_end": 0.1791808822927003,
+   "wealth_top10_end": 0.5933891216288212,
+   "debt_gdp_end": 125.14357624500597,
+   "ai_rent_reached": 0.15000000000000002,
+   "ai_rent_foreign_reached": 0.0,
+   "citizen_wealth_pc_end": 37399.021639629114,
+   "dividend_pc_end": 1508.2086615896274
+  },
+  "pledge": {
+   "gni_real_end": 3260623.261654381,
+   "gni_vs_2019": 0.898258016315302,
+   "consumption_pc_avg": 20283.13972381926,
+   "gini_end": 0.3172216006795748,
+   "poverty_end": 0.1824915672645206,
+   "wealth_top10_end": 0.5966441841115149,
+   "debt_gdp_end": 135.33711760432848,
+   "ai_rent_reached": 0.091,
+   "ai_rent_foreign_reached": 0.13,
+   "citizen_wealth_pc_end": 0.0,
+   "dividend_pc_end": 1557.6497655088576
+  },
+  "debt_fund": {
+   "gni_real_end": 3283452.8887602095,
+   "gni_vs_2019": 0.9045472726665232,
+   "consumption_pc_avg": 20014.365661450538,
+   "gini_end": 0.3265068417154539,
+   "poverty_end": 0.19341620925328395,
+   "wealth_top10_end": 0.596566495950467,
+   "debt_gdp_end": 168.38279321933194,
+   "ai_rent_reached": 0.0,
+   "ai_rent_foreign_reached": 0.0,
+   "citizen_wealth_pc_end": 20416.83082939331,
+   "dividend_pc_end": 591.2209699631267
+  },
+  "child_accounts": {
+   "gni_real_end": 3170879.7205557865,
+   "gni_vs_2019": 0.8735348733038543,
+   "consumption_pc_avg": 19638.290055414607,
+   "gini_end": 0.33278385294323076,
+   "poverty_end": 0.2004333677781494,
+   "wealth_top10_end": 0.5967805085370732,
+   "debt_gdp_end": 140.18291935743457,
+   "ai_rent_reached": 0.0,
+   "ai_rent_foreign_reached": 0.0,
+   "citizen_wealth_pc_end": 393.58189361689466,
+   "dividend_pc_end": 0.0
+  },
+  "source_levy": {
+   "gni_real_end": 3167381.7510367865,
+   "gni_vs_2019": 0.8725712295740742,
+   "consumption_pc_avg": 19565.3340517192,
+   "gini_end": 0.33250211913176797,
+   "poverty_end": 0.20022113974330785,
+   "wealth_top10_end": 0.5964554310623085,
+   "debt_gdp_end": 131.41637193940906,
+   "ai_rent_reached": 0.020999999999999998,
+   "ai_rent_foreign_reached": 0.002999999999999999,
+   "citizen_wealth_pc_end": 0.0,
+   "dividend_pc_end": 0.0
+  },
+  "broad_ubi": {
+   "gni_real_end": 3110246.2643612465,
+   "gni_vs_2019": 0.8568311686090611,
+   "consumption_pc_avg": 20382.215934252614,
+   "gini_end": 0.2811782983463955,
+   "poverty_end": 0.13530328706095374,
+   "wealth_top10_end": 0.5966445953854944,
+   "debt_gdp_end": 138.60565697217334,
+   "ai_rent_reached": 0.041361936,
+   "ai_rent_foreign_reached": 0.0,
+   "citizen_wealth_pc_end": 0.0,
+   "dividend_pc_end": 4742.981638082893
+  },
+  "cash_ubi_40": {
+   "gni_real_end": 2889129.002195366,
+   "gni_vs_2019": 0.7959163258481657,
+   "consumption_pc_avg": 22176.803280810287,
+   "gini_end": 0.24172278741755843,
+   "poverty_end": 0.07653246218887583,
+   "wealth_top10_end": 0.5959588848513041,
+   "debt_gdp_end": 137.04243002493664,
+   "ai_rent_reached": 0.12000000000000001,
+   "ai_rent_foreign_reached": 0.0,
+   "citizen_wealth_pc_end": 0.0,
+   "dividend_pc_end": 7738.908723556027
+  },
+  "ubc_40": {
+   "gni_real_end": 2828520.3348373193,
+   "gni_vs_2019": 0.7792194501456566,
+   "consumption_pc_avg": 19827.494884688775,
+   "gini_end": 0.20160872232718766,
+   "poverty_end": 0.04543348498923028,
+   "wealth_top10_end": 0.1689853943732066,
+   "debt_gdp_end": 130.79681118436397,
+   "ai_rent_reached": 0.252616228399695,
+   "ai_rent_foreign_reached": 0.0,
+   "citizen_wealth_pc_end": 175196.5505681708,
+   "dividend_pc_end": 5323.995066185968
+  }
+ },
+ "no_policy": {
+  "AT": {
+   "poverty0": 0.15225993728505688,
+   "poverty_10y": 0.16182810188268665,
+   "poverty_end": 0.18058226287285994,
+   "gini0": 0.275,
+   "gini_end": 0.30757301783361696,
+   "debt0": 73.31469163000052,
+   "debt_end": 146.9501734091714,
+   "niip0_base": 17.75426322509943,
+   "niip_end_base": 71.20775110873741
+  },
+  "BE": {
+   "poverty0": 0.12946511570388997,
+   "poverty_10y": 0.13893335192259282,
+   "poverty_end": 0.15558802964482138,
+   "gini0": 0.251,
+   "gini_end": 0.278652324781689,
+   "debt0": 100.71621140985218,
+   "debt_end": 188.61051199346707,
+   "niip0_base": 48.65514635113634,
+   "niip_end_base": 49.10547939517255
+  },
+  "BG": {
+   "poverty0": 0.2501647409293376,
+   "poverty_10y": 0.2553856712000654,
+   "poverty_end": 0.26786906039286107,
+   "gini0": 0.408,
+   "gini_end": 0.4402953036341053,
+   "debt0": 20.833300549580024,
+   "debt_end": 79.19774621822107,
+   "niip0_base": -55.56885160647882,
+   "niip_end_base": -37.56927296469725
+  },
+  "CY": {
+   "poverty0": 0.18661381935702748,
+   "poverty_10y": 0.19445487356269925,
+   "poverty_end": 0.20836503953891716,
+   "gini0": 0.315,
+   "gini_end": 0.3435205289403266,
+   "debt0": 95.02167291066779,
+   "debt_end": 139.39750061687977,
+   "niip0_base": -114.83193660774174,
+   "niip_end_base": -53.73496626371166
+  },
+  "CZ": {
+   "poverty0": 0.1185184621931501,
+   "poverty_10y": 0.12633288664861675,
+   "poverty_end": 0.14303985922451984,
+   "gini0": 0.24,
+   "gini_end": 0.2650909984624986,
+   "debt0": 30.630478282822164,
+   "debt_end": 83.95625503804943,
+   "niip0_base": -19.33896742549179,
+   "niip_end_base": -13.211097081196336
+  },
+  "DE": {
+   "poverty0": 0.17172461226085245,
+   "poverty_10y": 0.18169185243571961,
+   "poverty_end": 0.20043600239725007,
+   "gini0": 0.297,
+   "gini_end": 0.3327873521834111,
+   "debt0": 60.13881675168109,
+   "debt_end": 139.70990001321047,
+   "niip0_base": 66.72679067258098,
+   "niip_end_base": 160.25488518383114
+  },
+  "DK": {
+   "poverty0": 0.15225993728505688,
+   "poverty_10y": 0.16337340757840924,
+   "poverty_end": 0.18223268409959748,
+   "gini0": 0.275,
+   "gini_end": 0.3095862872249274,
+   "debt0": 39.5285520862444,
+   "debt_end": 116.69928947825676,
+   "niip0_base": 79.74762957721785,
+   "niip_end_base": 178.0902452623409
+  },
+  "EE": {
+   "poverty0": 0.1784561793155819,
+   "poverty_10y": 0.1859794656115833,
+   "poverty_end": 0.20212938281525306,
+   "gini0": 0.305,
+   "gini_end": 0.3350454966036395,
+   "debt0": 9.132739168516357,
+   "debt_end": 66.68789113954675,
+   "niip0_base": -21.62444627039831,
+   "niip_end_base": 6.5731605475340364
+  },
+  "ES": {
+   "poverty0": 0.19832698094405066,
+   "poverty_10y": 0.20627764309458047,
+   "poverty_end": 0.2214064473116894,
+   "gini0": 0.33,
+   "gini_end": 0.3621158530259518,
+   "debt0": 100.32833947667042,
+   "debt_end": 214.08664040108235,
+   "niip0_base": -70.18378923675,
+   "niip_end_base": -9.606470314089165
+  },
+  "FI": {
+   "poverty0": 0.14010771386370063,
+   "poverty_10y": 0.14987970197439737,
+   "poverty_end": 0.16921563460783817,
+   "gini0": 0.262,
+   "gini_end": 0.2940730011855794,
+   "debt0": 66.8099268514875,
+   "debt_end": 165.08788578675222,
+   "niip0_base": 1.1269526589995698,
+   "niip_end_base": 15.344830421544325
+  },
+  "FR": {
+   "poverty0": 0.16742370667841738,
+   "poverty_10y": 0.1775085124362994,
+   "poverty_end": 0.19750520564678248,
+   "gini0": 0.292,
+   "gini_end": 0.3289213247093369,
+   "debt0": 100.4699600057246,
+   "debt_end": 255.8425247761109,
+   "niip0_base": -27.471751404768852,
+   "niip_end_base": -6.964360119061672
+  },
+  "HR": {
+   "poverty0": 0.16742370667841738,
+   "poverty_10y": 0.1757916759402654,
+   "poverty_end": 0.1942650470562698,
+   "gini0": 0.292,
+   "gini_end": 0.32470791039527214,
+   "debt0": 73.3606432569264,
+   "debt_end": 180.08569751041102,
+   "niip0_base": -55.35671594296395,
+   "niip_end_base": -64.24675941939374
+  },
+  "HU": {
+   "poverty0": 0.14577522815143829,
+   "poverty_10y": 0.1523034899760889,
+   "poverty_end": 0.16720545315330587,
+   "gini0": 0.268,
+   "gini_end": 0.2917484908606674,
+   "debt0": 67.31416162366361,
+   "debt_end": 132.59445916899415,
+   "niip0_base": -46.14145314866456,
+   "niip_end_base": -53.09282879092315
+  },
+  "IT": {
+   "poverty0": 0.1968008165298401,
+   "poverty_10y": 0.20452659709941207,
+   "poverty_end": 0.22002389385227383,
+   "gini0": 0.32799999999999996,
+   "gini_end": 0.3600853710913833,
+   "debt0": 135.99589280394608,
+   "debt_end": 300.13715169491655,
+   "niip0_base": 0.270965073019005,
+   "niip_end_base": 35.951201003418085
+  },
+  "LT": {
+   "poverty0": 0.2158202836797759,
+   "poverty_10y": 0.2217762902521434,
+   "poverty_end": 0.2343634388719264,
+   "gini0": 0.354,
+   "gini_end": 0.38188686753754636,
+   "debt0": 36.94760791517932,
+   "debt_end": 90.24121773450186,
+   "niip0_base": -21.382461049687247,
+   "niip_end_base": 40.67611993222339
+  },
+  "LV": {
+   "poverty0": 0.21441880342680364,
+   "poverty_10y": 0.2207132980911498,
+   "poverty_end": 0.235861644276187,
+   "gini0": 0.35200000000000004,
+   "gini_end": 0.3842639778340258,
+   "debt0": 39.02225344970454,
+   "debt_end": 116.94373412251221,
+   "niip0_base": -44.51631240769985,
+   "niip_end_base": -70.16385848376854
+  },
+  "MT": {
+   "poverty0": 0.15680639530360652,
+   "poverty_10y": 0.16539292327268923,
+   "poverty_end": 0.17967561948753408,
+   "gini0": 0.28,
+   "gini_end": 0.30647298846382176,
+   "debt0": 41.38137579302981,
+   "debt_end": 77.56006622766058,
+   "niip0_base": 116.1091559352957,
+   "niip_end_base": 280.4462607671885
+  },
+  "NL": {
+   "poverty0": 0.14577522815143829,
+   "poverty_10y": 0.1575206481705958,
+   "poverty_end": 0.17662735990645045,
+   "gini0": 0.268,
+   "gini_end": 0.3028048330264044,
+   "debt0": 48.99907593601673,
+   "debt_end": 124.22912028453632,
+   "niip0_base": 79.3083712745339,
+   "niip_end_base": 196.49825598536063
+  },
+  "PL": {
+   "poverty0": 0.16128089048400668,
+   "poverty_10y": 0.1680608045831199,
+   "poverty_end": 0.18316634309296403,
+   "gini0": 0.285,
+   "gini_end": 0.31073147146168073,
+   "debt0": 46.966403773969745,
+   "debt_end": 106.36569551043074,
+   "niip0_base": -49.712496162890936,
+   "niip_end_base": -4.60269609353705
+  },
+  "PT": {
+   "poverty0": 0.1897980488222228,
+   "poverty_10y": 0.19761183660116816,
+   "poverty_end": 0.21345739423755544,
+   "gini0": 0.319,
+   "gini_end": 0.3506361774137397,
+   "debt0": 119.30747271640998,
+   "debt_end": 247.11418349980303,
+   "niip0_base": -102.60534865501764,
+   "niip_end_base": -121.66200868925951
+  },
+  "RO": {
+   "poverty0": 0.2115857990728458,
+   "poverty_10y": 0.2161100863467338,
+   "poverty_end": 0.22723671400437107,
+   "gini0": 0.348,
+   "gini_end": 0.37084245400390403,
+   "debt0": 36.37651616487308,
+   "debt_end": 106.68556956150974,
+   "niip0_base": -52.097198870362206,
+   "niip_end_base": -104.84930127405019
+  },
+  "SE": {
+   "poverty0": 0.15317496085958876,
+   "poverty_10y": 0.16226953341323275,
+   "poverty_end": 0.18127930707311457,
+   "gini0": 0.276,
+   "gini_end": 0.3084215959111077,
+   "debt0": 36.880302546019735,
+   "debt_end": 123.52955402364982,
+   "niip0_base": 20.447927989468003,
+   "niip_end_base": 72.99429443321205
+  },
+  "SI": {
+   "poverty0": 0.11750945196063395,
+   "poverty_10y": 0.1281292999699022,
+   "poverty_end": 0.15342112292015259,
+   "gini0": 0.239,
+   "gini_end": 0.27626955737067554,
+   "debt0": 68.78069186137122,
+   "debt_end": 129.23146900323277,
+   "niip0_base": -8.892901672904332,
+   "niip_end_base": 96.98564740740716
+  },
+  "SK": {
+   "poverty0": 0.10627609572453428,
+   "poverty_10y": 0.11440162483786392,
+   "poverty_end": 0.13139059188012614,
+   "gini0": 0.228,
+   "gini_end": 0.25296616016334045,
+   "debt0": 49.73852291416701,
+   "debt_end": 107.85584191787197,
+   "niip0_base": -70.25586207783955,
+   "niip_end_base": -100.99951770289313
+  }
+ },
+ "pooling": {
+  "EU|cash_ubi": {
+   "geos": [
+    "AT",
+    "BE",
+    "BG",
+    "CY",
+    "CZ",
+    "DE",
+    "DK",
+    "EE",
+    "ES",
+    "FI",
+    "FR",
+    "HR",
+    "HU",
+    "IT",
+    "LT",
+    "LV",
+    "MT",
+    "NL",
+    "PL",
+    "PT",
+    "RO",
+    "SE",
+    "SI",
+    "SK"
+   ],
+   "consistent": true,
+   "gini_national_end": 0.20399518778528064,
+   "gini_global_end": 0.13825288614563613,
+   "narrowing": 0.32227378671717943,
+   "gini_national_10y": 0.20022806178140398,
+   "gini_global_10y": 0.15072451965692163,
+   "transfer_pc": {
+    "MT": -15822.390501599475,
+    "DK": -11108.334917753913,
+    "NL": -10150.338748965942,
+    "SE": -8986.360793266456,
+    "AT": -6665.987317996241,
+    "BE": -5699.133400617237,
+    "FI": -4531.895244239659,
+    "DE": -3029.861411765804,
+    "CY": -1942.5478439664637,
+    "CZ": 392.2654086447024,
+    "EE": 1143.9767097723204,
+    "SI": 1358.005382829831,
+    "IT": 1549.186486783422,
+    "FR": 1669.6182457636814,
+    "HU": 1932.2132228328132,
+    "SK": 2006.4351131164372,
+    "ES": 2142.532546110373,
+    "LT": 2550.5381137526683,
+    "PL": 3805.668769854175,
+    "PT": 4594.244382932278,
+    "HR": 5690.682985149369,
+    "LV": 5707.2275335190925,
+    "RO": 6082.833662259734,
+    "BG": 7483.168447495885
+   }
+  },
+  "EU|ubc": {
+   "geos": [
+    "AT",
+    "BE",
+    "BG",
+    "CY",
+    "CZ",
+    "DE",
+    "DK",
+    "EE",
+    "ES",
+    "FI",
+    "FR",
+    "HR",
+    "HU",
+    "IT",
+    "LT",
+    "LV",
+    "MT",
+    "NL",
+    "PL",
+    "PT",
+    "RO",
+    "SE",
+    "SI",
+    "SK"
+   ],
+   "consistent": true,
+   "gini_national_end": 0.20650000736033658,
+   "gini_global_end": 0.16322888943726724,
+   "narrowing": 0.2095453577760047,
+   "gini_national_10y": 0.20762186982445244,
+   "gini_global_10y": 0.21830360668314447,
+   "transfer_pc": {
+    "MT": -13952.816239434402,
+    "NL": -5540.509719947208,
+    "DK": -4986.998023929877,
+    "AT": -3943.1608334852835,
+    "CY": -3372.574201697485,
+    "DE": -3360.9969847632897,
+    "IT": -2388.7141496583777,
+    "ES": -1038.1022962770767,
+    "SE": 189.48779097798484,
+    "FI": 195.56377035376445,
+    "LT": 1778.7256661486979,
+    "PL": 1911.377641803569,
+    "SK": 2505.9701446041627,
+    "FR": 2827.903000722728,
+    "PT": 2860.1540793046192,
+    "EE": 3763.0330092680706,
+    "CZ": 4221.738607636044,
+    "RO": 4445.548666294106,
+    "SI": 4767.848943612884,
+    "BE": 4847.081615624419,
+    "HR": 4926.148749779497,
+    "HU": 5330.279856556595,
+    "BG": 6232.495425165217,
+    "LV": 6486.4982390911255
+   }
+  },
+  "DE+FR+PL|cash_ubi": {
+   "geos": [
+    "DE",
+    "FR",
+    "PL"
+   ],
+   "consistent": true,
+   "gini_national_end": 0.1459135063107511,
+   "gini_global_end": 0.10029256702888578,
+   "narrowing": 0.31265741215694365,
+   "gini_national_10y": 0.15466774494252775,
+   "gini_global_10y": 0.11877140957296686,
+   "transfer_pc": {
+    "DE": -3057.5952690060794,
+    "FR": 1641.884388523406,
+    "PL": 3777.9349126138995
+   }
+  },
+  "DE+FR+PL|ubc": {
+   "geos": [
+    "DE",
+    "FR",
+    "PL"
+   ],
+   "consistent": true,
+   "gini_national_end": 0.16360636095834244,
+   "gini_global_end": 0.11601033265387123,
+   "narrowing": 0.2909179571360929,
+   "gini_national_10y": 0.17509609215859254,
+   "gini_global_10y": 0.17395376737726095,
+   "transfer_pc": {
+    "DE": -3275.2462977489913,
+    "PL": 1997.128328817868,
+    "FR": 2913.6536877370268
+   }
+  }
+ },
+ "io_DE": {
+  "lshare_1": [
+   0.30297744599333604,
+   0.14141692039338902
+  ],
+  "lshare_2": [
+   0.681817708700152,
+   0.39100876262024736
+  ],
+  "lshare_3": [
+   0.6284176503213599,
+   0.46685712472141283
+  ],
+  "lshare_4": [
+   0.6742023222794961,
+   0.3833933761995914
+  ],
+  "lshare_5": [
+   0.45054546697529047,
+   0.02
+  ],
+  "lshare_6": [
+   0.7922724877907343,
+   0.43683933147085086
+  ]
+ },
+ "frontier_DE": {
+  "on_frontier": [
+   "No policy",
+   "Cash UBI \u03c4=10%",
+   "UBC \u03c4=10%",
+   "Cash UBI \u03c4=20%",
+   "UBC \u03c4=20%",
+   "Cash UBI \u03c4=30%",
+   "UBC \u03c4=30%",
+   "Cash UBI \u03c4=40%",
+   "Cash UBI \u03c4=50%",
+   "Cash UBI \u03c4=60%",
+   "One-time stock levy on AI firms (Sanders)",
+   "Voluntary AI pledges, best case (Anthropic-style)",
+   "Borrowing-financed citizens' fund",
+   "Child accounts (Fruehstart-Rente)",
+   "Levy on AI fees paid abroad (3%)",
+   "Cash UBI on a broad tax base"
+  ],
+  "off_frontier": [
+   "UBC \u03c4=40%",
+   "UBC \u03c4=50%",
+   "UBC \u03c4=60%"
+  ],
+  "rich_on": {
+   "cash_ubi|endogenous": 12,
+   "ubc|endogenous": 21,
+   "cash_ubi|fixed": 11,
+   "ubc|fixed": 11
+  }
+ },
+ "robustness_verdicts": {
+  "DE|gini": "UBC better, separated",
+  "DE|poverty": "UBC better, separated",
+  "DE|gni_end": "overlap",
+  "DE|consumption_pc_avg": "overlap",
+  "DE|citizen_wealth_pc": "UBC better, separated",
+  "DE|gdp_end": "overlap",
+  "FR|gini": "UBC better, separated",
+  "FR|poverty": "UBC better, separated",
+  "FR|gni_end": "overlap",
+  "FR|consumption_pc_avg": "overlap",
+  "FR|citizen_wealth_pc": "UBC better, separated",
+  "FR|gdp_end": "overlap",
+  "SK|gini": "UBC better, separated",
+  "SK|poverty": "UBC better, separated",
+  "SK|gni_end": "overlap",
+  "SK|consumption_pc_avg": "cash better, separated",
+  "SK|citizen_wealth_pc": "UBC better, separated",
+  "SK|gdp_end": "overlap"
+ },
+ "robustness_paired": {
+  "DE": {
+   "gini": 1.0,
+   "poverty": 1.0,
+   "gni_end": 0.056,
+   "consumption_pc_avg": 0.0,
+   "citizen_wealth_pc": 1.0,
+   "gdp_end": 0.164
+  },
+  "FR": {
+   "gini": 0.996,
+   "poverty": 0.98,
+   "gni_end": 0.08,
+   "consumption_pc_avg": 0.0,
+   "citizen_wealth_pc": 1.0,
+   "gdp_end": 0.166
+  },
+  "SK": {
+   "gini": 1.0,
+   "poverty": 1.0,
+   "gni_end": 1.0,
+   "consumption_pc_avg": 0.0,
+   "citizen_wealth_pc": 1.0,
+   "gdp_end": 0.658
+  }
+ },
+ "sensitivity_DE_gini": [
+  {
+   "param": "beta",
+   "corr": -0.9588009074039716,
+   "share": 0.9098645419801201
+  },
+  {
+   "param": "labour_share_end",
+   "corr": -0.21579882359994054,
+   "share": 0.04609119981902998
+  },
+  {
+   "param": "ai_foreign_share",
+   "corr": 0.17421994333480942,
+   "share": 0.030041084311488393
+  },
+  {
+   "param": "loan_spread_shift",
+   "corr": -0.055450637717540524,
+   "share": 0.0030432172585821726
+  },
+  {
+   "param": "risk_premium",
+   "corr": -0.049108833204841856,
+   "share": 0.0023869267921063485
+  },
+  {
+   "param": "trend_draw",
+   "corr": -0.045861230266425634,
+   "share": 0.0020816670578549267
+  }
+ ]
+}

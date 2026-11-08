@@ -160,7 +160,8 @@ def test_pecking_order_borrowing_is_capped_priced_and_netted():
         r = s.reported
         # Banks step: the financial sector lends; fiscal debt is the bonds
         assert r["gov_debt"] == pytest.approx(r["gov_bonds"])
-        assert s.bsm["loans"]["banks"] == pytest.approx(r["loans_owners"] + r["loans_fund"])
+        assert s.bsm["loans"]["banks"] == pytest.approx(   # step F: + existing loans
+            r["loans_owners"] + r["loans_fund"] + r["loans_firms_existing"] + r["loans_households"])
         assert sum(s.bsm["loans"].values()) == pytest.approx(0.0, abs=1e-9)
     assert run.meta["stock_flow_map"]["loans"] == "loans_chg"
 

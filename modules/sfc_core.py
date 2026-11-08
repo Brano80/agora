@@ -101,6 +101,9 @@ from typing import Dict, List, Optional
 from modules.interface import Module, Scenario, RunResult, PeriodState
 from calibration import calibrate, SFCParams
 from data.connectors.capacity import capacity_utilisation_for
+from data.connectors.capital import capital_position_for
+from data.connectors.loans import private_loans_for
+from data.connectors.trend import mean_growth, trend_path
 from data.connectors.consumption import consumption_differential_for
 from data.connectors.external import R_WORLD, external_position_for
 from data.connectors.fiscal import fiscal_position_for
@@ -183,21 +186,57 @@ FISCAL_REACTION = 0.034 / 100.0
 # Phase 7 E5: workers' propensity to consume out of income is capped at 1:
 # above it they would dissave every year and run out of money (EL 2019).
 MAX_WORKERS_MPC = 1.0
+# Phase 7 F: each country's own net capital stock / GDP and depreciation rate
+# (AMECO OKND, PIGT, UKCT, UVGD; data/connectors/capital.py) replace the
+# uniform K/Y = 3 and 6%. False restores the uniform values (comparison only).
+CAPITAL_FROM_DATA = True
+# Phase 7 F: each country's trend growth path (2024 Ageing Report;
+# data/connectors/trend.py) replaces the uniform 1.5% world growth for exports
+# and for capacity. False restores the uniform path (comparison only).
+TREND_FROM_DATA = True
+GAP_CLOSE_YEARS = 3
+# Phase 7 F: the public stand-in holds the foreign position wherever a class's
+# deposits would start at or below zero (False: only the STAND_IN list, the
+# Banks-step rule; comparison only)
+STAND_IN_BY_RULE = True
+# Phase 7 F: share of a temporary change in income that households spend in
+# the same year. 0.48 = Jappelli & Pistaferri (2014, AEJ: Macro 6(4)), Italian
+# survey of how much of an unexpected windfall households would spend;
+# Fagereng, Holm & Natvik (2021, AEJ: Macro 13(4)) find just under half for
+# liquid Norwegian lottery winners, all of it for illiquid small-prize ones,
+# and spending back to normal within five years. Consumption closes the share
+# lambda = IMPACT_MPC / (income-weighted long-run propensity) of the gap to its
+# long-run level each year, so a permanent change is still spent in full.
+# MC range 0.3-0.7.
+IMPACT_MPC = 0.48
 
 
 def fiscal_calibration(geo: Optional[str], closure: str,
                        i_rate: Optional[float] = None,
-                       capital_tax_share: Optional[float] = None) -> dict:
-    """calibrate() fiscal kwargs for a closure. Behavioural: each country's
-    implicit interest rate (2015-19) and 2019 primary balance (Eurostat), and
-    a 30% capital share of taxes. Legacy: the v1.1 defaults (0, 0, debt anchor)."""
+                       capital_tax_share: Optional[float] = None,
+                       base_year: int = 2019, trend_draw: float = 0.0) -> dict:
+    """calibrate() kwargs for a closure. Behavioural: each country's implicit
+    interest rate (five years to the base year) and base-year primary balance
+    (Eurostat), a 30% capital share of taxes, and (step F) the country's own
+    capital-output ratio and depreciation rate (AMECO). Legacy: the v1.1
+    defaults (0, 0, debt anchor, K/Y = 3, 6% depreciation)."""
     if closure == "behavioural":
-        f = fiscal_position_for(geo)
-        return {"i_rate": float(f["implicit_rate"]) if i_rate is None else float(i_rate),
-                "capital_tax_share": (CAPITAL_TAX_SHARE if capital_tax_share is None
-                                      else float(capital_tax_share)),
-                # nominal trend growth = the world's real growth at the ECB target
-                "g_nominal": (1.0 + WORLD_GROWTH) * (1.0 + INFLATION_TARGET) - 1.0}
+        f = fiscal_position_for(geo, base_year=base_year)
+        out = {"i_rate": float(f["implicit_rate"]) if i_rate is None else float(i_rate),
+               "capital_tax_share": (CAPITAL_TAX_SHARE if capital_tax_share is None
+                                     else float(capital_tax_share)),
+               # nominal trend growth = the world's real growth at the ECB target
+               "g_nominal": (1.0 + WORLD_GROWTH) * (1.0 + INFLATION_TARGET) - 1.0}
+        if CAPITAL_FROM_DATA:
+            cap = capital_position_for(geo, base_year=base_year)
+            out.update(capital_output_ratio=float(cap["k_y"]), delta=float(cap["delta"]))
+        if TREND_FROM_DATA:
+            # step F: the country's trend (2024 Ageing Report) replaces the
+            # uniform 1.5% for exports and for the debt-stabilising balance
+            g_tr = mean_growth(trend_path(geo, base_year, 30, trend_draw))
+            out["world_growth"] = g_tr
+            out["g_nominal"] = (1.0 + g_tr) * (1.0 + INFLATION_TARGET) - 1.0
+        return out
     return {"i_rate": 0.0 if i_rate is None else float(i_rate),
             "capital_tax_share": 0.0 if capital_tax_share is None else float(capital_tax_share)}
 
@@ -263,7 +302,17 @@ class SFCCore(Module):
                  risk_premium: float = RISK_PREMIUM,
                  deposit_beta: float = DEPOSIT_BETA,
                  loan_spread_shift: float = 0.0,
-                 policy_rule: str = "neutral"):
+                 policy_rule: str = "neutral",
+                 own_rate_path: Optional[List[float]] = None,
+                 gov_rate_path: Optional[List[float]] = None,
+                 euro_debt_path: Optional[List[float]] = None,
+                 tax_scale_path: Optional[List[float]] = None,
+                 labour_tax_shift_path: Optional[List[float]] = None,
+                 capital_tax_shift_path: Optional[List[float]] = None,
+                 legacy_loans: bool = True,
+                 impact_mpc: float = IMPACT_MPC,
+                 consumption_adjustment: Optional[float] = None,
+                 trend_draw: float = 0.0):
         # every setting, so the euro-area reference run (Banks step) can copy them
         self._init_kwargs = {k: v for k, v in locals().items() if k not in ("self", "__class__")}
         self.base_year = base_year
@@ -343,6 +392,32 @@ class SFCCore(Module):
         # mortgages, no asset prices) pushes the other way. "taylor" is kept for
         # step F, once those channels exist.
         self.policy_rule = policy_rule
+        # Step F backtest inputs (None = the rules above): a floater's own policy
+        # rate path; the rate on new government borrowing (realised long-term
+        # yields, replacing policy + spread + premium); the euro area's debt
+        # ratio path the risk premium is measured against (realised, replacing
+        # the model's euro-area reference run)
+        self.own_rate_path = None if own_rate_path is None else list(own_rate_path)
+        self.gov_rate_path = None if gov_rate_path is None else list(gov_rate_path)
+        self.euro_debt_path = None if euro_debt_path is None else list(euro_debt_path)
+        # ... and the realised net-tax ratio relative to the base year, scaling
+        # both calibrated tax rates in place of the fiscal rule
+        self.tax_scale_path = None if tax_scale_path is None else list(tax_scale_path)
+        # step F multiplier test: additive changes to the labour / capital tax
+        # rate by year, on top of everything else
+        self.labour_tax_shift_path = (None if labour_tax_shift_path is None
+                                      else list(labour_tax_shift_path))
+        self.capital_tax_shift_path = (None if capital_tax_shift_path is None
+                                       else list(capital_tax_shift_path))
+        # Phase 7 F (behavioural closure): firms' and households' existing loans
+        # on the banks' books; the same-year share of a temporary income change
+        # households spend (or the adjustment speed itself); the MC position in
+        # the Ageing Report's TFP scenarios
+        self.legacy_loans = bool(legacy_loans)
+        self.impact_mpc = float(impact_mpc)
+        self.consumption_adjustment = (None if consumption_adjustment is None
+                                       else float(consumption_adjustment))
+        self.trend_draw = float(trend_draw)
         self.params: Optional[SFCParams] = None
 
     def declares_inputs(self) -> List[str]:
@@ -390,15 +465,18 @@ class SFCCore(Module):
         ck = dict(self.calib_kwargs)
         fk = fiscal_calibration(geo, self.investment_closure,
                                 i_rate=self.i_rate_override,
-                                capital_tax_share=ck.get("capital_tax_share"))
+                                capital_tax_share=ck.get("capital_tax_share"),
+                                base_year=self.base_year, trend_draw=self.trend_draw)
         if ck.get("capital_tax_share") is None:
             ck["capital_tax_share"] = fk["capital_tax_share"]
         if self.i_rate_override is not None or self.investment_closure == "behavioural":
             ck.setdefault("i_rate", fk["i_rate"])
-        if "g_nominal" in fk:
-            ck.setdefault("g_nominal", fk["g_nominal"])
+        for k in ("g_nominal", "capital_output_ratio", "delta", "world_growth"):
+            if k in fk:
+                ck.setdefault(k, fk[k])
         if self.investment_closure == "behavioural" and self.banks:
-            ck.setdefault("pb_rate", expected_gov_rate(geo, fk["i_rate"], self.neutral_rate))
+            ck.setdefault("pb_rate", expected_gov_rate(geo, fk["i_rate"], self.neutral_rate,
+                                                       base_year=self.base_year))
         p = calibrate(data, geo=geo, base_year=self.base_year,
                       sources=data.get("_sources", {}) if isinstance(data, dict) else {},
                       **ck)
@@ -409,19 +487,22 @@ class SFCCore(Module):
         ck = dict(self.calib_kwargs)
         fk = fiscal_calibration(scenario.geo, self.investment_closure,
                                 i_rate=self.i_rate_override,
-                                capital_tax_share=ck.get("capital_tax_share"))
+                                capital_tax_share=ck.get("capital_tax_share"),
+                                base_year=self.base_year, trend_draw=self.trend_draw)
         if ck.get("capital_tax_share") is None:
             ck["capital_tax_share"] = fk["capital_tax_share"]
         if self.i_rate_override is not None or self.investment_closure == "behavioural":
             ck.setdefault("i_rate", fk["i_rate"])         # calibration matches the run rate
-        if "g_nominal" in fk:
-            ck.setdefault("g_nominal", fk["g_nominal"])
+        for k in ("g_nominal", "capital_output_ratio", "delta", "world_growth"):
+            if k in fk:
+                ck.setdefault(k, fk[k])
         if self.investment_closure == "behavioural" and self.banks:
             # Banks step: the structural primary balance holds the 2019 debt ratio
             # at the rate the government expects to pay on average over the
             # horizon (its 2015-19 rate rolling over into policy rate + spread)
             ck.setdefault("pb_rate", expected_gov_rate(scenario.geo, fk["i_rate"],
-                                                       self.neutral_rate))
+                                                       self.neutral_rate,
+                                                       base_year=self.base_year))
         fiscal_reaction = (self.fiscal_reaction if self.fiscal_reaction is not None
                            else (FISCAL_REACTION if self.investment_closure == "behavioural"
                                  else 0.0))
@@ -455,7 +536,8 @@ class SFCCore(Module):
         L_sf = 0.0                                 # loans assumed by the fund with equity (UBC)
         liq_ratio = (self.liquidity_floor * p.M_k0 / p.K0) if p.K0 > 0 else 0.0
         # Phase 7 C: supply side and prices (behavioural only; legacy keeps P = 1)
-        cu = dict(self.capacity) if self.capacity else capacity_utilisation_for(scenario.geo)
+        cu = (dict(self.capacity) if self.capacity else
+              capacity_utilisation_for(scenario.geo, base_year=self.base_year))
         u_n, u_0, u_max = float(cu["normal"]), float(cu["base"]), float(cu["max"])
         v_cap = (u_0 * p.K0 / p.Y0) if p.Y0 else 1.0   # capital per unit of full-capacity output
         gap0 = u_0 / u_n - 1.0                          # base-year output gap (0 by default)
@@ -465,10 +547,41 @@ class SFCCore(Module):
         g_K0 = (p.a_ratio0 * p.Y0 / p.K0 - p.delta) if p.K0 else 0.0   # base-year capital growth
         g_tfp = min(max((1.0 + p.world_growth) / (1.0 + g_K0) - 1.0, TFP_BOUNDS[0]),
                     TFP_BOUNDS[1])
+        # Phase 7 F: the country's trend (2024 Ageing Report). Exports grow at its
+        # potential growth, and capacity per unit of capital drifts so that the
+        # no-shock economy, investing its base-year share of output, grows at
+        # exactly that path (the step C balance rule, now with the country's own
+        # trend and capital stock instead of 1.5% and K/Y = 3). Capital deepens
+        # (output per unit of capital falls) where the base year invests more
+        # than the trend needs, as in the catching-up members.
+        # The base year's output gap closes over GAP_CLOSE_YEARS, the Ageing
+        # Report's own convention (gaps closed three years after the forecast),
+        # so a 2019 boom or slack does not persist as permanent inflation and a
+        # permanent real appreciation. Investment responds to departures of
+        # utilisation from that expected path (firms expect the normalisation),
+        # so the no-shock economy stays on trend.
+        tp = (trend_path(scenario.geo, self.base_year, H, self.trend_draw)
+              if (behavioural and TREND_FROM_DATA) else None)
+        x_idx, a_idx = [1.0], [1.0]
+        u_ref = [u_0] * H
+        if tp:
+            u_ref = [u_n + (u_0 - u_n) * max(0.0, 1.0 - t_ / GAP_CLOSE_YEARS) for t_ in range(H)]
+            k_cur = p.K0 * (1.0 - p.delta) + p.a_ratio0 * p.Y0
+        for t_ in range(1, H):
+            gy = tp["growth"][t_] if tp else p.world_growth
+            x_idx.append(x_idx[-1] * (1.0 + gy))
+            if tp:
+                # capacity at t rests on the stock at the end of t-1
+                a_idx.append(x_idx[t_] * (u_0 / u_ref[t_]) / (k_cur / p.K0))
+                k_cur = k_cur * (1.0 - p.delta) + p.a_ratio0 * p.Y0 * x_idx[t_]
+            else:
+                a_idx.append(a_idx[-1] * (1.0 + g_tfp))
+        gap_ref = [u / u_n - 1.0 for u in u_ref]          # = gap0 throughout without a trend
         infl = self.inflation_target if behavioural else 0.0
         # Phase 7 D: the external sector (behavioural only; legacy keeps the v1.1
         # rule - the current account accrues to households by money shares).
-        ext = dict(self.external) if self.external is not None else external_position_for(scenario.geo)
+        ext = (dict(self.external) if self.external is not None else
+               external_position_for(scenario.geo, base_year=self.base_year))
         if behavioural:
             # foreign owners' stake = their share of NET profits: equity income
             # paid abroad (dividends + reinvested FDI earnings, a net-of-
@@ -481,7 +594,9 @@ class SFCCore(Module):
         else:
             psi0 = E_row = A_kf = FX_s0 = 0.0
         FX_s, A_sff = FX_s0, 0.0                         # public stand-in / fund abroad
-        g_wn = (1.0 + p.world_growth) * (1.0 + self.inflation_target) - 1.0
+        # owners reinvest abroad at the WORLD's nominal growth (not their own country's)
+        g_wn = ((1.0 + (WORLD_GROWTH if tp else p.world_growth)) * (1.0 + self.inflation_target)
+                - 1.0)
         fpd_share_prev = 1.0 - p.ls0                     # profit share net of AI fees
         # E1: market value of a unit of capital relative to its replacement cost
         # (Tobin's q), priced on the after-tax net profit rate against 2019's
@@ -497,13 +612,36 @@ class SFCCore(Module):
         # no deposits). Rates follow a policy rule: the ECB path from the euro-
         # area aggregate under the same AI scenario (euro members, DK, BG, HR) or
         # the country's own Taylor rule (CZ, HU, PL, RO, SE).
-        rc = rates_for(scenario.geo) if banks else None
+        rc = rates_for(scenario.geo, base_year=self.base_year) if banks else None
         B = p.M_w0 + p.M_k0                              # government bonds (2019 debt)
-        fx_bank = bool(banks and not rc["stand_in"])
+        # Phase 7 F: the loans firms and households already owe, on the banks'
+        # books (Eurostat financial accounts): the domestically owned firms' part
+        # by the owners, household loans by both classes in proportion to their
+        # base-year disposable income. Deposits gross up by the same amounts, so
+        # each class's NET financial wealth is unchanged.
+        Lw = Lc = Lhk = 0.0
+        legacy = None
+        if banks and self.legacy_loans:
+            legacy = private_loans_for(scenario.geo, base_year=self.base_year)
+            inc_w = p.ls0 * (1.0 - p.theta_w)
+            inc_k = (1.0 - psi0) * (1.0 - p.ls0) * (1.0 - p.theta_k)
+            s_hw = inc_w / (inc_w + inc_k) if (inc_w + inc_k) > 0 else f_w
+            Lc = (1.0 - psi0) * float(legacy["nfc"]) * p.Y0
+            Lw = s_hw * float(legacy["hh"]) * p.Y0
+            Lhk = (1.0 - s_hw) * float(legacy["hh"]) * p.Y0
+            legacy = dict(legacy, workers_share=s_hw)
+        sh_w0 = (p.M_w0 / B) if B > 0 else 0.3
+        D_net = B + FX_s0
+        # the public stand-in takes the foreign position wherever a class's
+        # deposits would start at or below zero (step F: the rule, not a list;
+        # in 2019 it selects IE and CY, the list)
+        fx_bank = bool(banks and not rc["stand_in"]
+                       and (not STAND_IN_BY_RULE
+                            or (sh_w0 * D_net + Lw > 0.0 and (1.0 - sh_w0) * D_net + Lc + Lhk > 0.0)))
         if fx_bank:
-            sh_w0 = (p.M_w0 / B) if B > 0 else 0.3
-            D0 = B + FX_s0
-            M_w, M_k = sh_w0 * D0, (1.0 - sh_w0) * D0
+            M_w, M_k = sh_w0 * D_net, (1.0 - sh_w0) * D_net
+        M_w, M_k = M_w + Lw, M_k + Lc + Lhk
+        if fx_bank or legacy:
             liq_ratio = (self.liquidity_floor * M_k / p.K0) if p.K0 > 0 else 0.0
         i_g = i_rate_eff                                 # average rate on public debt
         i_p = r_dep = r_h = r_fx = i_new = 0.0
@@ -526,7 +664,8 @@ class SFCCore(Module):
                 if self.risk_premium:
                     # the premium estimate is a SPREAD over the euro area: only the
                     # debt a country adds beyond the euro area's own path counts
-                    ea_debt = _euro_reference(self, scenario, H)["debt_ratio"]
+                    ea_debt = (list(self.euro_debt_path) if self.euro_debt_path is not None
+                               else _euro_reference(self, scenario, H)["debt_ratio"])
             peg = rc["policy0"] - rc["ea_policy0"]       # DK's 2019 spread; 0 in the euro
             i_p = rc["policy0"]
             ea_rate = rc["ea_policy0"] if ea_path is None else ea_path[0]
@@ -539,8 +678,9 @@ class SFCCore(Module):
             # debt held abroad, so they cost the government's average rate
             r_fx = (ea_rate + rc["ea_term"]) if FX_s0 >= 0 else i_g
             i_new = i_p + rc["gov_spread"]
-            # year-0 bank profit (no loans yet), paid to owners after tax
-            pi_b0 = i_g * B + (r_fx * FX_s0 if fx_bank else 0.0) - r_h * (M_w + M_k)
+            # year-0 bank profit (no new loans yet), paid to owners after tax
+            pi_b0 = (i_g * B + (r_fx * FX_s0 if fx_bank else 0.0) - r_h * (M_w + M_k)
+                     + r_l * (Lw + Lc + Lhk))
             bank_own0 = (1.0 - psi0) * pi_b0
         # Phase 7 E5: both classes' propensities to consume. Two facts pin them:
         # 2019 consumption (C0 - a2*M0, which calibrate() matched with its own
@@ -567,10 +707,12 @@ class SFCCore(Module):
                          + i_rate_eff * p.M_k0 + self.r_world * A_kf)
             c_target = p.a1_w * yd_w0 + p.a1_k * yd_k0_old      # = C0 - a2 * M0
             if banks:      # deposits, their rate and the banks' margin change year-0 incomes
-                c_target += p.a2 * (p.M_w0 + p.M_k0 - M_w - M_k)
-                yd_w0 = p.ls0 * (1.0 - p.theta_w) * p.Y0 + r_h * M_w
+                # (consumption out of wealth is on NET money: deposits less loans)
+                c_target += p.a2 * (p.M_w0 + p.M_k0 - (M_w - Lw)
+                                    - max(0.0, M_k - Lc - Lhk))
+                yd_w0 = p.ls0 * (1.0 - p.theta_w) * p.Y0 + r_h * M_w - r_l * Lw
                 yd_k0_new = ((1.0 - psi0) * (1.0 - p.ls0) * (1.0 - p.theta_k) * p.Y0
-                             + r_h * M_k + self.r_world * A_kf + bank_own0)
+                             + r_h * M_k - r_l * (Lc + Lhk) + self.r_world * A_kf + bank_own0)
             yd_k0_net = yd_k0_new - p.delta * (1.0 - psi0) * p.K0   # less owners' CFC
             k_d = (1.0 - psi0) * (1.0 - p.theta_k)
             if yd_k0_net > 0 and k_d > 0:
@@ -586,9 +728,22 @@ class SFCCore(Module):
                               value=a1_k * k_d - a1_w * (1.0 - p.theta_w))
                 else:
                     a1_k = (d_c + a1_w * (1.0 - p.theta_w)) / k_d
+        # Phase 7 F: consumption adjusts to its long-run level (the propensities
+        # above) by the share lam a year, so the same-year propensity to spend a
+        # temporary change in income is lam * a1 (IMPACT_MPC on average)
+        lam = 1.0
+        if behavioural:
+            if self.consumption_adjustment is not None:
+                lam = min(1.0, max(0.05, self.consumption_adjustment))
+            else:
+                y_w, y_k = max(yd_w0, 0.0), max(yd_k0_net, 0.0)
+                avg_a1 = ((a1_w * y_w + a1_k * y_k) / (y_w + y_k)) if (y_w + y_k) > 0 else a1_w
+                lam = min(1.0, max(0.05, self.impact_mpc / avg_a1)) if avg_a1 > 0 else 1.0
+        C_w_prev = C_k_prev = None                       # year 0 consumes its long-run level
 
         for t in range(H):
             infl_last = infl                            # last year's inflation (policy rule)
+            gap_ref_prev = gap_ref[t - 1] if t > 0 else gap_ref[0]
             ls = scenario.labour_share.at(t, H)
             if behavioural:
                 if t > 0:      # price setting reacts to last year's demand pressure
@@ -600,7 +755,9 @@ class SFCCore(Module):
                 pfac = P_world = 1.0
             Pk = P                                      # 1.0 in legacy
             if banks and t > 0:
-                if ea_path is None or rc["regime"] == "own":
+                if self.own_rate_path is not None and (ea_path is None or rc["regime"] == "own"):
+                    i_p = self.own_rate_path[t]                 # backtest: realised rate
+                elif ea_path is None or rc["regime"] == "own":
                     tgt = self.neutral_rate
                     if self.policy_rule == "taylor":
                         tgt += (TAYLOR_INFLATION * (infl_last - self.inflation_target)
@@ -621,6 +778,8 @@ class SFCCore(Module):
                 elif geo_u == EURO_AREA:
                     excess = 0.0            # the aggregate has no spread over itself
                 i_new = i_p + rc["gov_spread"] + self.risk_premium * excess
+                if self.gov_rate_path is not None:
+                    i_new = self.gov_rate_path[t]               # backtest: realised yield
                 i_g += (i_new - i_g) / DEBT_MATURITY
                 r_dep = max(0.0, rc["deposit_rate0"] + self.deposit_beta * (i_p - rc["policy0"]))
                 r_h = rc["deposit_share"] * r_dep + (1.0 - rc["deposit_share"]) * i_g
@@ -638,7 +797,8 @@ class SFCCore(Module):
             # openness.) An explicit override from the trade linker wins if set.
             X = (scenario.exports_override.at(t, H)
                  if scenario.exports_override is not None
-                 else p.export_ratio * p.Y0 * (1.0 + p.world_growth) ** t)
+                 else p.export_ratio * p.Y0 * (x_idx[t] if behavioural
+                                               else (1.0 + p.world_growth) ** t))
             if behavioural:
                 if scenario.gov_override is None:
                     G *= pfac
@@ -663,11 +823,20 @@ class SFCCore(Module):
             theta_k = p.theta_k
             if behavioural:      # E3: the rule moves the tax rate on ALL taxed income
                 theta_k = min(0.95, max(0.0, p.theta_k + delta_theta))
+            if self.tax_scale_path is not None:     # step F backtest: realised net taxes
+                s_tax = self.tax_scale_path[min(t, len(self.tax_scale_path) - 1)]
+                theta_w = min(0.95, max(0.0, p.theta_w * s_tax))
+                theta_k = min(0.95, max(0.0, p.theta_k * s_tax))
+            if self.labour_tax_shift_path is not None and t < len(self.labour_tax_shift_path):
+                theta_w = min(0.95, max(0.0, theta_w + self.labour_tax_shift_path[t]))
+            if self.capital_tax_shift_path is not None and t < len(self.capital_tax_shift_path):
+                theta_k = min(0.95, max(0.0, theta_k + self.capital_tax_shift_path[t]))
 
             M_w_prev, M_k_prev, K_prev = M_w, M_k, K
             K_trad_prev, K_ai_prev = K_trad, K_ai
             F_w_prev, F_k_prev, E_sf_prev = F_w, F_k, E_sf
             L_prev, L_sf_prev = L, L_sf
+            Lw_prev, Lc_prev, Lhk_prev = Lw, Lc, Lhk
             B_prev = B
             E_row_prev, A_kf_prev, A_sff_prev, FX_s_prev = E_row, A_kf, A_sff, FX_s
             # D1: foreign owners' share of domestic capital (UBC cannot dilute it)
@@ -691,7 +860,7 @@ class SFCCore(Module):
                 # B1: owners invest on the stake they own; the investment share
                 # responds to last year's net profit share (see docstring).
                 inv_share = max(0.0, p.a_ratio0 + gamma * (pi_eff_prev - pi0)
-                                + self.utilisation_response * (gap_prev - gap0))
+                                + self.utilisation_response * (gap_prev - gap_ref_prev))
                 A_priv = (1.0 - phi - psi) * Y_prev * pfac * inv_share
                 # the part driven by a HIGHER net profit share (the AI boom)
                 ai_desired = (1.0 - phi - psi) * Y_prev * pfac * max(0.0, gamma * (pi_eff_prev - pi0))
@@ -699,7 +868,7 @@ class SFCCore(Module):
                 # D1: foreign owners invest on their stake by the same rule (FDI),
                 # financed by their parents, so it is never cut for lack of cash.
                 inv_share_row = max(0.0, p.a_ratio0 + gamma * (pi_row_prev - pi0)
-                                    + self.utilisation_response * (gap_prev - gap0))
+                                    + self.utilisation_response * (gap_prev - gap_ref_prev))
                 A_row = psi * Y_prev * pfac * inv_share_row
                 ai_row = psi * Y_prev * pfac * max(0.0, gamma * (pi_row_prev - pi0))
             A_desired = A_priv
@@ -727,7 +896,7 @@ class SFCCore(Module):
                 # budget its payout policy retains, planned on last year's profits.
                 fund_share = max(0.0, p.a_ratio0
                                  + gamma * (fpd_share_prev * (1.0 - p.theta_k) - pi0)
-                                 + self.utilisation_response * (gap_prev - gap0))
+                                 + self.utilisation_response * (gap_prev - gap_ref_prev))
                 fund_desired = phi * Y_prev * pfac * fund_share
                 expected_net = phi * fpd_share_prev * (1.0 - theta_k) * Y_prev * pfac - (
                     r_l + self.deleverage_rate) * L_sf_prev + self.r_world * A_sff_prev
@@ -754,6 +923,11 @@ class SFCCore(Module):
             interest = i_rate_eff * gov_debt_prev
             int_w, int_k = interest * sh_w_m, interest * (1.0 - sh_w_m)
             int_L = r_l * L_prev if behavioural else 0.0   # owners -> lender
+            int_Lw = r_l * Lw_prev                          # step F: existing loans
+            int_Lk = r_l * (Lc_prev + Lhk_prev)
+            # nominal trend growth this year: the habit path of consumption
+            g_hab = ((1.0 + (tp["growth"][t] if tp else p.world_growth))
+                     * (1.0 + self.inflation_target) - 1.0)
             # the fund's assumed debt: interest + repayment as loans mature
             # (predetermined, so the demand solve stays linear)
             int_sf = r_l * L_sf_prev if behavioural else 0.0
@@ -778,7 +952,7 @@ class SFCCore(Module):
                 # income in the model: the 2019 tax rates were set on wages and
                 # profits alone, so taxing the margin would be revenue they never had
                 pi_b = (interest + int_L + int_sf + (int_fx if fx_bank else 0.0)
-                        - int_w - int_k)
+                        - int_w - int_k + int_Lw + int_Lk)
                 tax_bank = 0.0
                 bank_row = psi * (pi_b - tax_bank)
                 bank_own = pi_b - tax_bank - bank_row
@@ -915,13 +1089,20 @@ class SFCCore(Module):
                 ubi_w, ubi_k = (ubi_pool + pledge_in) * f_w, (ubi_pool + pledge_in) * f_k
                 tax_k = tax_k_own + src * FP_row
                 tax_k_base = tax_kb_own + theta_k * FP_row + tax_fund
-                YD_w = WB - tax_w + ubi_w + div_w + int_w + tr_w
+                YD_w = WB - tax_w + ubi_w + div_w + int_w + tr_w - int_Lw
                 YD_k = (own_fp - tax_k_own - tax_kb_own + ubi_k + div_k + int_k + tr_k
-                        + Y_kf - int_L + bank_own)
+                        + Y_kf - int_L - int_Lk + bank_own)
                 net_profits = own_fp - tax_k_own - tax_kb_own + Y_kf
-                wealth_k = max(0.0, M_k_prev - L_prev)    # net of debt
-                C_w = a1_w * YD_w + p.a2 * M_w_prev
+                wealth_k = max(0.0, M_k_prev - L_prev - Lc_prev - Lhk_prev)   # net of debt
+                C_w = a1_w * YD_w + p.a2 * (M_w_prev - Lw_prev)
                 C_k = a1_k * (YD_k - cfc_own) + p.a2 * wealth_k     # E5: net of CFC
+                if C_w_prev is not None:      # F: partial adjustment to the long-run level
+                    C_w = lam * C_w + (1.0 - lam) * C_w_prev * (1.0 + g_hab)
+                    C_k = lam * C_k + (1.0 - lam) * C_k_prev * (1.0 + g_hab)
+                if w_cap[0]:
+                    # workers with no deposits left cannot keep spending at their
+                    # habit level: they spend their income and what they have left
+                    C_w = YD_w + M_w_prev + Lw_prev * (Y / Y_prev - 1.0)
                 return dict(WB=WB, FP=FP, tax_w=tax_w, tax_k=tax_k, tax_k_base=tax_k_base,
                             ubi_pool=ubi_pool, transfer_pool=transfer_pool,
                             div_total=div_total, div_w=div_w, div_k=div_k,
@@ -934,6 +1115,7 @@ class SFCCore(Module):
                             ai_inc=ai_inc, ai_div=ai_div, ai_gov=ai_gov, fund_div=fund_div,
                             pledge_in=pledge_in, FP_all=FP_all, tax_fund=tax_fund)
 
+            w_cap = [False]                      # F: workers liquidity-constrained this year
             if behavioural:
                 breakdown = breakdown_beh
 
@@ -995,31 +1177,38 @@ class SFCCore(Module):
 
                 tol_f = 1e-9 * max(p.Y0, 1.0)
                 # C1 ceiling: real output <= max utilisation x full capacity
-                y_cap = ((1.0 + g_tfp) ** t * scenario.ai_productivity.at(t, H)
+                y_cap = (a_idx[t] * scenario.ai_productivity.at(t, H)
                          * (K_trad_prev + K_ai_prev) / v_cap)
                 Y_ceiling = P * u_max * y_cap
-                for fin_regime in (1, 2, 3, 4):
-                    Y = _solve_linear(lambda v, r=fin_regime: demand_r(v, r), p.Y0)
-                    capped = Y > Y_ceiling
-                    if capped:
-                        Y = Y_ceiling
-                    b, A_priv, INV = plan(Y, fin_regime)
-                    excess = (demand_r(Y, fin_regime) - Y) if capped else 0.0
-                    if fin_regime == 1:
-                        needed = M_floor - (cash_before(Y, b) - A_priv - INV)
-                        if needed <= headroom + tol_f:
-                            dL = max(-L_prev, needed)
-                            break
-                    elif fin_regime == 2:
-                        if A_priv >= -tol_f:
+                for w_try in (False, True):
+                    w_cap[0] = w_try
+                    for fin_regime in (1, 2, 3, 4):
+                        Y = _solve_linear(lambda v, r=fin_regime: demand_r(v, r), p.Y0)
+                        capped = Y > Y_ceiling
+                        if capped:
+                            Y = Y_ceiling
+                        b, A_priv, INV = plan(Y, fin_regime)
+                        excess = (demand_r(Y, fin_regime) - Y) if capped else 0.0
+                        if fin_regime == 1:
+                            needed = M_floor - (cash_before(Y, b) - A_priv - INV)
+                            if needed <= headroom + tol_f:
+                                dL = max(-L_prev, needed)
+                                break
+                        elif fin_regime == 2:
+                            if A_priv >= -tol_f:
+                                dL = headroom
+                                break
+                        elif fin_regime == 3:
+                            if INV >= -tol_f:
+                                dL = headroom
+                                break
+                        else:
                             dL = headroom
-                            break
-                    elif fin_regime == 3:
-                        if INV >= -tol_f:
-                            dL = headroom
-                            break
-                    else:
-                        dL = headroom
+                    # F: would the workers end the year overdrawn? then they are
+                    # liquidity-constrained this year (solve again)
+                    m_w_end = M_w_prev + b["YD_w"] - b["C_w"] + Lw_prev * (Y / Y_prev - 1.0)
+                    if w_try or C_w_prev is None or lam >= 1.0 or m_w_end >= -tol_f:
+                        break
                 # D: an owner with no cash left stops reinvesting abroad and, if
                 # need be, sells equity abroad rather than run an overdraft
                 # (dA_kf is a financial use of cash: it does not move demand)
@@ -1040,6 +1229,12 @@ class SFCCore(Module):
                 CA = NX + T_int + prim_net + b["pledge_in"]
             else:
                 prim_net = 0.0
+            # step F: existing loans stay a constant share of GDP (old loans are
+            # repaid and new ones taken at the same pace); the new lending is cash
+            # to the borrower
+            g_Y = (Y / Y_prev) if Y_prev else 1.0
+            dLw, dLc_g, dLhk = (Lw_prev * (g_Y - 1.0), Lc_prev * (g_Y - 1.0),
+                                Lhk_prev * (g_Y - 1.0))
             Y_prev = Y
 
             # sectoral net financial saving (NAFA). The fund holds no money: its
@@ -1064,7 +1259,8 @@ class SFCCore(Module):
             dM_w = nafa_w - dfx_w
             dM_k = nafa_k - dfx_k
             if behavioural:
-                dM_k += dL - dA_kf
+                dM_k += dL - dA_kf + dLc_g + dLhk
+                dM_w += dLw
                 L = L_prev + dL
                 # the public stand-in holds the net external position: the
                 # current account plus FDI inflows less purchases of equity abroad
@@ -1105,7 +1301,7 @@ class SFCCore(Module):
             contrib = (tau * (1.0 - psi) * b["FP"]) if ubc_on else 0.0   # domestic profits only
             # behavioural: contrib is NET equity - the capital moves with its
             # share of the owners' debt (lev = owners' leverage). legacy: lev = 0.
-            lev = (min(L_prev / (Pk * own_K_prev0), 0.95)
+            lev = (min((L_prev + Lc_prev) / (Pk * own_K_prev0), 0.95)
                    if (behavioural and ubc_on and own_K_prev0 > 0) else 0.0)
             E_pre = E_sf_prev * (1.0 - blended_delta) + b["A_fund"] / Pk
             if behavioural:      # D1: foreign owners' stake depreciates, grows with FDI
@@ -1117,10 +1313,15 @@ class SFCCore(Module):
             E_sf = min(E_pre + units, K - E_row)          # real claim on capital
             d_tr = lev * Pk * max(0.0, E_sf - E_pre)       # debt assumed by the fund (nominal)
             if behavioural and ubc_on and K - E_sf - E_row <= 1e-12 * max(K, 1.0):
-                d_tr = max(d_tr, L)        # the last owned capital goes with all its debt
+                d_tr = max(d_tr, L + Lc_prev + dLc_g)   # the last owned capital goes with all its debt
             if behavioural:
-                L -= d_tr
+                # the debt moves pro rata from the owners' new and existing firm loans
+                Lc_g = Lc_prev + dLc_g
+                d_tr_c = d_tr * (Lc_g / (L + Lc_g)) if (L + Lc_g) > 0 else 0.0
+                L -= d_tr - d_tr_c
+                Lc = Lc_g - d_tr_c
                 L_sf = L_sf_prev - rep_sf + d_tr
+                Lw, Lhk = Lw_prev + dLw, Lhk_prev + dLhk
             owners_K = K - E_sf - E_row
             # owners' net profit share this year (drives next year's investment):
             # capital income after taxes and after equity/levy given up.
@@ -1135,6 +1336,7 @@ class SFCCore(Module):
             pi_eff = (own_income / (own_share * Y)) if (own_share > 1e-9 and Y > 0) else -1.0
             if behavioural:
                 pi_eff_prev = pi_eff
+                C_w_prev, C_k_prev = b["C_w"], b["C_k"]     # F: the habit level
 
             tfm = {
                 "wages":           {"hh_workers": b["WB"], "firms": -b["WB"]},
@@ -1253,15 +1455,21 @@ class SFCCore(Module):
                     if dA_sff:
                         tfm["foreign_equity_chg"]["sovereign_fund"] = -dA_sff
                 tfm["fx_chg"] = {("banks" if fx_bank else "government"): -dFX_s, "rest_of_world": dFX_s}
-                tfm["loans_chg"] = {"hh_owners": dL - d_tr,
-                                    ("banks" if banks else "government"): -(dL - rep_sf)}
+                tfm["loans_chg"] = {"hh_owners": dL - d_tr + dLc_g + dLhk,
+                                    ("banks" if banks else "government"):
+                                        -(dL - rep_sf) - dLc_g - dLhk - dLw}
+                if Lw or Lw_prev:
+                    tfm["loans_chg"]["hh_workers"] = dLw
                 if L_sf_prev or d_tr:
                     tfm["loans_chg"]["sovereign_fund"] = d_tr - rep_sf
                 if d_tr:
                     tfm["debt_assumption"] = {"hh_owners": d_tr, "sovereign_fund": -d_tr}
-                if int_L or int_sf:
-                    tfm["loan_interest"] = {"hh_owners": -int_L,
-                                            ("banks" if banks else "government"): int_L + int_sf}
+                if int_L or int_sf or int_Lw or int_Lk:
+                    tfm["loan_interest"] = {"hh_owners": -(int_L + int_Lk),
+                                            ("banks" if banks else "government"):
+                                                int_L + int_sf + int_Lw + int_Lk}
+                    if int_Lw:
+                        tfm["loan_interest"]["hh_workers"] = -int_Lw
                     if int_sf:
                         tfm["loan_interest"]["sovereign_fund"] = -int_sf
 
@@ -1287,7 +1495,12 @@ class SFCCore(Module):
                 if E_row > 0:
                     capr["rest_of_world"] = Pk * E_row
                 bsm["capital"] = capr
-                bsm["loans"] = {"hh_owners": -L, ("banks" if banks else "government"): L + L_sf}
+                bsm["loans"] = {"hh_owners": -(L + Lc + Lhk),
+                                ("banks" if banks else "government"): L + L_sf + Lc + Lhk + Lw}
+                if Lw or Lw_prev:
+                    bsm["loans"]["hh_workers"] = -Lw
+                if Lw or Lhk:      # dwellings at the household loans' face value
+                    bsm["housing"] = {"hh_workers": Lw, "hh_owners": Lhk}
                 if L_sf or L_sf_prev:
                     bsm["loans"]["sovereign_fund"] = -L_sf
             if banks:      # deposits are the financial sector's liability; it holds the bonds
@@ -1397,8 +1610,11 @@ class SFCCore(Module):
                         "deposit_rate": r_dep, "household_rate": r_h, "loan_rate": r_l,
                         "fx_rate": r_fx, "bank_profits": pi_b, "bank_profits_abroad": bank_row,
                         "bank_tax": tax_bank, "gov_bonds": B, "deposits": M_w + M_k,
-                        "bank_net_worth": (B + L + L_sf + (FX_s if fx_bank else 0.0)
-                                           - (M_w + M_k)),
+                        "bank_net_worth": (B + L + L_sf + Lc + Lhk + Lw
+                                           + (FX_s if fx_bank else 0.0) - (M_w + M_k)),
+                        "loans_firms_existing": Lc, "loans_households": Lw + Lhk,
+                        "loans_households_workers": Lw,
+                        "existing_loan_interest": int_Lw + int_Lk,
                     })
                 pi_row_prev = (b["FP_row_net"] / (psi * Y)) if (psi > 0 and Y > 0) else pi0
                 # E1: after-tax net profit rate on capital, for next year's q
@@ -1435,11 +1651,18 @@ class SFCCore(Module):
                 "utilisation_response": self.utilisation_response,
                 "policy_start": self.policy_start,
                 "capacity_utilisation": cu if behavioural else None,
-                "baseline_tfp_growth": g_tfp if behavioural else None,
+                "baseline_tfp_growth": (None if not behavioural else
+                                        (a_idx[1] - 1.0 if (tp and H > 1) else g_tfp)),
+                "trend": ({"flag": tp["flag"], "source": tp["source"], "growth": tp["growth"],
+                           "capacity_efficiency": a_idx} if tp else None),
+                "private_loans": legacy,
+                "consumption_adjustment": lam if behavioural else None,
+                "impact_mpc": self.impact_mpc if behavioural else None,
                 "fiscal_reaction": fiscal_reaction, "debt_target": debt_target,
                 "i_rate": i_rate_eff, "capital_tax_share": ck.get("capital_tax_share"),
                 "g_nominal": ck.get("g_nominal"),
-                "observed_primary_balance": (fiscal_position_for(scenario.geo)["primary_balance"]
+                "observed_primary_balance": (fiscal_position_for(
+                    scenario.geo, base_year=self.base_year)["primary_balance"]
                                              if behavioural else None),
                 "external": ext if behavioural else None,
                 "foreign_stake0": psi0, "ai_foreign_share": self.ai_foreign_share,
@@ -1462,12 +1685,12 @@ class SFCCore(Module):
 # euro area); under policy_rule="taylor" its rule also gives the ECB path.
 # --------------------------------------------------------------------------- #
 def expected_gov_rate(geo, i_g0: float, neutral: float = NEUTRAL_RATE,
-                      horizon: int = 30) -> float:
+                      horizon: int = 30, base_year: int = 2019) -> float:
     """Average rate on public debt over the standard 30-year horizon with no risk
     premium: the 2015-19 rate rolling over (1/DEBT_MATURITY a year) into the
     policy path (2019 level to neutral) + the country's spread. The structural
     primary balance is set at it (Banks step)."""
-    rc = rates_for(geo)
+    rc = rates_for(geo, base_year=base_year)
     own = (geo or "").upper() == EURO_AREA or rc["regime"] == "own"
     path = _neutral_path(rc["policy0"] if own else rc["ea_policy0"], neutral, horizon)
     peg = 0.0 if own else rc["policy0"] - rc["ea_policy0"]
@@ -1498,7 +1721,8 @@ def _euro_reference(core: "SFCCore", scenario: Scenario, H: int) -> Dict[str, ob
         ai = AIShock("Baseline", labour_share_end=None)
     kw = dict(core._init_kwargs)
     kw.update(policy_rate_path=None, consumption_differential=None, capacity=None,
-              external=None)
+              external=None, own_rate_path=None, gov_rate_path=None, euro_debt_path=None,
+              tax_scale_path=None, labour_tax_shift_path=None, capital_tax_shift_path=None)
     key = (repr(ai), H, core.base_year,
            tuple(sorted((k, repr(v)) for k, v in kw.items())))
     if key not in _ECB_CACHE:

@@ -596,6 +596,114 @@ Figures: 24 usable countries (IE, LU and SI excluded), τ = 40%, AI shift, real 
 - **F2.** Re-run the Monte Carlo and sensitivity analysis, and test whether the F12 band separation survives.
 - **F3.** Findings ledger: re-run F5–F23 and mark each one survives / changed / retracted in MANIFESTO.md.
 - **Done when:** the validation report and the ledger are committed.
+- **Status: DONE 2026-11-08. The backtest bar is not met.** The engine beats both naive benchmarks in 37% of country-variable cells, not most of them. The multipliers sit in the published ranges in year 1. The F12 separation survives; most growth and dividend claims do not. Reports: `docs/VALIDATION-2026-11.md`, `docs/ROBUSTNESS-2026-11.md`, `docs/FINDINGS-LEDGER.md`, audit `docs/AUDIT-2026-11-stepF.md`.
+- **Plan, decided 2026-11-08** (it replaced F1–F3 above):
+  - **F4a, data only:** each country's capital stock and depreciation; EL, IE and LU fixed or excluded. Then the engine is frozen.
+  - **F1a, blind backtest:** 2011–19 from 2010 data only, against a random walk and a static multiplier.
+  - **F1b:** multipliers against the literature.
+  - **F4b:** structural fixes the tests exposed, disclosed, with the blind and final runs reported side by side.
+  - **F2:** Monte Carlo (500 draws) and sensitivity.
+  - **F3:** the findings ledger, in its own file. MANIFESTO annotations wait for step G.
+- **F4b, decided 2026-11-08** (four recommendations):
+  1. Consumption adjusts gradually, and firms' and households' existing loans go on the banks' books.
+  2. Luxembourg is excluded.
+  3. Each country grows at its 2024 Ageing Report trend.
+  4. The 2% inflation anchor stays, and its effect on debt is documented (below).
+
+#### What was built
+- **Capital stock from data** (F4a). Each country's own capital-output ratio and depreciation rate replace K/Y = 3 and 6% (DE 2.78 and 6.5%; SK 1.42 and 13.4%). `data/connectors/capital.py`.
+- **Base-year windows.** The fiscal, rates, external and capital calibrations take the five years to the base year, so a 2010 start uses only 2006–10 data. 2019 is unchanged.
+- **Coverage.** `schema/coverage.py` records EL, IE and LU as excluded, with reasons. The engine still runs them; published results leave them out.
+  - EL: owners' propensity 1.27.
+  - IE: investment above 40% of GDP.
+  - LU: owners' propensity below 0.
+- **The backtest** (`validation.py`, `scripts/validate.py`).
+  - Inputs fed in: government spending (investment moved into it), exports, the wage share and policy rates. Variants also feed yields and the net-tax ratio.
+  - Scoring: errors are changes since 2010. One-off bank rescues are taken out of the fiscal stance and the debt.
+  - Benchmarks: a random walk and a static multiplier.
+  - Multipliers: 1% of GDP in years 1–2.
+- **Consumption adjusts gradually** (F4b). Each year it closes the share λ = 0.48 / (long-run propensity) of the gap to its long-run level (DE λ ≈ 0.6), so households spend about half of a temporary income change in its first year. A permanent change is still spent in full.
+  - Workers who would end the year overdrawn spend only their income, deposits and new loans.
+  - Year 0 reproduces 2019 exactly.
+- **Existing loans** (F4b) go on the banks' books at their 2019 share of GDP.
+  - Firms' loans: the domestically owned share, owed by owners.
+  - Household loans: split between workers and owners by disposable income.
+  - Deposits gross up by the same amounts, so net wealth is unchanged; borrowers pay the loan rate.
+  - Effect on deposits: SK 0% → 76% of GDP. The 12 countries whose 2010 deposits would have been negative (ES, HU, LV, RO, SE…) start positive.
+  - Dwellings are carried at the household loans' face value (new real instrument `housing`).
+  - UBC leverage counts the firms' loans, and the fund takes them on pro rata.
+- **Trend growth** (F4b): each country's 2024 Ageing Report path replaces 1.5% for all.
+  - Exports grow at it. Capacity is set so the no-shock economy grows at it.
+  - The 2019 output gap closes in three years, and investment responds to the gap beyond that path.
+  - Before 2019 (the backtest), each country's own ten-year pre-sample growth applies.
+- **The public stand-in** for the foreign position applies wherever a class's deposits would start at or below zero, by rule. In 2019 it still selects IE and CY.
+- **Switches.** `CAPITAL_FROM_DATA`, `TREND_FROM_DATA`, `STAND_IN_BY_RULE`, `SFCCore(legacy_loans=, impact_mpc=, consumption_adjustment=, trend_draw=)`. All off reproduces the Banks-step engine to 1e-8. The step-A audit is still byte-identical.
+- **Data:** caches `capital_stock.json`, `private_loans.json` and `history_panel.json` (1995–2019), built by `scripts/build_capital.py`, `build_loans.py` and `build_history.py`.
+- **Reports:** `scripts/robustness.py` (DE, FR, SK × none/cash/UBC × 500 draws) and `scripts/findings_ledger.py` (the numbers behind the ledger). `scripts/audit_plausibility.py --step F`. 12 new tests (`tests/test_step_f.py`); 422 pass.
+
+#### Parameters and sources
+| Parameter | Default | MC range | Source |
+|---|---|---|---|
+| Capital-output ratio, depreciation | DE 2.78, 6.5%; FR 3.09, 5.6%; PL 1.90, 6.1%; SK 1.42, 13.4% | — | AMECO OKND × PIGT / UVGD; UKCT over the lagged stock, 2015–19 mean |
+| Firms' and households' loans | DE 52% and 53% of GDP; euro area 68% and 57% | — | Eurostat `nasa_10_f_bs` F4 liabilities, S11 and S14_S15, consolidated, 2019 |
+| Spending out of a temporary income change, year 1 | 0.48 | 0.3–0.7 | Jappelli & Pistaferri 2014 (AEJ: Macro 6(4)); Fagereng, Holm & Natvik 2021 (AEJ: Macro 13(4)) |
+| Trend growth | DE 0.8% (2020–30) → 1.4% (2041–50); PL 2.6% → 1.0% | the report's lower to higher TFP scenario | 2024 Ageing Report (EC Institutional Paper 257), Tables I.3.1, I.3.7, I.3.8 |
+| Output-gap closure | 3 years | — | Ageing Report convention |
+| Inflation anchor | 2% | — | ECB target; kept (decision 4) |
+
+#### Result
+| | Blind (F4a) | Final (F4b) | Bar |
+|---|---|---|---|
+| Backtest, cells beating both benchmarks (24 countries × 7 variables) | 36% | 37% | most |
+| Median error: real GDP / consumption / investment (%) | 4.1 / 6.3 / 11.9 | 3.9 / 5.0 / 12.2 | — |
+| Median error: inflation (pp/yr) / debt / current account (pp of GDP) | 1.1 / 8.6 / 3.2 | 1.1 / 8.4 / 2.8 | — |
+| Spending multiplier, year 1 / year 2 | 1.02 / — | 0.82 / 1.16 | 0.50–0.98 |
+| Labour-tax multiplier, year 1 | 0.89 | 0.42 | 0.04–0.51 |
+| Capital-tax multiplier, year 1 | 0.48 | 0.22 | 0.02–0.65 |
+
+- **Best variable: inflation.** It beats both benchmarks in 17 of 24 countries.
+- **Weakest: the current account.** The static benchmark beats the engine in 19 of 24.
+- **Debt is underpredicted in 19 of 24 countries** (median −9.6 pp by 2019). This comes from the inflation anchor (decision 4): the engine's inflation sits near 2%, while euro-area GDP inflation averaged 1.25% in 2011–19.
+- **The crisis years are no worse:** real GDP error 3.8% in 2011–13 against 3.8% in 2014–19.
+- **The policy rules** (spread rule, fiscal rule) score about as well as feeding in actual policy.
+
+**Audit (27 countries):**
+- 3,455 runs, all gate-clean; 88% plausible (Banks: 88%). Monte-Carlo draws: 63% plausible.
+- UBC insolvency: 7 runs (all RO) and 87 draws (Banks: 35 runs, 200 draws).
+- No-policy debt in 2049: median 127% of GDP; 7 of 24 countries above 150%.
+
+**Monte Carlo** (19 priors, 500 draws, DE, FR, SK):
+- UBC beats cash UBI on the Gini, poverty and fund wealth in 100% of paired draws (FR poverty 98%).
+- Cash UBI beats UBC on consumption in 100% of draws.
+- National income: UBC is better in only 6–8% of draws in DE and FR, and in 100% in SK.
+- What drives the UBC Gini: β, 85–97% of its variance.
+- What drives consumption and national income: the AI labour-share fall, 73–96%.
+
+#### Findings changed by step F
+Full table: `docs/FINDINGS-LEDGER.md`.
+- **Survive:** the wealth result and the inequality and poverty ranking (F8, F12, F16, F17), the fiscal erosion (F2) and the sectoral spread (F4).
+- **Retracted:**
+  - UBC's dividend overtaking cash (F5);
+  - "validated" (F9, README);
+  - reinvestment making UBC larger (README);
+  - UBC dominating the frontier and inaction never being on it (README, FINDINGS.md 5).
+- **Changed:**
+  - magnitudes (F1: a fifth to a quarter of the published rise);
+  - pooling narrows the EU gap by 32% (cash) and 21% (UBC), not half (Q2);
+  - the F21 dividend is €5,300, not €25,000;
+  - β, not investment, drives the inequality result (F18).
+
+#### Residuals and which step owns them
+- **The backtest bar is not met,** and the README must say so. **Step G.**
+- **Year-2 multipliers are above the literature** (spending 1.16, labour tax 0.76). There is no monetary response and investment follows the accelerator. Read short-run responses as upper bounds. **Documented; open.**
+- **The inflation anchor biases debt down** in a low-inflation decade (above). **Decision 4: kept, documented.**
+- **External drift.** The current account is the weakest variable, and the DE baseline NIIP rises 67% → 160% of GDP. There is no exchange-rate or price channel on imports. **Open.**
+- **Possible FISIM double count.** The bank margin (median 4.0% of GDP by 2049) is paid to owners on top of a profit share calibrated to GDP, which already includes financial firms' operating surplus. **Open** (financial-sector accounts).
+- **The utilisation response is an assumption,** with an MC range and no estimate. **Open.**
+- **Floaters** (CZ, HU, PL, RO, SE) are scored in euros in the backtest; their exchange-rate moves sit in the deflator.
+- **Public investment is treated as private** in the projections; only the backtest moves it into government spending. **Open.**
+- **Onaran & Obst (2016)** estimate the consumption gap on data to 2013, inside the backtest window: not fully out of sample.
+- **The UBC Gini's low tail** is below the 0.15 floor in 53% (DE), 44% (FR) and 100% (SK) of draws. The separation does not depend on it: the UBC median sits below the cash p5. **Step G** (state it with every band).
 
 ### G. Correct the public record (~1 day)
 - **G1.** Rewrite the README headline to what survives, with its conditions stated.

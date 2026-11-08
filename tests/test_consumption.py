@@ -63,7 +63,7 @@ def test_year0_reproduces_and_the_gap_is_the_published_one(geo):
     gap = a1_k * (1 - m["foreign_stake0"]) * (1 - pr["theta_k"]) - a1_w * (1 - pr["theta_w"])
     assert gap == pytest.approx(m["consumption_differential"], abs=1e-9)
     if "workers_capped" in m["consumption_differential_flag"]:
-        assert a1_w == MAX_WORKERS_MPC                    # EL, RO, SK: 2019 dissaving
+        assert a1_w == MAX_WORKERS_MPC                    # EL, IT, PT, RO, SK
     else:
         assert gap == pytest.approx(consumption_differential_for(geo)["value"], abs=1e-9)
     assert not any(c.name == "owners_mpc_in_unit_interval"
@@ -73,16 +73,18 @@ def test_year0_reproduces_and_the_gap_is_the_published_one(geo):
 def test_only_the_high_consumption_economies_are_capped():
     # Banks step: households earn interest on their deposits only (step E5 paid
     # them the government's rate on all public debt), so where 2019 consumption
-    # is high relative to income workers spend all of it
+    # is high relative to income workers spend all of it. Step F: the capital
+    # stock's own depreciation and the interest on existing household loans
+    # move CY and ES below the cap and IT onto it.
     capped = sorted(g for g in MEMBERS
                     if "workers_capped" in _no_policy(_orch(g)).meta["consumption_differential_flag"])
-    assert capped == ["CY", "EL", "ES", "PT", "RO", "SK"]
+    assert capped == ["EL", "IT", "PT", "RO", "SK"]
 
 
 def test_de_gap_halves_the_old_one_and_workers_save_like_households():
     m = _no_policy(_orch("DE")).meta
-    assert m["workers_mpc"] == pytest.approx(0.858, abs=0.002)    # Banks step
-    assert m["owners_mpc"] == pytest.approx(0.375, abs=0.002)
+    assert m["workers_mpc"] == pytest.approx(0.867, abs=0.002)    # step F (Banks: 0.858)
+    assert m["owners_mpc"] == pytest.approx(0.382, abs=0.002)     # step F (Banks: 0.375)
     # step E3 had 0.95 / 0.04: a gap of -0.73 against the estimated -0.40
     # DE households save 17.9% gross, ~11% net of depreciation (Eurostat nasa_10_ki, 2019)
     assert 0.10 < 1 - m["workers_mpc"] < 0.18

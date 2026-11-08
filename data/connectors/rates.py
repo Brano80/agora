@@ -160,12 +160,13 @@ def summarise(rec: Dict[str, dict], geo: str, base_year: int = 2019) -> Optional
     s = rec.get(g, {}).get("series", {})
     ea = rec.get(EURO_AREA, {}).get("series", {})
     by = str(base_year)
+    win = (base_year - (WINDOW[1] - WINDOW[0]), base_year)   # the five years to the base year
     isn, iln = s.get("ISN", {}), s.get("ILN", {})
     ea_isn, ea_iln = ea.get("ISN", {}), ea.get("ILN", {})
-    if by not in isn or by not in ea_isn or _mean(ea_iln) is None:
+    if by not in isn or by not in ea_isn or _mean(ea_iln, win) is None:
         return None
     flags = []
-    ea_term = _mean(ea_iln) - _mean(ea_isn)
+    ea_term = _mean(ea_iln, win) - _mean(ea_isn, win)
     regime = "ecb" if g in ECB_FOLLOWERS else ("own" if g in FLOATERS else "own")
     if g == EURO_AREA:
         gov_spread = ea_term
@@ -176,7 +177,7 @@ def summarise(rec: Dict[str, dict], geo: str, base_year: int = 2019) -> Optional
             gov_spread = ea_term
             flags.append("gov_spread=euro area")
     else:
-        own = _mean({y: iln[y] - isn[y] for y in iln if y in isn})
+        own = _mean({y: iln[y] - isn[y] for y in iln if y in isn}, win)
         if own is None:
             gov_spread = ea_term
             flags.append("gov_spread=euro area")
@@ -184,7 +185,7 @@ def summarise(rec: Dict[str, dict], geo: str, base_year: int = 2019) -> Optional
             gov_spread = own
     ea_loans = ea.get("MIR_LOANS", {})
     loans = s.get("MIR_LOANS", {})
-    yrs = [str(y) for y in range(WINDOW[0], WINDOW[1] + 1)]
+    yrs = [str(y) for y in range(win[0], win[1] + 1)]
     ls = [loans[y] - isn[y] for y in yrs if y in loans and y in isn]
     if len(ls) >= 3:
         loan_spread = statistics.mean(ls)

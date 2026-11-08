@@ -73,6 +73,13 @@ PRIORS: Dict[str, Tuple[float, float]] = {
     # and the published wage/profit consumption gap; this draw moves the gap
     # within its range (data/connectors/consumption.py; replaces the a1_w prior)
     "consumption_draw": (-1.0, 1.0),
+    # Phase 7 F: the same-year share of a temporary income change households
+    # spend (Jappelli & Pistaferri 2014: 0.48; Fagereng, Holm & Natvik 2021:
+    # just under 0.5 for liquid households, ~1 for illiquid ones)
+    "impact_mpc": (0.3, 0.7),
+    # Phase 7 F: position between the Ageing Report's lower (-1) and higher (+1)
+    # TFP scenarios (country trend growth shifted by -0.2..+0.2 pp)
+    "trend_draw": (-1.0, 1.0),
 }
 # The v1.1 prior (published F12 bands), kept to reproduce them with the legacy
 # investment closure: core_kwargs() routes any draw carrying inv_elasticity to it.
@@ -80,7 +87,8 @@ LEGACY_PRIORS: Dict[str, Tuple[float, float]] = {
     "labour_share_end": (0.30, 0.55), "capex_growth": (0.03, 0.09),
     "inv_elasticity": (0.0, 1.5), "beta": (0.1, 1.0), "omega": (0.0, 0.40),
     "a1_w": (0.90, 0.98)}
-_OUT_KEYS = ("gini", "poverty", "citizen_wealth_pc", "dividend_pc", "gdp_end")
+_OUT_KEYS = ("gini", "poverty", "citizen_wealth_pc", "dividend_pc", "gdp_end",
+             "gni_end", "consumption_pc_avg")     # Phase 7 F: national income, living
 _POLICY = {"ubc": dict(ubc=True), "cash_ubi": dict(ubi=True), "none": dict()}
 
 
@@ -106,7 +114,7 @@ def core_kwargs(d: Dict[str, float]) -> Dict[str, object]:
                               "phillips_slope", "export_elasticity",
                               "utilisation_response", "ai_foreign_share",
                               "levy_pass_through", "fiscal_reaction",
-                              "consumption_draw") if k in d}
+                              "consumption_draw", "impact_mpc", "trend_draw") if k in d}
 
 
 def _pctile(xs: List[float], q: float) -> float:
@@ -167,6 +175,10 @@ def _run_draws(geo: str, form: str, tau: float, year: int, horizon: int,
             else m["swf_stake"] * 1e6 / pop)
         acc["dividend_pc"].append(m["transfer_pool"] / m.get("price_level", 1.0) * 1e6 / pop)
         acc["gdp_end"].append(m.get("gdp_real", m["gdp"]))      # real (Phase 7 C)
+        acc["gni_end"].append(m.get("gni_real", m.get("gni", m["gdp"])))   # real GNI (F)
+        acc["consumption_pc_avg"].append(                        # 2020-49, real, per head (F)
+            sum(s.reported["consumption"] / s.reported.get("price_level", 1.0)
+                for s in res.periods[1:]) / max(1, len(res.periods) - 1) * 1e6 / pop)
         inputs.append(d)
         used += 1
     return inputs, acc, used, skipped

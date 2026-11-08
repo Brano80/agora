@@ -15,6 +15,7 @@ Pins the MECHANICS (findings are re-validated in step F):
   * the citizens' fund invests by the owners' rule up to its payout budget.
 """
 import json
+import math
 import os
 import statistics
 import sys
@@ -25,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data.connectors import capacity as cap
 from modules.ai_shock import AI_PRODUCTIVITY, AI_PRODUCTIVITY_YEARS
-from modules.sfc_core import (EXPORT_ELASTICITY, INFLATION_TARGET, SFCCore,
+from modules.sfc_core import (EXPORT_ELASTICITY, INFLATION_TARGET, PHILLIPS_SLOPE, SFCCore,
                               UTILISATION_RESPONSE)
 from orchestrator import AgoraOrchestrator
 from scenarios import LS_AI_END, build_custom, make_ubc_experiment
@@ -70,8 +71,13 @@ def test_switch_on_jump_is_bounded_by_capacity_headroom():
     jump = cash[1].reported["gdp_real"] / cash[0].reported["gdp_real"] - 1.0
     headroom = (u["max"] / u["base"]) * (cash[1].reported["capacity"]
                                           / cash[0].reported["capacity"]) - 1.0
-    assert cash[1].reported["excess_imports"] > 0          # the demand boost hits the ceiling
     assert jump <= headroom + 1e-9                         # legacy: +10.6% with no bound
+    # step F: households spend about half of a new transfer in its first year,
+    # so a 40% levy no longer reaches the ceiling; an 80% one still does, and
+    # real output never exceeds it
+    big = _run(o, "cash80", labour_share_end=LS_AI_END, capital_tax=0.80, ubi=True).result.periods
+    assert any(s.reported["excess_imports"] > 0 for s in big)
+    assert all(s.reported["utilisation"] <= u["max"] + 1e-9 for s in big)
 
 
 @pytest.mark.parametrize("geo", ["DE", "FR", "IT", "ES", "PL", "SK", "NL", "LT", "HU"])
@@ -80,6 +86,7 @@ def test_baseline_is_anchored(geo):
     infl = [s.reported["inflation"] for s in per[1:]]
     util = [s.reported["utilisation"] for s in per]
     u = cap.capacity_utilisation_for(geo)
+    # step F: the 2019 output gap closes in three years (Ageing Report convention)
     assert abs(statistics.mean(infl) - INFLATION_TARGET) < 0.005, geo
     lo = u["min"] if u.get("min") is not None else 0.70     # the country's 2005-2019 trough
     assert lo <= min(util) and max(util) <= u["max"] + 1e-9, geo
@@ -115,11 +122,14 @@ def test_ai_raises_capacity_as_a_phased_productivity_level():
 def test_exports_lose_competitiveness_when_prices_outrun_the_world():
     o = _orch("DE")
     p = o.params()
-    per = _run(o, "cash60", labour_share_end=LS_AI_END, capital_tax=0.60, ubi=True).result.periods
+    res = _run(o, "cash60", labour_share_end=LS_AI_END, capital_tax=0.60, ubi=True).result
+    per, growth = res.periods, res.meta["trend"]["growth"]
+    assert res.meta["trend"]["flag"] == "ageing_report" and growth[1] == pytest.approx(0.008)
     for t, s in enumerate(per):
         r = s.reported
         world = (1 + INFLATION_TARGET) ** t
-        x_base = p.export_ratio * p.Y0 * (1 + p.world_growth) ** t
+        # step F: world demand for the country's exports grows at its trend
+        x_base = p.export_ratio * p.Y0 * math.prod(1 + g for g in growth[1:t + 1])
         want = x_base * (r["price_level"] / world) ** (-EXPORT_ELASTICITY)
         assert r["exports"] / r["price_level"] == pytest.approx(want, rel=1e-9)
     assert any(s.reported["price_level"] > (1 + INFLATION_TARGET) ** t

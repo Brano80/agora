@@ -52,7 +52,9 @@ def from_dbnomics(docs: List[dict], base_year: int = 2019) -> Dict[str, dict]:
 
 
 def summarise(series: Dict[str, Dict[str, float]], base_year: int = 2019,
-              window=WINDOW) -> Optional[Dict[str, object]]:
+              window=None) -> Optional[Dict[str, object]]:
+    if window is None:          # the five years to the base year (2015-2019 for 2019)
+        window = (base_year - (WINDOW[1] - WINDOW[0]), base_year)
     gd, b9, d41 = series.get("GD", {}), series.get("B9", {}), series.get("D41PAY", {})
     rates = [d41[str(y)] / gd[str(y - 1)] for y in range(window[0], window[1] + 1)
              if str(y) in d41 and gd.get(str(y - 1))]

@@ -167,9 +167,10 @@ class AgoraOrchestrator:
         if self._data is None:
             self.load_data()
         kw = fiscal_calibration(self.geo, self.investment_closure, i_rate=self.i_rate,
-                                capital_tax_share=self.capital_tax_share)
+                                capital_tax_share=self.capital_tax_share, base_year=self.year)
         if self.investment_closure == "behavioural" and self.banks:
-            kw["pb_rate"] = expected_gov_rate(self.geo, kw["i_rate"])   # as the core does
+            kw["pb_rate"] = expected_gov_rate(self.geo, kw["i_rate"],
+                                              base_year=self.year)   # as the core does
         return calibrate(self._data, geo=self.geo, base_year=self.year,
                          sources=self._sources, **kw)
 

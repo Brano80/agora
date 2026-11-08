@@ -51,6 +51,7 @@ def test_the_financial_sector_balances_and_the_government_owes_only_its_bonds(ge
             assert r["bank_net_worth"] == pytest.approx(0.0, abs=1e-6 * r["gdp"])
             assert r["deposits"] == pytest.approx(
                 r["gov_bonds"] + r["loans_owners"] + r["loans_fund"]
+                + r["loans_firms_existing"] + r["loans_households"]
                 + r["public_external_position"], rel=1e-9)
             assert r["gov_debt"] == pytest.approx(r["gov_bonds"])
             assert set(s.bsm["fx_assets"]) == {"banks", "rest_of_world"}
@@ -71,8 +72,17 @@ def test_year0_deposits_are_debt_plus_the_foreign_position():
     assert run.periods[0].bsm["money"]["banks"] == pytest.approx(-r0["deposits"])
     # end of 2019: the 2019 stocks plus the year's flows
     assert r0["deposits"] - r0["gov_bonds"] - r0["public_external_position"] == pytest.approx(
-        r0["loans_owners"] + r0["loans_fund"], abs=1e-6 * r0["gdp"])
+        r0["loans_owners"] + r0["loans_fund"] + r0["loans_firms_existing"]
+        + r0["loans_households"], abs=1e-6 * r0["gdp"])
     assert m["fx_holder"] == "banks" and m["banks"] is True
+    # step F: existing loans from the financial accounts (DE 2019: firms 52.1%,
+    # households 52.5% of GDP); firms' only for the domestically owned share
+    lo = m["private_loans"]
+    assert lo["nfc"] == pytest.approx(0.521) and lo["hh"] == pytest.approx(0.525)
+    assert r0["loans_households"] == pytest.approx(0.525 * p.Y0, rel=1e-9)
+    assert r0["loans_firms_existing"] == pytest.approx(
+        (1.0 - m["foreign_stake0"]) * 0.521 * p.Y0, rel=1e-9)
+    assert 0.5 < lo["workers_share"] < 0.8
 
 
 def test_conduits_keep_the_public_stand_in_and_it_earns_nothing():
